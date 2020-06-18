@@ -1,5 +1,5 @@
 import time
-
+import random
 import discord
 import typing
 from discord.ext import commands, tasks
@@ -33,7 +33,7 @@ class Economy(commands.Cog):
 
     # Commands
 
-    @commands.command(name='invest', description='Invest some money into your business.')
+    @commands.command(description='Invest some money into your business.')
     async def invest(self, ctx, transact):
         """
             Invest some money into your business in order to occasionally receive dividends in proportion
@@ -58,7 +58,7 @@ class Economy(commands.Cog):
         await ctx.send(result)
         print(result)
 
-    @commands.command(name='balance', aliases=['bal', 'cash'], description='Check your balance.')
+    @commands.command(aliases=['bal', 'cash'], description='Check your balance.')
     async def balance(self, ctx, user: typing.Union[discord.Member, str] = None):
         """
         Check your balance and invested amount.
@@ -74,7 +74,7 @@ class Economy(commands.Cog):
         except TypeError:
             await ctx.send("User not found.")
 
-    @commands.command(name='pay', aliases=['send'], description='Send someone else money.')
+    @commands.command(aliases=['send'], description='Send someone else money.')
     async def pay(self, ctx, user: discord.User, transfer):
         """
         Send someone else some money.
@@ -116,9 +116,9 @@ class Economy(commands.Cog):
         await sell_possession(ctx, ctx.author, item, amount)
         # TODO: Create function
 
-    @commands.command(name='cheat_item', description='Add an item to a users possessions without the need to buy it.')
+    @commands.command(description='Add an item to a users possessions without the need to buy it.')
     @commands.check(auth(2))
-    async def cheatitem(self, ctx, user: discord.Member, amount: typing.Optional[int] = 1,
+    async def cheat_item(self, ctx, user: discord.Member, amount: typing.Optional[int] = 1,
                         price: typing.Optional[float] = 0, *, item: str):
         """
         Add an item to a users possessions without the need to buy it.
@@ -143,7 +143,7 @@ class Economy(commands.Cog):
             count += 1
         return await ctx.send(message)
 
-    @commands.command(name='cheat_money', description='Give someone money from nowhere. Staff only.')
+    @commands.command(description='Give someone money from nowhere. Staff only.')
     @commands.check(auth(2))
     async def cheat_money(self, ctx, user: discord.User, amount: int):
         """
@@ -155,7 +155,7 @@ class Economy(commands.Cog):
         await ctx.send(
             f'Added {amount} credits to {user} by authority of {ctx.author}. Their new balance is {new_balance}')
 
-    @commands.command(name='payout', description='Distribute payouts based on investments.')
+    @commands.command(description='Distribute payouts based on investments.')
     @commands.check(auth(2))
     async def payout(self, ctx):
         """
@@ -167,7 +167,7 @@ class Economy(commands.Cog):
         channel = self.bot.get_channel(718949686412705862)
         await channel.send(f'Bonus investment payouts sent by {ctx.author}, enjoy!')
 
-    @commands.command(name='paycheck', description='Get some free money!')
+    @commands.command(description='Get some free money!')
     async def paycheck(self, ctx):
         """
         Get some free money. Only gives a little bit, though; you can get much more money from actually RPing.
@@ -183,8 +183,7 @@ class Economy(commands.Cog):
         balance = await add_funds(ctx.author, PAYCHECK_AMOUNT)
         await ctx.send(f"Paycheck of {PAYCHECK_AMOUNT} received. Your balance is now {balance} credits.")
 
-    @commands.command(name='items',
-                      aliases=['mine', 'backpack', 'possessions', 'inventory'], description='See what items you own.')
+    @commands.command(aliases=['mine', 'backpack', 'items', 'inventory'], description='See what items you own.')
     async def possessions(self, ctx, member: discord.Member = None):
         if member is None:
             member = ctx.author
@@ -196,6 +195,59 @@ class Economy(commands.Cog):
         to_send += "\n\n*Don't need an item anymore? you can sell it at any time for 60% of the price you bought it " \
                    "for with the sell command.*"
         await ctx.send(to_send)
+
+    @commands.command()
+    @commands.check(auth(2))
+    async def econ_printout(self, ctx):
+        print(self.bot.commodities_sell_prices)
+        print(self.bot.commodities_buy_prices)
+        send = '\n'.join([str(line) for line in self.bot.commodities_sell_prices if line[0] != ''])
+        counter = 0
+        to_send = ''
+        for i in send:
+            counter += 1
+            to_send += i
+            if counter > 1999:
+                await ctx.send(to_send)
+                to_send = ''
+                counter = 0
+        await ctx.send(to_send)
+
+    @commands.command(alias='sells')
+    @commands.check(auth(2))
+    async def sell_prices(self, ctx, channel: discord.TextChannel):
+        ch_id = channel.id
+        count = 0
+        for location_sell in self.bot.commodities_sell_prices:
+            if location_sell[0] == ch_id:
+                to_send = f'Sell prices at {location_sell[1]}:\n```\n'
+                for item, price in sorted(location_sell[2].items(), key=lambda x: x[1]):
+                    spaces = ' ' * (20 - len(item))
+                    random_modifier = random.random() * 0.0005 + 1
+                    print(random_modifier)
+                    to_send += f'{item}:{spaces} ~${price * random_modifier:,.2f}\n'
+                to_send += '```'
+                await ctx.send(to_send)
+                return
+            count += 1
+
+    @commands.command(alias='buys')
+    @commands.check(auth(2))
+    async def buy_prices(self, ctx, channel: discord.TextChannel):
+        ch_id = channel.id
+        count = 0
+        for location_buy in self.bot.commodities_buy_prices:
+            if location_buy[0] == ch_id:
+                to_send = f'\nBuy prices at {location_buy[1]}:\n```\n'
+                for item, price in sorted(location_buy[2].items(), key=lambda x: x[1]):
+                    spaces = ' ' * (20 - len(item))
+                    random_modifier = random.random() * 0.0005 + 1
+                    print(random_modifier)
+                    to_send += f'{item}:{spaces} ~${price * random_modifier:,.2f}\n'
+                to_send += '```'
+                await ctx.send(to_send)
+                return
+            count += 1
 
     @tasks.loop(seconds=60 * 60)
     async def send_payouts(self):

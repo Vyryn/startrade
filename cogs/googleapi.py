@@ -8,7 +8,7 @@ from discord.ext import commands
 
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
 SHEET_ID = '1p8mtlGzJHeu_ta0ZoowJhBB1t5xM5QRGbRSHCgkyjYg'
-RANGE = 'Sheet1!A1:Z'
+RANGE = 'Sheet1!A1:GB'
 
 
 class Googleapi(commands.Cog):
@@ -36,27 +36,40 @@ class Googleapi(commands.Cog):
         sheet = service.spreadsheets()
         result = sheet.values().get(spreadsheetId=SHEET_ID, range=RANGE).execute()
         values = result.get('values', [])
-        bot.commodities_prices = values
+        bot.commodities_sell_prices = []
+        bot.commodities_buy_prices = []
         if not values:
             print('No data found.')
-        else:
-            print('Data:')
-            for row in values:
-                print(row)
-
-    @commands.command(name='test')
-    async def test(self, ctx):
-        send = '\n'.join([str(line) for line in self.bot.commodities_prices])
-        counter = 0
-        to_send = ''
-        for i in send:
-            counter += 1
-            to_send += i
-            if counter > 1999:
-                await ctx.send(to_send)
-                to_send = ''
-                counter = 0
-        await ctx.send(to_send)
+            return
+        reference_row = values[1]
+        # print(reference_row)
+        row_count = -3  # Start at -3 because this simplifies indexing below; we don't want the first two rows.
+        for row in values:
+            row_count += 1
+            if row_count >= 0:
+                bot.commodities_buy_prices.append((int(row[2]), row[0], {}))
+                bot.commodities_sell_prices.append((int(row[2]), row[0], {}))
+                counter = 4
+                row = row[4:]
+                for entry in row:
+                    if entry == '':
+                        pass
+                    else:
+                        reference_val = reference_row[counter]
+                        if counter % 2:  # Odd, buy price
+                            bot.commodities_buy_prices[row_count][2][reference_val] = \
+                                float(entry.replace(',', '').replace('$', ''))
+                        else:  # Even, sell price
+                            bot.commodities_sell_prices[row_count][2][reference_val] = \
+                                float(entry.replace(',', '').replace('$', ''))
+                            # even, therefore sell price
+                    counter += 1
+            # print(row)
+            # print([row[2], row[0], row[3:]])
+        print('Commodities Buy Prices:')
+        print(bot.commodities_buy_prices)
+        print('Commodities Sell Prices:')
+        print(bot.commodities_sell_prices)
 
 
 def setup(bot):

@@ -66,11 +66,12 @@ class Management(commands.Cog):
 
     @commands.check(auth(3))
     @commands.guild_only()
-    @commands.command(name='edit', description='Edit a bot message')
+    @commands.command(description='Edit a bot message')
     async def edit(self, ctx, m_id, *, new):
         channel = ctx.channel
         message = await channel.fetch_message(m_id)
         await message.edit(content=new)
+
 
 def setup(bot):
     bot.add_cog(Management(bot))

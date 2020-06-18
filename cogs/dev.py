@@ -40,9 +40,9 @@ class Dev(commands.Cog):
 
     # Commands
     # Echo what you said
-    @commands.command(name='echo', aliases=['repeat', 'say'], pass_context=True, description='Says what you tell it')
+    @commands.command(aliases=['repeat', 'say'], pass_context=True, description='Says what you tell it')
     @commands.check(auth(1))
-    async def echo(self, ctx, *, message):
+    async def echo(self, ctx, *, message: str):
         """Have the bot repeat your message.
                 Requires: Auth level 1
                 Message: The message to repeat"""
@@ -54,7 +54,7 @@ class Dev(commands.Cog):
     @commands.command(name='sendmsg', aliases=['dm', 'tell', 'message'], pass_context=True,
                       description='DM an unsuspecting user')
     @commands.check(auth(2))
-    async def send(self, ctx, user: discord.User, *, message=None):
+    async def send(self, ctx, user: discord.User, *, message: str = None):
         """Sends a DM to a user of your choice
                 Requires: Auth level 2
                 User: The user to message
@@ -78,8 +78,8 @@ class Dev(commands.Cog):
         pass
 
     # Checks a user's auth level
-    @autho.command(name='check')
-    async def check(self, ctx, user: discord.User = None, detail=''):
+    @autho.command()
+    async def check(self, ctx, user: discord.User = None, detail: str = ''):
         if not user:
             user = ctx.author
         auth_level = get_commanders().get(str(user.id), default_auth)
@@ -98,11 +98,10 @@ class Dev(commands.Cog):
         print(f'Auth check command used by {ctx.author} at {now()}, {user} is authorized at level {auth_level}.')
 
     # sets a user's auth level
-    @commands.command(name='authset')
+    @commands.command()
     @commands.check(auth(7))
-    async def authset(self, ctx, level, user: discord.User):
+    async def authset(self, ctx, level: int, user: discord.User):
         commanders = get_commanders()
-        level = int(level)
         if commanders[str(ctx.author.id)] > level and commanders.get(user.id, 0) < commanders[str(ctx.author.id)]:
             with open('auths.json', 'r') as f:
                 auths = json.load(f)
@@ -122,7 +121,7 @@ class Dev(commands.Cog):
     # lists all bot commanders and their auth levels
     @autho.command(name='all')
     @commands.check(auth(4))
-    async def set(self, ctx):
+    async def all_commanders(self, ctx):
         commanders = get_commanders()
         embed = discord.Embed(title='', description='', color=ctx.author.color)
         embed.set_author(icon_url=ctx.author.avatar_url, name='Here you go:')
@@ -135,9 +134,9 @@ class Dev(commands.Cog):
         print(f'Auth All command used by {ctx.author} at {now()}')
 
     # Unload a cog
-    @commands.command(name='unload', pass_context=True, description='Unload a cog')
+    @commands.command(description='Unload a cog')
     @commands.check(auth(4))
-    async def unload(self, ctx, extension):
+    async def unload(self, ctx, extension: str):
         """Unload a cog
                 Requires: Auth level 4
                 Extension: The cog to unload"""
@@ -148,9 +147,9 @@ class Dev(commands.Cog):
         print(f'Unload command used by {ctx.author} at {now()} on cog {extension}')
 
     # Reload a cog
-    @commands.command(name='reload', description='Reload a cog')
+    @commands.command(description='Reload a cog')
     @commands.check(auth(3))
-    async def reload(self, ctx, extension):
+    async def reload(self, ctx, extension: str):
         """Reload a cog
                 Requires: Auth level 4
                 Extension: The cog to reload"""
@@ -165,9 +164,9 @@ class Dev(commands.Cog):
         print(f'Reload command used by {ctx.author} at {now()} on cog {extension}')
 
     # Update bot status
-    @commands.command(name='status', description='Change what the bot is playing')
+    @commands.command(description='Change what the bot is playing')
     @commands.check(auth(5))
-    async def status(self, ctx, *, message=''):
+    async def status(self, ctx, *, message: str = ''):
         """Change the bot's "playing" status
                 Requires: Auth level 5
                 Message: The message to change it to"""
@@ -179,7 +178,7 @@ class Dev(commands.Cog):
 
     @commands.command(name='eval', description='Evaluates input.')
     @commands.check(auth(9))
-    async def eval_fn(self, ctx, *, cmd):
+    async def eval_fn(self, ctx, *, cmd: str):
         """Evaluates input.
         This command requires Auth 9 for obvious reasons.
         """
@@ -215,7 +214,7 @@ class Dev(commands.Cog):
         endtime = time.time_ns()
         await ctx.send(f'Command took {(endtime - starttime) / 1000000}ms to run.\nResult: {result}')
 
-    @commands.command(name='delete', description='Delete a single message by ID')
+    @commands.command(description='Delete a single message by ID')
     @commands.check(auth(6))
     async def delete(self, ctx, message_id: int):
         """

@@ -189,7 +189,7 @@ class Basics(commands.Cog):
         # print(f'Reaction {payload.emoji.name} removed from message {payload.message_id} by user {payload.user_id}.') #temporarily commented for discord.py issue
 
     # Commands
-    @commands.command(name='ping', aliases=['plonk'], description='Pong!')
+    @commands.command(aliases=['plonk'], description='Pong!')
     async def ping(self, ctx):
         """Returns the ping to the bot"""
         ping = round(self.bot.latency * 1000)
@@ -280,7 +280,7 @@ class Basics(commands.Cog):
         print(poll_message.embeds[0].fields[0].value)
         print(f'Poll command used by {ctx.author} at {now()} with poll {text}.')
 
-    @commands.command(name='time', description='Check the current time')
+    @commands.command(description='Check the current time')
     async def time(self, ctx):
         """Check the current time
         """

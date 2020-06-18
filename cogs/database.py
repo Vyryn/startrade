@@ -24,7 +24,7 @@ commodities = ['hydrogen', 'deuterium', 'tritium', 'helium', 'nitrogen', 'oxygen
                'painite', 'diamond', 'ruby', 'emerald', 'taaffeite',
                'processors_50a', 'processors_14a', 'processors_10a', 'processors_7a',
                'cotton', 'corn', 'wheat', 'soy', 'rice', 'milk', 'cocoa', 'salt', 'sugar', 'rubber', 'wool', 'amber',
-               'steel', 'duralumin', 'carbon_fiber', 'plastic', 'porcelain', 'biosamples', 'wood',
+               'steel', 'carbon_fiber', 'plastic', 'porcelain', 'biosamples', 'wood',
                'saffron', 'white_truffles', 'coffee', 'pepper', 'garlic', 'cinnamon',
                'graphene', 'aerogel', 'cermets', 'm_glass', 'mol_glue', 'nanofibers', 'fullerenes', 'nanotubes',
                'h_fuel', 'antimatter']
@@ -54,13 +54,6 @@ async def disconnect():
     except AttributeError:
         pass  # There was no need to commit
     await db.close()
-
-
-async def pquery(query):
-    await connect()
-    result = await db.execute(query)
-    await disconnect()
-    return result
 
 
 async def new_user(user: discord.User):
@@ -119,7 +112,7 @@ async def transfer_funds(from_user: discord.User, to_user: discord.User, amount:
     return from_balance, to_balance
 
 
-async def update_activity(member: discord.Member, amount):
+async def update_activity(member: discord.Member, amount: int):
     uid = member.id
     await connect()
     activity = (await db.fetchrow(f"SELECT activity FROM users WHERE id = $1", uid))[0] + amount
@@ -193,7 +186,7 @@ async def set_last_paycheck_now(user: discord.User):
     return time_now
 
 
-async def get_top(cat, page: int):
+async def get_top(cat: str, page: int):
     await connect()
     offset = 10 * (1 - page)
     if cat not in ['balance', 'invested', 'activity']:
@@ -217,14 +210,15 @@ async def get_top(cat, page: int):
     return tops
 
 
-async def add_item(name, category, picture, min_cost: float, max_cost: float, description, faction):
+async def add_item(name: str, category: str, picture: str, min_cost: float, max_cost: float, description: str,
+                   faction: str):
     await connect()
     await db.execute(f"INSERT INTO items VALUES ($1, $2, $3, $4, $5, $6, $7)",
                      name, category, picture, min_cost, max_cost, description, faction)
     await disconnect()
 
 
-async def add_commodity_location(name, channel_id: int, is_buy: bool, **kwargs):
+async def add_commodity_location(name: str, channel_id: int, is_buy: bool, **kwargs):
     await connect()
     query = f"INSERT INTO commodities_locations VALUES ($1, $2, $3 "
     counter = 3
@@ -241,7 +235,7 @@ async def add_commodity_location(name, channel_id: int, is_buy: bool, **kwargs):
     await disconnect()
 
 
-async def edit_item(item, category, new_value):
+async def edit_item(item: str, category: str, new_value: str):
     categories = ['name', 'category', 'picture', 'min_cost', 'max_cost', 'description', 'faction']
     if category not in categories:
         raise NameError(f'Category {category} not found.')
@@ -253,7 +247,7 @@ async def edit_item(item, category, new_value):
     await disconnect()
 
 
-async def find_item(item):
+async def find_item(item: str):
     await connect()
     result = await db.fetchrow(f"SELECT * FROM items WHERE name = $1", item)
     query = f'%{item}%'
@@ -265,7 +259,7 @@ async def find_item(item):
     return result
 
 
-async def find_items_in_cat(item):
+async def find_items_in_cat(item: str):
     await connect()
     query = f'%{item}%'
     result = await db.fetch(f"SELECT * FROM items WHERE category LIKE $1", query)
@@ -273,7 +267,7 @@ async def find_items_in_cat(item):
     return result
 
 
-async def remove_item(item):
+async def remove_item(item: str):
     await connect()
     await db.execute(f"DELETE FROM items WHERE name = $1", item)
     await disconnect()
@@ -287,7 +281,7 @@ def flatten(flatten_list):  # Just a one layer flatten
     return new_list
 
 
-async def add_possession(user: discord.Member, item, cost: float = 0, amount: float = 1):
+async def add_possession(user: discord.Member, item: str, cost: float = 0, amount: float = 1):
     uid = user.id
     await connect()
     unique_key = await db.fetchval(f"SELECT MAX(id) from possessions") + 1
@@ -306,7 +300,7 @@ async def add_possession(user: discord.Member, item, cost: float = 0, amount: fl
     await disconnect()
 
 
-async def sell_possession(ctx, user: discord.Member, item, amount: int = 1):
+async def sell_possession(ctx, user: discord.Member, item: str, amount: int = 1):
     REFUND_PORTION = 0.6
     uid = user.id
     await connect()
@@ -353,7 +347,7 @@ async def transact_possession(ctx, user: discord.Member, item: str, cost: float 
         return await ctx.send(f"Item not found. Remember, you must use the full item name, names are case sensitive, "
                               f"and if you buy more than one the amount goes before the item name.")
     if cost == 0:
-        cost = int((max_cost + min_cost) / 2 * 100)/100
+        cost = int((max_cost + min_cost) / 2 * 100) / 100
     if not (min_cost <= cost <= max_cost):
         cost = max_cost
         print(f'Cost not in valid range. Using max_cost instead.')
@@ -391,7 +385,7 @@ async def send_formatted_browse(ctx, result, i_type):
     print(items)
     max_len = 35
     for item in items:
-        item_price = int((float(item[3]) + float(item[4])) / 2 * 100)/100
+        item_price = int((float(item[3]) + float(item[4])) / 2 * 100) / 100
         if count < 30:
             send += f'{item[0]}{(max_len - len(item[0])) * " "} ( ~ {item_price} credits)\n'
             count += 1
@@ -487,7 +481,7 @@ class Database(commands.Cog):
         except AttributeError:
             pass
 
-    @commands.command(name='listusers', description='Prints the list of users to the console.')
+    @commands.command(description='Prints the list of users to the console.')
     @commands.check(auth(4))
     async def listusers(self, ctx):
         await connect()
@@ -499,7 +493,7 @@ class Database(commands.Cog):
         await ctx.send(
             f'The list of {num_users} users has been printed to the console. Here are their names only:\n{names}')
 
-    @commands.command(name='directq', description='Does a direct database query.')
+    @commands.command(description='Does a direct database query.')
     @commands.check(auth(8))
     async def directq(self, ctx, *, query):
         """
@@ -514,7 +508,7 @@ class Database(commands.Cog):
         await ctx.send(result)
         print(f'{ctx.author} executed a direct database query at {now()}:\n{query}\nResult was:\n{result}')
 
-    @commands.command(name='newuser', description='add new user to database')
+    @commands.command(description='add new user to database')
     @commands.check(auth(2))
     async def newuser(self, ctx, user: discord.User):
         """
@@ -524,7 +518,7 @@ class Database(commands.Cog):
         print(result)
         await ctx.send(result)
 
-    @commands.command(name='newitem', aliases=['additem'], description='add a new item to the database')
+    @commands.command(aliases=['additem'], description='add a new item to the database')
     @commands.check(auth(3))
     async def newitem(self, ctx, *, content):
         """
@@ -552,12 +546,12 @@ class Database(commands.Cog):
         # return await ctx.send('An item with that name is already in the database.')
         await ctx.send(f'Added {item[0]} to the database.')
 
-    @commands.command(
-        name='newlocation', aliases=['addlocation'],
-        description=f'Add a new location to the database. \nChannel is a channel mention for this shop, and is_buy is '
-                    f'TRUE for purchase costs, FALSE for sell costs. Each value must be a kwarg from: {commodities}')
+    @commands.command(aliases=['addlocation'], description=f'Add a new location to the database. \nChannel is a '
+                                                           f'channel mention for this shop, and is_buy is TRUE for'
+                                                           f' purchase costs, FALSE for sell costs. Each value must'
+                                                           f' be a kwarg from: {commodities}')
     @commands.check(auth(3))
-    async def newlocation(self, ctx, name, channel: discord.TextChannel, is_buy: bool, *, in_values):
+    async def newlocation(self, ctx, name: str, channel: discord.TextChannel, is_buy: bool, *, in_values: str):
         values = in_values.split(' ')
         kwargs = {}
         for tic in values:
@@ -573,9 +567,9 @@ class Database(commands.Cog):
         # return await ctx.send('A location with that name is already in the database.')
         await ctx.send(f'Added {name} to the database.')
 
-    @commands.command(name='deleteitem', aliases=['removeitem'], description='Remove an item from the database')
+    @commands.command(aliases=['removeitem'], description='Remove an item from the database')
     @commands.check(auth(4))
-    async def deleteitem(self, ctx, *, item):
+    async def deleteitem(self, ctx, *, item: str):
         """
         Remove an item from the database. Requires Auth 4.
         """
@@ -591,9 +585,9 @@ class Database(commands.Cog):
         await remove_item(item)
         await ctx.send(f'Successfully removed {item} from the database.')
 
-    @commands.command(name='edititem', aliases=['updateitem'], description='Edit a value of an item in the database.')
+    @commands.command(aliases=['updateitem'], description='Edit a value of an item in the database.')
     @commands.check(auth(4))
-    async def edititem(self, ctx, item, field, value):
+    async def edititem(self, ctx, item: str, field: str, value: str):
         """Edit a value of an item in the database.
         """
         print(f"Updating item {item} field {field} to value {value} by request of {ctx.author}.")
@@ -604,8 +598,8 @@ class Database(commands.Cog):
         except NameError:
             await ctx.send(f'Category not found. Categories are case sensitive, double check!')
 
-    @commands.command(name='browse', description='browse the shop')
-    async def browse(self, ctx, *, item=None):
+    @commands.command(description='browse the shop')
+    async def browse(self, ctx, *, item: str = None):
         """
         Browse the items available for sale.
         You can also specify a category to list the items of that type, or a specific item to see more details
@@ -640,7 +634,7 @@ class Database(commands.Cog):
         if result is None:
             return await ctx.send('Item not found.')
         print(result)
-        av_cost = int((float(result[3]) + float(result[4])) / 2 * 100)/100
+        av_cost = int((float(result[3]) + float(result[4])) / 2 * 100) / 100
         async with aiohttp.ClientSession() as session:  # Load image from link. TODO: Download and save image instead
             async with session.get(result[2]) as resp:
                 buffer = BytesIO(await resp.read())

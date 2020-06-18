@@ -13,7 +13,7 @@ class Mechanics(commands.Cog):
         self.bot = bot
 
     # Commands
-    @commands.command(name='roll', aliases=['die', 'dice'], description='Roll some dice.')
+    @commands.command(aliases=['die', 'dice'], description='Roll some dice.')
     async def roll(self, ctx, *, content: str = None):
         """Roll some dice.
         Roll x d y dice, where x is the number of dice and y is the number of sides. Defaults to 1D20.

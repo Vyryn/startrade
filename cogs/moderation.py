@@ -5,6 +5,12 @@ from discord.ext import commands
 from functions import deltime, auth, confirmed_ids, now
 
 
+async def confirmation_on(user):
+    await asyncio.sleep(deltime * 2)
+    confirmed_ids[user] = 0
+    return
+
+
 class Moderation(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -17,7 +23,7 @@ class Moderation(commands.Cog):
     # Commands
     @commands.command(aliases=['clear', 'del'], description='Delete a number of messages')
     @commands.has_permissions(manage_messages=True)
-    async def purge(self, ctx, amount):
+    async def purge(self, ctx, amount: int):
         """Delete a bunch of messages
                 Requires: Manage Message perms on your server
                 Amount: The number of messages to purge. Typically limited to 100.
@@ -31,9 +37,9 @@ class Moderation(commands.Cog):
         else:
             await ctx.send('You may only delete up to 100 messages', delete_after=deltime)
 
-    @commands.command(name='forcepurge', description='Delete a number of messages')
+    @commands.command(description='Delete a number of messages')
     @commands.check(auth(6))
-    async def purge(self, ctx, amount):
+    async def forcepurge(self, ctx, amount: int):
         """Delete a bunch of messages
                 Requires: Auth 6. This is meant for use only in cases where the bot has caused spam that it shouldn't
                 have.
@@ -48,9 +54,9 @@ class Moderation(commands.Cog):
         else:
             await ctx.send('You may only delete up to 100 messages', delete_after=deltime)
 
-    @commands.command(name='kick', description='Kick em out!')
+    @commands.command(description='Kick a member from the server.')
     @commands.has_permissions(kick_members=True)
-    async def kick(self, ctx, member: discord.Member, *, reason='No reason provided.'):
+    async def kick(self, ctx, member: discord.Member, *, reason: str = 'No reason provided.'):
         """Kick someone out of the server
                 Requires: Kick Members permission
                 Member: the person to kick
@@ -58,9 +64,9 @@ class Moderation(commands.Cog):
         reason = f'{ctx.author} kicked {member} for reason {reason}'
         await member.kick(reason=reason)
 
-    @commands.command(name='ban', description='The Banhammer!')
+    @commands.command(description='Ban a member.')
     @commands.has_permissions(ban_members=True)
-    async def ban(self, ctx, member: discord.Member, *, reason='No reason provided.'):
+    async def ban(self, ctx, member: discord.Member, *, reason: str = 'No reason provided.'):
         """Ban someone from the server
                 Requires: Ban Members permission
                 Member: the person to ban
@@ -69,24 +75,19 @@ class Moderation(commands.Cog):
         await member.ban(reason=reason)
         await ctx.send(f'Banned {member.mention} for {reason}.')
 
-    @commands.command(name='unban', description='I am merciful, sometimes.')
+    @commands.command(description='Unban a member')
     @commands.has_permissions(manage_guild=True)
-    async def unban(self, ctx, *, member):
+    async def unban(self, ctx, *, member: discord.Member):
         """Unban someone from the server
                 Requires: Manage Server permission
                 Member: the person to unban"""
-        banned_users = await ctx.guild.bans()
-        member_name, member_discriminator = member.split('#')
-
-        for ban_entry in banned_users:
-            user = ban_entry.user
-
-            if (user.name, user.discriminator) == (member_name, member_discriminator):
-                await ctx.guild.unban(user)
-                await ctx.send(f'Unbanned {user.name}#{user.discriminator}')
+        async for ban in await ctx.guild.bans():
+            if ban.user.id == member.id:
+                await ctx.guild.unban(ban.user)
+                await ctx.send(f'Unbanned {ban.user}')
         print(f'Unban command used by {ctx.author} at {now()} on user {member}.')
 
-    @commands.command(name='clearpins', description='Remove *all* the pins from a channel')
+    @commands.command(description='Remove *all* the pins from a channel')
     @commands.has_permissions(manage_messages=True)
     async def clearpins(self, ctx):
         """Clear all the pinned messages from a channel.
@@ -105,13 +106,8 @@ class Moderation(commands.Cog):
                            "If so, use this command again.", delete_after=deltime)
             confirmed_ids[ctx.author.id] = 1
             await ctx.message.delete()  # delete the command
-            self.bg_task = self.bot.loop.create_task(self.confirmation_on(ctx.author.id))
+            self.bg_task = self.bot.loop.create_task(confirmation_on(ctx.author.id))
         print(f'Clearpins command used by {ctx.author} at {now()} in channel {ctx.channel.name}.')
-
-    async def confirmation_on(self, user):
-        await asyncio.sleep(deltime * 2)
-        confirmed_ids[user] = 0
-        return
 
 
 def setup(bot):
