@@ -127,3 +127,9 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+/credentials.json
+/privatevars.py
+/quickstart.py
+/token.pickle
+/db_backup2.sql
+/db_backup.sql

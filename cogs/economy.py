@@ -1,0 +1,210 @@
+import time
+
+import discord
+import typing
+from discord.ext import commands, tasks
+
+from cogs.database import add_invest, check_bal, transfer_funds, add_funds, distribute_payouts, check_last_paycheck, \
+    set_last_paycheck_now, get_top, check_bal_str, transact_possession, add_possession, view_items, sell_possession
+from functions import auth
+
+
+class Economy(commands.Cog):
+
+    def __init__(self, bot):
+        self.bot = bot
+        self.send_payouts.start()
+        print('Started the payouts task (3).')
+
+    def cog_unload(self):
+        self.send_payouts.cancel()
+        print('Ended the investment payout task.')
+
+    def cog_load(self):
+        self.send_payouts.start()
+        print('Started the payouts task (2).')
+
+    # Events
+    @commands.Cog.listener()
+    async def on_ready(self):
+        print(f'Loading Cog {self.qualified_name}...')
+        # self.send_payouts.start()
+        # print('Started the payouts task.')
+
+    # Commands
+
+    @commands.command(name='invest', description='Invest some money into your business.')
+    async def invest(self, ctx, transact):
+        """
+            Invest some money into your business in order to occasionally receive dividends in proportion
+             to how much you have invested. Be warned, investments currently can not be withdrawn.
+        """
+        try:
+            amount = float(transact)
+        except ValueError:
+            return await ctx.send("You need to enter a number.")
+        if amount < 0:
+            return await ctx.send("You can not invest a negative amount.")
+        elif amount == 0:
+            return await ctx.send("You can't invest nothing!")
+        invested, total_invested, new_balance = await add_invest(ctx.author, amount)
+        if invested == -1:
+            result = 'User not found.'
+        elif invested == -2:
+            result = 'You do not have enough cash for that.'
+        else:
+            result = f"{ctx.author}, you have just invested {invested} for a total of invested of {total_invested}." \
+                     f" You now have {new_balance} credits left."
+        await ctx.send(result)
+        print(result)
+
+    @commands.command(name='balance', aliases=['bal', 'cash'], description='Check your balance.')
+    async def balance(self, ctx, user: typing.Union[discord.Member, str] = None):
+        """
+        Check your balance and invested amount.
+        """
+        try:
+            if user is None:
+                user = ctx.author
+            if isinstance(user, discord.Member):
+                balance, invested = await check_bal(user)
+            else:
+                balance, invested, user = await check_bal_str(user)
+            await ctx.send(f'Balance for {user}: \n> ${balance} in account.\n> ${invested} invested.')
+        except TypeError:
+            await ctx.send("User not found.")
+
+    @commands.command(name='pay', aliases=['send'], description='Send someone else money.')
+    async def pay(self, ctx, user: discord.User, transfer):
+        """
+        Send someone else some money.
+        """
+        try:
+            amount = float(transfer)
+        except ValueError:
+            return await ctx.send("You need to enter a number.")
+        if user.id == ctx.author.id:
+            return await ctx.send("You can't send money to yourself!")
+        if amount < 0:
+            return await ctx.send("You can't send negative amounts of money.")
+        elif amount == 0:
+            return await ctx.send("You can't send nothing!")
+        from_balance, to_balance = await transfer_funds(ctx.author, user, amount)
+        if from_balance == -1:
+            await ctx.send(f"You can not send more money than you have.")
+        else:
+            await ctx.send(f'Successfully transferred {amount} to {user}. Your new balance is {from_balance}, '
+                           f'their new balance is {to_balance}.')
+
+    @commands.command(name='buy', description='Buy an item from the browse listings.')
+    async def buyitem(self, ctx, amount: typing.Optional[int] = 1, *, item: str):
+        """
+        Buy an item from the browse listings. You can specify an amount of the item to buy before the
+         name of the item to buy multiple. Exact name is required to prevent accidental matching.
+        """
+        # TODO: Add price determination depending on context
+        await transact_possession(ctx, ctx.author, item, amount=amount)
+
+    @commands.command(name='sell', description='Sell an item from your possessions for 60% of its purchase value.')
+    async def sellitem(self, ctx, amount: typing.Optional[int] = 1, *, item: str):
+        """
+        Sell an item from your possessions for 60% of its purchase value. You can specify the amount of the
+         item to buy before the name of the item to buy multiple. Exact name is required to prevent accidental matching.
+        """
+        if amount < 1:
+            return await ctx.send('Invalid sell amount.')
+        await sell_possession(ctx, ctx.author, item, amount)
+        # TODO: Create function
+
+    @commands.command(name='cheat_item', description='Add an item to a users possessions without the need to buy it.')
+    @commands.check(auth(2))
+    async def cheatitem(self, ctx, user: discord.Member, amount: typing.Optional[int] = 1,
+                        price: typing.Optional[float] = 0, *, item: str):
+        """
+        Add an item to a users possessions without the need to buy it.
+        Meant for GMs to give rewards and the like.
+        Optionally include an amount and or price after the username. The price will not take that money away from
+        the target user, but will set the possession's base sell price.
+        """
+        await add_possession(ctx, user, item, price, amount)
+        await ctx.send(f'I have given {user} {amount} {item}.')
+
+    @commands.command(name='top', description='List the top people in the specified category.')
+    async def topstat(self, ctx, look_type: typing.Optional[str] = 'balance', page: int = 1):
+        # This method queries the database and returns a list of ten tuples of (name, stat) which is one page of results
+        try:
+            lines = await get_top(look_type, page)
+        except NameError:
+            return await ctx.send('Invalid category. Try balance, invested or activity.')
+        message = f'Top {look_type} page {page}:\n'
+        count = 1
+        for line in lines:
+            message += f'{count}) {line[0]} - {line[1]}\n'
+            count += 1
+        return await ctx.send(message)
+
+    @commands.command(name='cheat_money', description='Give someone money from nowhere. Staff only.')
+    @commands.check(auth(2))
+    async def cheat_money(self, ctx, user: discord.User, amount: int):
+        """
+        Staff override to give people money. Can also take money away with negative amount.
+        Requires Auth 2
+        """
+        new_balance = await add_funds(user, amount)
+        print(f'Added {amount} credits to {user} by authority of {ctx.author}. Their new balance is {new_balance}')
+        await ctx.send(
+            f'Added {amount} credits to {user} by authority of {ctx.author}. Their new balance is {new_balance}')
+
+    @commands.command(name='payout', description='Distribute payouts based on investments.')
+    @commands.check(auth(2))
+    async def payout(self, ctx):
+        """
+        Staff command to distribute investment payout money.
+        Requires Auth 2
+        """
+        await distribute_payouts()
+        print(f'Bonus investment payouts sent by {ctx.author}, enjoy!')
+        channel = self.bot.get_channel(718949686412705862)
+        await channel.send(f'Bonus investment payouts sent by {ctx.author}, enjoy!')
+
+    @commands.command(name='paycheck', description='Get some free money!')
+    async def paycheck(self, ctx):
+        """
+        Get some free money. Only gives a little bit, though; you can get much more money from actually RPing.
+        """
+        PAYCHECK_AMOUNT = 20
+        PAYCHECK_INTERVAL = 180  # Seconds
+        last_paycheck = await check_last_paycheck(ctx.author)
+        if time.time() - last_paycheck < PAYCHECK_INTERVAL:
+            seconds_remaining = last_paycheck + PAYCHECK_INTERVAL - time.time()
+            return await ctx.send(f"You aren't ready for a paycheck yet. Try again in {int(seconds_remaining + 1)}"
+                                  f" seconds.")
+        await set_last_paycheck_now(ctx.author)
+        balance = await add_funds(ctx.author, PAYCHECK_AMOUNT)
+        await ctx.send(f"Paycheck of {PAYCHECK_AMOUNT} received. Your balance is now {balance} credits.")
+
+    @commands.command(name='items',
+                      aliases=['mine', 'backpack', 'possessions', 'inventory'], description='See what items you own.')
+    async def possessions(self, ctx, member: discord.Member = None):
+        if member is None:
+            member = ctx.author
+        items = await view_items(member)
+        print(items)
+        to_send = f'**You have {sum(item for item, _ in items)} items of {len(items)} different types:**\n'
+        for item in items:
+            to_send += f'{item[0]}x {item[1]}\n'
+        to_send += "\n\n*Don't need an item anymore? you can sell it at any time for 60% of the price you bought it " \
+                   "for with the sell command.*"
+        await ctx.send(to_send)
+
+    @tasks.loop(seconds=60 * 60)
+    async def send_payouts(self):
+        await distribute_payouts()
+        print('Investment payouts sent.')
+        channel = self.bot.get_channel(718949686412705862)
+        if channel is not None:
+            await channel.send('Investment payouts sent.')
+
+
+def setup(bot):
+    bot.add_cog(Economy(bot))
