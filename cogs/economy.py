@@ -103,7 +103,7 @@ class Economy(commands.Cog):
          name of the item to buy multiple. Exact name is required to prevent accidental matching.
         """
         # TODO: Add price determination depending on context
-        await transact_possession(ctx, ctx.author, item, amount=amount)
+        await transact_possession(ctx, ctx.author, item.title(), amount=amount)
 
     @commands.command(name='sell', description='Sell an item from your possessions for 60% of its purchase value.')
     async def sellitem(self, ctx, amount: typing.Optional[int] = 1, *, item: str):
@@ -113,7 +113,7 @@ class Economy(commands.Cog):
         """
         if amount < 1:
             return await ctx.send('Invalid sell amount.')
-        await sell_possession(ctx, ctx.author, item, amount)
+        await sell_possession(ctx, ctx.author, item.title(), amount)
         # TODO: Create function
 
     @commands.command(description='Add an item to a users possessions without the need to buy it.')

@@ -239,6 +239,8 @@ async def edit_item(item: str, category: str, new_value: str):
     if category not in categories:
         raise NameError(f'Category {category} not found.')
     await connect()
+    if category in ['min_cost', 'max_cost']:
+        new_value = float(new_value)
     result = await db.fetchrow(f"SELECT * FROM items WHERE name = $1", item)
     if result is None:
         raise NameError(f'Item {item} not in database.')
@@ -623,6 +625,7 @@ class Database(commands.Cog):
             await send_formatted_browse(ctx, result, 'all')
             await disconnect()
             return
+        item = item.title()
         # See if the keyword is a category
         results_in_category = await(find_items_in_cat(item))
         if len(results_in_category) > 0:  # If it is a category, display category

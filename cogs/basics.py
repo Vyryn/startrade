@@ -39,18 +39,18 @@ class Basics(commands.Cog):
     @commands.Cog.listener()
     async def on_message(self, message):
         # =========================ACTIVITY==========================
-        if not message.author.bot:
-            words = message.content.split(' ')
-            valid_words = []
-            for word in words:
-                case_word = word.casefold()
-                if len(case_word) > 2 and case_word not in valid_words:
-                    valid_words.append(case_word)
-            # valid_words = [word for word in words if len(word) > 2]
-            new_words = len(valid_words)
-            added_activity_score = max(new_words - 2, 0)
-            if added_activity_score > 0:
-                await update_activity(message.author, added_activity_score)
+        # if not message.author.bot:
+        words = message.content.split(' ')
+        valid_words = []
+        for word in words:
+            case_word = word.casefold()
+            if len(case_word) > 2 and case_word not in valid_words:
+                valid_words.append(case_word)
+        # valid_words = [word for word in words if len(word) > 2]
+        new_words = len(valid_words)
+        added_activity_score = max(new_words - 2, 0)
+        if added_activity_score > 0:
+            await update_activity(message.author, added_activity_score)
         # ===========================LOG=============================
         ln = '\n'
         n_ln = '\\n'
