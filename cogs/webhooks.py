@@ -19,8 +19,13 @@ class Webhooks(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(description='use a webhook')
+    @commands.command(description='Use a webhook')
+    @commands.check(auth(1))
     async def sayw(self, ctx, name: str = None, *, content):
+        """Make an immersive NPC say something. If a profile picture exists for the name provided, it will be used
+        otherwise the discord default will be used instead.
+        Multi-space names can be provided either in quotes or with underscores as spaces.
+        Names are case insensitive but must be an exact match otherwise to use the existing profile pictures."""
         await ctx.message.delete()
         if name is None:
             name = 'Startrade'
@@ -32,10 +37,8 @@ class Webhooks(commands.Cog):
         except IndexError:
             hook = await TextChannel.create_webhook(ctx.channel, name='Startrade',
                                                     reason=f'Startrade NPC creation for #{ctx.channel.name}.')
-        async with aiohttp.ClientSession() as session:
-            # webhook = Webhook.from_url(HOOK_URL, adapter=AsyncWebhookAdapter(session))
-            embed = Embed(description=content)
-            await hook.send(content=None, username=name, embed=embed, avatar_url=avatar)
+        embed = Embed(description=content)
+        await hook.send(content=None, username=name, embed=embed, avatar_url=avatar)
 
 
 def setup(bot):
