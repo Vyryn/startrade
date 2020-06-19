@@ -8,7 +8,7 @@ from discord.ext import commands
 
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
 SHEET_ID = '1p8mtlGzJHeu_ta0ZoowJhBB1t5xM5QRGbRSHCgkyjYg'
-RANGE = 'Sheet1!A1:GB'
+RANGE = 'Sheet1!A1:EL'
 
 
 class Googleapi(commands.Cog):

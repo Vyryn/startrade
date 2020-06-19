@@ -13,19 +13,18 @@ from privatevars import DBUSER, DBPASS
 
 global db
 
-commodities = ['hydrogen', 'deuterium', 'tritium', 'helium', 'nitrogen', 'oxygen', 'phosphorous', 'iodine',
-               'lithium', 'carbon', 'magnesium', 'aluminum', 'silicon', 'titanium', 'vanadium', 'chromium', 'manganese',
-               'iron', 'cobalt', 'nickel', 'copper', 'zinc', 'gallium', 'neodymium', 'molybdenum', 'tungsten',
-               'mercury', 'lead', 'bismuth',
-               'rhodium', 'palladium', 'silver', 'osmium', 'iridium', 'platinum', 'gold',
-               'uranium', 'plutonium', 'americium',
-               'methane', 'ammonia', 'water', 'carbon_dioxide',
+commodities = ['hydrogen', 'deuterium', 'tritium', 'helium', 'nitrogen', 'phosphorous', 'iodine', 'lithium',
+               'magnesium', 'aluminum', 'silicon', 'titanium', 'vanadium', 'chromium',
+               'cobalt', 'nickel', 'copper', 'neodymium', 'tungsten',
+               'rhodium', 'silver', 'osmium', 'iridium', 'platinum', 'gold',
+               'plutonium', 'americium',
+               'methane', 'ammonia', 'water',
                'methamphetamine', 'heroin', 'cocaine', 'lsd',
                'painite', 'diamond', 'ruby', 'emerald', 'taaffeite',
                'processors_50a', 'processors_14a', 'processors_10a', 'processors_7a',
-               'cotton', 'corn', 'wheat', 'soy', 'rice', 'milk', 'cocoa', 'salt', 'sugar', 'rubber', 'wool', 'amber',
-               'steel', 'carbon_fiber', 'plastic', 'porcelain', 'biosamples', 'wood',
-               'saffron', 'white_truffles', 'coffee', 'pepper', 'garlic', 'cinnamon',
+               'cotton', 'grain', 'milk', 'cocoa', 'salt', 'sugar', 'rubber',
+               'steel', 'carbon_fiber', 'plastic', 'biosamples', 'wood',
+               'saffron', 'coffee', 'pepper', 'cinnamon',
                'graphene', 'aerogel', 'cermets', 'm_glass', 'mol_glue', 'nanofibers', 'fullerenes', 'nanotubes',
                'h_fuel', 'antimatter']
 

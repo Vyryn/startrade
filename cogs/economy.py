@@ -213,38 +213,52 @@ class Economy(commands.Cog):
                 counter = 0
         await ctx.send(to_send)
 
-    @commands.command(alias='sells')
+    @commands.command(aliases=['sells'])
     @commands.check(auth(2))
-    async def sell_prices(self, ctx, channel: discord.TextChannel):
+    async def sell_prices(self, ctx, channel: discord.TextChannel, threshold: float = 0):
+        if threshold == 0:
+            threshold = (await check_bal(ctx.author))[0]
         ch_id = channel.id
         count = 0
         for location_sell in self.bot.commodities_sell_prices:
             if location_sell[0] == ch_id:
                 to_send = f'Sell prices at {location_sell[1]}:\n```\n'
                 for item, price in sorted(location_sell[2].items(), key=lambda x: x[1]):
-                    spaces = ' ' * (20 - len(item))
-                    random_modifier = random.random() * 0.0005 + 1
-                    print(random_modifier)
-                    to_send += f'{item}:{spaces} ~${price * random_modifier:,.2f}\n'
-                to_send += '```'
+                    if price < threshold or threshold < 0:
+                        spaces = ' ' * (17 - len(item))
+                        random_modifier = random.random() * 0.001 + 1 - 0.0005
+                        print(random_modifier)
+                        to_send += f'{item}:{spaces} ~${price * random_modifier:,.2f}\n'
+                append = '```'
+                while len(to_send) > 1995:
+                    await ctx.send(to_send[:1990] + append)
+                    to_send = append + to_send[1990:]
+                to_send += append
                 await ctx.send(to_send)
                 return
             count += 1
 
-    @commands.command(alias='buys')
+    @commands.command(aliases=['buys'])
     @commands.check(auth(2))
-    async def buy_prices(self, ctx, channel: discord.TextChannel):
+    async def buy_prices(self, ctx, channel: discord.TextChannel, threshold: float = 0):
+        if threshold == 0:
+            threshold = (await check_bal(ctx.author))[0]
         ch_id = channel.id
         count = 0
         for location_buy in self.bot.commodities_buy_prices:
             if location_buy[0] == ch_id:
                 to_send = f'\nBuy prices at {location_buy[1]}:\n```\n'
                 for item, price in sorted(location_buy[2].items(), key=lambda x: x[1]):
-                    spaces = ' ' * (20 - len(item))
-                    random_modifier = random.random() * 0.0005 + 1
-                    print(random_modifier)
-                    to_send += f'{item}:{spaces} ~${price * random_modifier:,.2f}\n'
-                to_send += '```'
+                    if price < threshold or threshold < 0:
+                        spaces = ' ' * (17 - len(item))
+                        random_modifier = random.random() * 0.001 + 1 - 0.0005
+                        print(random_modifier)
+                        to_send += f'{item}:{spaces} ~${price * random_modifier:,.2f}\n'
+                append = '```'
+                while len(to_send) > 1990:
+                    await ctx.send(to_send[:1990] + append)
+                    to_send = append + to_send[1990:]
+                to_send += append
                 await ctx.send(to_send)
                 return
             count += 1
