@@ -28,7 +28,6 @@ commodities = ['hydrogen', 'deuterium', 'tritium', 'helium', 'nitrogen', 'phosph
                'graphene', 'aerogel', 'cermets', 'm_glass', 'mol_glue', 'nanofibers', 'fullerenes', 'nanotubes',
                'h_fuel', 'antimatter']
 
-
 # carbon-carbon bond average length is 1.54 a = 0.154 nm. Molecular superglue is mol-glue.
 # aluminum oxynitride is m-glass. Metallic hydrogen is h-fuel.
 
@@ -399,8 +398,10 @@ async def send_formatted_browse(ctx, result, i_type):
 
 
 class Database(commands.Cog):
+
     def __init__(self, bot):
         self.bot = bot
+        self.bot.commodities = commodities
         self.session = aiohttp.ClientSession(loop=bot.loop)
 
     # Events
