@@ -28,6 +28,7 @@ commodities = ['hydrogen', 'deuterium', 'tritium', 'helium', 'nitrogen', 'phosph
                'graphene', 'aerogel', 'cermets', 'm_glass', 'mol_glue', 'nanofibers', 'fullerenes', 'nanotubes',
                'h_fuel', 'antimatter']
 
+
 # carbon-carbon bond average length is 1.54 a = 0.154 nm. Molecular superglue is mol-glue.
 # aluminum oxynitride is m-glass. Metallic hydrogen is h-fuel.
 
@@ -113,9 +114,12 @@ async def transfer_funds(from_user: discord.User, to_user: discord.User, amount:
 async def update_activity(member: discord.Member, amount: int):
     uid = member.id
     await connect()
-    activity = (await db.fetchrow(f"SELECT activity FROM users WHERE id = $1", uid))[0] + amount
-    print(f'Adding {amount} activity score to {member} at {now()}. New activity score: {activity}')
+    activity = (await db.fetchval(f"SELECT activity FROM users WHERE id = $1", uid)) + amount
+    recent_activity = (await db.fetchval(f"SELECT recent_activity FROM users WHERE id = $1", uid)) + amount
+    print(f'Adding {amount} activity score to {member} at {now()}. New activity score: {activity}. '
+          f'New recent activity score: {recent_activity}')
     await db.execute(f"UPDATE users SET activity = $1 where id = $2", activity, uid)
+    await db.execute(f"UPDATE users SET recent_activity = $1 where id = $2", recent_activity, uid)
     await disconnect()
 
 
@@ -425,7 +429,11 @@ class Database(commands.Cog):
                              "activity BIGINT, "
                              "balance DOUBLE PRECISION, "
                              "last_pay BIGINT,"
-                             "invested DOUBLE PRECISION)"
+                             "invested DOUBLE PRECISION,"
+                             "recent_activity BIGINT,"
+                             "location BIGINT,"
+                             "cargo_kg_capacity DOUBLE PRECISION,"
+                             "cargo_kg DOUBLE PRECISION)"
                              )
             await disconnect()
             await connect()

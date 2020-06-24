@@ -22,7 +22,7 @@ images = {
     'Businessman': 'https://upload.wikimedia.org/wikipedia/commons/0/0d/Dr._Ken_Chu%2C_Chairman_%26_CEO'
                    '%2C_Mission_Hills_Group.jpg',
     'Businesswoman': 'https://www.botswanayouth.com/wp-content/uploads/2016/04/career-woman.jpg',
-    'CEO': 'https://personalexcellence.co/files/ceo.jpg',
+    'Ceo': 'https://personalexcellence.co/files/ceo.jpg',
     'Ai': 'https://www.aithority.com/wp-content/uploads/2019/06/Terminator-Teaches-Us-About-AI-and-the-Need-for'
           '-Better-Data-guest-post.jpg ',
     'Ai Joe': 'https://i.pinimg.com/originals/30/f4/93/30f4932ab53d3225987ba33c5e09a21f.png',
@@ -46,13 +46,20 @@ class Webhooks(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(description='Use a webhook')
-    @commands.check(auth(1))
-    async def sayw(self, ctx, name: str = None, *, content):
-        """Make an immersive NPC say something. If a profile picture exists for the name provided, it will be used
+    @commands.command(description=f"""Make an immersive NPC say something. If a profile picture exists for the name 
+        provided, it will be used 
         otherwise the discord default will be used instead.
         Multi-space names can be provided either in quotes or with underscores as spaces.
-        Names are case insensitive but must be an exact match otherwise to use the existing profile pictures."""
+        Names are case insensitive but must be an exact match otherwise to use the existing profile pictures.
+        Known names are:
+        {images.keys()}""")
+    @commands.check(auth(1))
+    async def sayw(self, ctx, name: str = None, *, content):
+        f"""Make an immersive NPC say something. If a profile picture exists for the name provided, it will be used
+        otherwise the discord default will be used instead.
+        Multi-space names can be provided either in quotes or with underscores as spaces.
+        Names are case insensitive but must be an exact match otherwise to use the existing profile pictures.
+        {images.keys()}"""
         await ctx.message.delete()
         if name is None:
             name = 'Startrade'
