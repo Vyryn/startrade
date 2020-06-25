@@ -31,6 +31,20 @@ class Economy(commands.Cog):
         # self.send_payouts.start()
         # print('Started the payouts task.')
 
+    # =============================This rewards for disboard bumps=========================
+    @commands.Cog.listener()
+    async def on_message(self, message):
+        if message.author.id == 302050872383242240 and len(message.embeds) > 0:  # From disboard and has an embed
+            embed_content = message.embeds[0].to_dict()['description']
+            if 'Bump Done' in embed_content:
+                BUMP_PAYMENT = 100
+                bumper_id = int(embed_content[3:21])
+                bumper = await self.bot.fetch_user(bumper_id)
+                balance = await add_funds(bumper, BUMP_PAYMENT)
+                await message.channel.send(f"Thank you for bumping Startrade on Disboard, {bumper.mention()}. I've "
+                                           f"added ${BUMP_PAYMENT} to your balance. Your new balance is {balance}.")
+        pass
+
     # Commands
 
     @commands.command(description='Invest some money into your business.')
@@ -173,16 +187,20 @@ class Economy(commands.Cog):
         """
         Get some free money. Only gives a little bit, though; you can get much more money from actually RPing.
         """
-        PAYCHECK_AMOUNT = 20
+        PAYCHECK_AMOUNT_MIN = 20
+        PAYCHECK_AMOUNT_MAX = 30
         PAYCHECK_INTERVAL = 180  # Seconds
         last_paycheck = await check_last_paycheck(ctx.author)
         if time.time() - last_paycheck < PAYCHECK_INTERVAL:
             seconds_remaining = last_paycheck + PAYCHECK_INTERVAL - time.time()
             return await ctx.send(f"You aren't ready for a paycheck yet. Try again in {int(seconds_remaining + 1)}"
                                   f" seconds.")
+        paycheck_amount = random.randrange(PAYCHECK_AMOUNT_MIN, PAYCHECK_AMOUNT_MAX)
         await set_last_paycheck_now(ctx.author)
-        balance = await add_funds(ctx.author, PAYCHECK_AMOUNT)
-        await ctx.send(f"Paycheck of {PAYCHECK_AMOUNT} received. Your balance is now {balance} credits.")
+        balance = await add_funds(ctx.author, paycheck_amount)
+        await ctx.send(f"{ctx.author} has found an odd job and earned {paycheck_amount} cool cash. "
+                       f"It's not much, but their balance is now {balance} credits.\nTip: You can earn substantially "
+                       f"more money from trading commodities. Check out ,buys [channel] and ,sells [channel]")
 
     @commands.command(aliases=['mine', 'backpack', 'items', 'inventory'], description='See what items you own.')
     async def possessions(self, ctx, member: discord.Member = None):

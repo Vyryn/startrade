@@ -469,12 +469,23 @@ class Database(commands.Cog):
                              )
         await disconnect()
         await connect()
-        if 'commodities' not in tables:
+        if 'commodities_locations' not in tables:
             print('Commodities table not found. Creating a new one...')
             commodities_creation_command = "CREATE TABLE commodities_locations(name VARCHAR(127) NOT NULL" \
                                            " PRIMARY KEY, channel_id BIGINT, type BOOL, "
             for commodity in commodities:
                 commodities_creation_command += f'{commodity} DOUBLE PRECISION, '
+            commodities_creation_command = commodities_creation_command.rstrip()[:-1] + ')'  # Get rid of final comma
+            # and add closing bracket
+            await db.execute(commodities_creation_command)
+        await disconnect()
+        await connect()
+        if 'Ships_commodities' not in tables:
+            print('Ships Commodities table not found. Creating a new one...')
+            commodities_creation_command = "CREATE TABLE ships_commodities(id BIGINT NOT NULL PRIMARY KEY," \
+                                           " name VARCHAR(127), owner BIGINT, capacity INT, "
+            for commodity in commodities:
+                commodities_creation_command += f'{commodity} INT DEFAULT 0, '
             commodities_creation_command = commodities_creation_command.rstrip()[:-1] + ')'  # Get rid of final comma
             # and add closing bracket
             await db.execute(commodities_creation_command)
