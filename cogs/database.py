@@ -292,15 +292,18 @@ async def add_possession(user: discord.Member, item: str, cost: float = 0, amoun
     full_item = await db.fetchrow(f"SELECT * FROM items WHERE name = $1", item)
     # Check if player already owns some of that item
     i_name, i_category, i_picture, i_min_cost, i_max_cost, i_description, i_faction = full_item
-    has_amount = await db.fetchval(f"SELECT id FROM possessions WHERE owner = $1 AND name = $2", uid, item)
+    has_amount = await db.fetchval(f"SELECT amount FROM possessions WHERE owner = $1 AND name = $2", uid, item)
+    # print(f'{user} currently has {has_amount}x {item}.')
     if has_amount is None:
-        print([i_name, i_category, i_picture, i_min_cost, i_max_cost, i_description, i_faction])
+        # print('has_amount was None.')
+        # print([i_name, i_category, i_picture, i_min_cost, i_max_cost, i_description, i_faction])
         await db.execute(f"INSERT INTO possessions VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
                          unique_key, i_name, uid, amount, i_category, i_picture, cost, i_faction)
     else:
-        print([i_name, i_category, i_picture, i_min_cost, i_max_cost, i_description, i_faction])
+        # print([i_name, i_category, i_picture, i_min_cost, i_max_cost, i_description, i_faction])
         await db.execute(f"UPDATE possessions SET amount = $1 WHERE owner = $2 AND name = $3",
                          amount + has_amount, uid, i_name)
+    # print(f'{user} now has {amount + has_amount}x {item}.')
     await disconnect()
 
 
@@ -358,9 +361,11 @@ async def transact_possession(ctx, user: discord.Member, item: str, cost: float 
     new_balance = balance - (cost * amount)
     if new_balance < 0:
         await disconnect()
-        return await ctx.send(f'Transaction aborted. You do not have sufficient funds. {item} costs {cost} but you '
-                              f'only have {balance}. You can use the paycheck command to earn a small amount of money '
-                              f'or earn more money through roleplay.')
+        return await ctx.send(f'Transaction aborted. You do not have sufficient funds. {amount}x {item} costs'
+                              f' {cost * amount} but you only have {balance}. You can use the paycheck command to '
+                              f'earn a small amount of money or earn more money through roleplay.')
+    print(f'Adding {amount}x {item} to {user} for {cost * amount}, their balance is currently {balance} and will'
+          f' be {new_balance} after.')
     await add_possession(user, item, cost, amount)
     await connect()  # Because add_possession automatically disconnects
     await db.execute(f"UPDATE users SET balance = $1 where id = $2", new_balance, uid)

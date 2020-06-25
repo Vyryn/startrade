@@ -6,7 +6,7 @@ from discord.ext import commands, tasks
 
 from cogs.database import add_invest, check_bal, transfer_funds, add_funds, distribute_payouts, check_last_paycheck, \
     set_last_paycheck_now, get_top, check_bal_str, transact_possession, add_possession, view_items, sell_possession
-from functions import auth
+from functions import auth, now
 
 
 class Economy(commands.Cog):
@@ -103,6 +103,7 @@ class Economy(commands.Cog):
          name of the item to buy multiple. Exact name is required to prevent accidental matching.
         """
         # TODO: Add price determination depending on context
+        print(f'{ctx.author} is attempting to purchase {amount} {item}s at {now()}.')
         await transact_possession(ctx, ctx.author, item.title(), amount=amount)
 
     @commands.command(name='sell', description='Sell an item from your possessions for 60% of its purchase value.')
@@ -119,7 +120,7 @@ class Economy(commands.Cog):
     @commands.command(description='Add an item to a users possessions without the need to buy it.')
     @commands.check(auth(2))
     async def cheat_item(self, ctx, user: discord.Member, amount: typing.Optional[int] = 1,
-                        price: typing.Optional[float] = 0, *, item: str):
+                         price: typing.Optional[float] = 0, *, item: str):
         """
         Add an item to a users possessions without the need to buy it.
         Meant for GMs to give rewards and the like.

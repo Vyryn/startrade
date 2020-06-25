@@ -72,7 +72,7 @@ class Mechanics(commands.Cog):
                 flavor = content[die].title() + ':'
             except IndexError:
                 flavor = 'You rolled a'
-            result += f'> {flavor} {val}.\n'
+            result += f'> {flavor.replace("_", " ")} {val}.\n'
         await ctx.send(result)
 
 

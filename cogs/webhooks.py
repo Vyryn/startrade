@@ -28,15 +28,19 @@ images = {
     'Ai Joe': 'https://i.pinimg.com/originals/30/f4/93/30f4932ab53d3225987ba33c5e09a21f.png',
     'Bob': 'https://www.biography.com/.image/t_share/MTIwNjA4NjMzOTU5NTgxMTk2/bob-ross-9464216-1-402.jpg',
     'Flemming': 'https://assets.blabbermouth.net/media/flemmingrasmussen2014solorockhall_638.jpg',
-    'Teressa': 'https://i0.wp.com/www.usmagazine.com/wp-content/uploads/2019/08/Teressa-Foglia-Hats-Promo.jpg?crop=241px%2C72px%2C1762px%2C996px&resize=1600%2C900&ssl=1',
+    'Teressa': 'https://i0.wp.com/www.usmagazine.com/wp-content/uploads/2019/08/Teressa-Foglia-Hats-Promo.jpg?crop'
+               '=241px%2C72px%2C1762px%2C996px&resize=1600%2C900&ssl=1',
     'Amanda': 'https://a.espncdn.com/combiner/i?img=/i/headshots/mma/players/full/2516131.png&w=350&h=254',
     'Assassin': 'https://cdn.arstechnica.net/wp-content/uploads/2016/12/assassin-s-creed-ACFirstLook_rgb-1.jpg',
     'Worker 1': 'https://www.ishn.com/ext/resources/900x550/older-worker-mature-senior-900.jpg?1554230646',
-    'Worker 2': 'https://www.fairobserver.com/wp-content/uploads/2017/08/Factory-workers-America-news-manufacturing-jobs-world-news-1.jpg',
+    'Worker 2': 'https://www.fairobserver.com/wp-content/uploads/2017/08/Factory-workers-America-news-manufacturing'
+                '-jobs-world-news-1.jpg',
     'Worker 3': 'https://www.liberaldictionary.com/wp-content/uploads/2018/11/worker.jpg',
-    'Factory Worker': 'https://www.aljazeera.com/mritems/imagecache/mbdxxlarge/mritems/Images/2019/12/26/09231dd8b5c242c496e3fe0c64a3ecd0_18.jpg',
+    'Factory Worker': 'https://www.aljazeera.com/mritems/imagecache/mbdxxlarge/mritems/Images/2019/12/26'
+                      '/09231dd8b5c242c496e3fe0c64a3ecd0_18.jpg',
     'Lawyer': 'https://www.glassdoor.com/blog/app/uploads/sites/2/GettyImages-713774487-1-1024x450.jpg',
-    'Professional Team': 'https://www.naceweb.org/uploadedImages/images/2018/feature/using-the-principles-professional-standards-and-competencies.jpg'
+    'Professional Team': 'https://www.naceweb.org/uploadedImages/images/2018/feature/using-the-principles'
+                         '-professional-standards-and-competencies.jpg '
 
 }
 
