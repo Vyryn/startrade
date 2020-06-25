@@ -1,9 +1,11 @@
 import asyncio
 import json
 import random
+from datetime import datetime
+
 import discord
 
-from discord import NotFound
+from discord import NotFound, Embed
 from discord.ext import commands
 
 from cogs.database import new_user, update_activity
@@ -188,6 +190,79 @@ class Basics(commands.Cog):
                         continue
         # print(f'Reaction {payload.emoji.name} removed from message {payload.message_id} by user {payload.user_id}.') #temporarily commented for discord.py issue
 
+    # Deleted message handler
+    @commands.Cog.listener()
+    async def on_message_delete(self, message):
+        if message.guild.id == 718893913976340561:  # If in startrade
+            log_channel = message.guild.get_channel(725817803273404618)
+            if len(message.content) > 1973:
+                content = message.content[:1970] + '...'
+            else:
+                content = message.content
+            embed = discord.Embed(title='',
+                                  description=f'**Message by {message.author.mention} deleted in '
+                                              f'{message.channel.mention}**\n' + content,
+                                  timestamp=datetime.now())
+            embed.set_author(icon_url=message.author.avatar_url, name=message.author)
+            embed.set_footer(text=f'Author: {message.author.id} | Message ID: {message.id}')
+            await log_channel.send(embed=embed)
+
+    # Edited message handler
+    @commands.Cog.listener()
+    async def on_message_edit(self, before, after):
+        if before.guild.id == 718893913976340561 and not after.author.bot:  # If in startrade and not a bot message
+            log_channel = before.guild.get_channel(725817803273404618)
+            if len(before.content) > 1963:
+                before_content = before.content[:1960] + '...'
+            else:
+                before_content = before.content
+            if len(after.content) > 1973:
+                after_content = after.content[:1970] + '...'
+            else:
+                after_content = after.content
+            if len(before_content) + len(after_content) > 1973:
+                embed_1 = discord.Embed(title='',
+                                        description=f'**Message by {before.author.mention} edited in '
+                                                    f'{before.channel.mention}**\n**Before:**\n' + before_content,
+                                        timestamp=datetime.now())
+                embed_2 = discord.Embed(title='',
+                                        description='**After:**\n' + after_content, timestamp=datetime.now())
+                embed_1.set_author(icon_url=before.author.avatar_url, name=before.author)
+                embed_1.set_footer(text=f'Author: {before.author.id} | Message ID: {after.id}')
+                embed_2.set_author(icon_url=before.author.avatar_url, name=before.author)
+                embed_2.set_footer(text=f'Author: {before.author.id} | Message ID: {after.id}')
+                await log_channel.send(embed=embed_1)
+                await log_channel.send(embed=embed_2)
+            else:
+                embed = discord.Embed(title='',
+                                      description=f'**Message by {before.author.mention} edited in '
+                                                  f'{before.channel.mention}**\n**Before:**\n' + before_content +
+                                                  '\n**After:**\n' + after_content,
+                                      timestamp=datetime.now())
+                embed.set_author(icon_url=before.author.avatar_url, name=before.author)
+                embed.set_footer(text=f'Author: {before.author.id} | Message ID: {after.id}')
+                await log_channel.send(embed=embed)
+        pass
+
+    # Bulk delete handler
+    @commands.Cog.listener()
+    async def on_bulk_message_delete(self, messages):
+        if messages[0].guild.id != 718893913976340561:
+            return
+        log_channel = messages[0].guild.get_channel(725817803273404618)
+        for message in messages:
+            if len(message.content) > 1973:
+                content = message.content[:1970] + '...'
+            else:
+                content = message.content
+            embed = discord.Embed(title='',
+                                  description=f'**Message by {message.author.mention} deleted in '
+                                              f'{message.channel.mention}**\n' + content,
+                                  timestamp=datetime.now())
+            embed.set_author(icon_url=message.author.avatar_url, name=message.author)
+            embed.set_footer(text=f'Author: {message.author.id} | Message ID: {message.id}')
+            await log_channel.send(embed=embed)
+
     # Commands
     @commands.command(aliases=['plonk'], description='Pong!')
     async def ping(self, ctx):
@@ -241,12 +316,12 @@ class Basics(commands.Cog):
         print(f'Remind command used by {ctx.author} at {now()} with reminder {reminder} to user {user} for '
               f'time {increments}.')
 
-#    @remind.error
-#    async def remind_error(self, ctx, error):
-#        await ctx.send(f'{ctx.author}, the correct usage is **`/remind <reminder> in <0s>/<0m>/<0h>/<0d>/<0w>/<0y>`** '
-#                       f'\n That "in" is important.',
-#                       delete_after=deltime)
-#        print(f"Silly {ctx.author} couldn\'t figure out how to use Remind. (lol)")
+    #    @remind.error
+    #    async def remind_error(self, ctx, error):
+    #        await ctx.send(f'{ctx.author}, the correct usage is **`/remind <reminder> in <0s>/<0m>/<0h>/<0d>/<0w>/<0y>`** '
+    #                       f'\n That "in" is important.',
+    #                       delete_after=deltime)
+    #        print(f"Silly {ctx.author} couldn\'t figure out how to use Remind. (lol)")
 
     @commands.command(name='poll', pass_context=True, description='Create a poll.')
     async def create_poll(self, ctx, num_options=2, max_options=1, *, text):
