@@ -24,6 +24,7 @@ class Mechanics(commands.Cog):
          with spaces between after your roll. For example,
          "roll 2d20 constitution strength" will give you two d20s, one labeled Constitution and one labeled Strength.
         """
+        summ = 0
         if content is not None:
             content = content.lower().split(' ')
             args = content[0].lower().split('d')
@@ -37,7 +38,6 @@ class Mechanics(commands.Cog):
                 num_sides = 20
             except IndexError:
                 num_sides = 20
-
         else:
             num_dice, num_sides = 1, 20
         if num_sides < 2:
@@ -51,9 +51,10 @@ class Mechanics(commands.Cog):
                 num_dice = 100000
             results = Counter([random.choice(range(1, num_sides + 1)) for die in range(1, num_dice + 1)])
             to_send = f"I've rolled {num_dice}x {num_sides} sided dice and grouped them by roll:\n```\n"
-            iterator = sorted(results.items(), key=lambda x: x[1])
+            iterator = sorted(results.items(), key=lambda x: x[1], reverse=True)
             i = 0
             for roll, amount in iterator:
+                summ += roll * amount
                 i += 1
                 if i % 10 == 0:
                     composed = f'{amount}x {roll}'
@@ -62,17 +63,20 @@ class Mechanics(commands.Cog):
                 to_send += composed + ','
                 to_send += ' ' * (11 - len(composed))
             to_send = to_send.rstrip()[:-1] + '```'  # Remove the last comma and close codeblock
+            to_send += f'Total: {summ}'
             return await ctx.send(to_send)
         if num_dice == 1:
             return await ctx.send(random.choice(range(1, num_sides + 1)))
         result = f'Rolled {num_dice}x {num_sides} sided dice:\n'
         for die in range(1, num_dice+1):
             val = random.choice(range(1, num_sides + 1))
+            summ += val
             try:
                 flavor = content[die].title() + ':'
             except IndexError:
                 flavor = 'You rolled a'
             result += f'> {flavor.replace("_", " ")} {val}.\n'
+        result += f'Total: {summ}'
         await ctx.send(result)
 
 
