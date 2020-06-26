@@ -6,7 +6,6 @@ from io import BytesIO
 
 import discord
 from discord.ext import commands
-# import psycopg2 as conn
 import asyncpg as conn
 from functions import auth, now
 from privatevars import DBUSER, DBPASS
@@ -307,6 +306,23 @@ async def add_possession(user: discord.Member, item: str, cost: float = 0, amoun
     await disconnect()
 
 
+async def add_ships_commodities(user: discord.Member, commodity: str, amount: float = 1):
+    # TODO: NOT IMPLEMENTED YET, MAY NOT WORK AS EXPECTED
+    uid = user.id
+    await connect()
+    unique_key = await db.fetchval(f"SELECT MAX(id) FROM ships_commodities") + 1
+    capacity = await db.fetchval(f"SELECT capacity FROM ships_commodities WHERE owner = $1", uid)
+    has_amount = await db.fetchval(f"SELECT $1 FROM ships_commodities WHERE owner = $2", commodity, uid)
+    if amount < 1:
+        amount = 0
+    if amount > capacity:
+        await disconnect()
+        raise ValueError
+    await db.execute(f"UPDATE ships_commodities SET capacity = $1 WHERE owner = $2", capacity - amount, uid)
+    await db.execute(f"UPDATE ships_commodities SET $1 = $2 WHERE owner = $3", commodity, has_amount + amount, uid)
+    await disconnect()
+
+
 async def sell_possession(ctx, user: discord.Member, item: str, amount: int = 1):
     REFUND_PORTION = 0.6
     uid = user.id
@@ -503,8 +519,9 @@ class Database(commands.Cog):
         except NameError:
             pass
         try:
-            self.session.terminate()
+            await self.session.close()
         except AttributeError:
+            print(f'AttributeError trying to close aiohttp session at {now()}')
             pass
 
     @commands.command(description='Prints the list of users to the console.')
@@ -528,10 +545,10 @@ class Database(commands.Cog):
         await connect()
         try:
             result = await db.fetch(query)
+            await disconnect()
+            await ctx.send(result)
         except conn.InterfaceError:
             await ctx.send("Okay. There's no result from that query.")
-        await disconnect()
-        await ctx.send(result)
         print(f'{ctx.author} executed a direct database query at {now()}:\n{query}\nResult was:\n{result}')
 
     @commands.command(description='add new user to database')
