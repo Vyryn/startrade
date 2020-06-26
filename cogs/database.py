@@ -496,7 +496,7 @@ class Database(commands.Cog):
             await db.execute(commodities_creation_command)
         await disconnect()
         await connect()
-        if 'Ships_commodities' not in tables:
+        if 'ships_commodities' not in tables:
             print('Ships Commodities table not found. Creating a new one...')
             commodities_creation_command = "CREATE TABLE ships_commodities(id BIGINT NOT NULL PRIMARY KEY," \
                                            " name VARCHAR(127), owner BIGINT, capacity INT, "
@@ -519,7 +519,7 @@ class Database(commands.Cog):
         except NameError:
             pass
         try:
-            await self.session.close()
+            self.session.close()
         except AttributeError:
             print(f'AttributeError trying to close aiohttp session at {now()}')
             pass
