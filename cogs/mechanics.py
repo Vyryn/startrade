@@ -84,7 +84,8 @@ class Mechanics(commands.Cog):
     @commands.command()
     async def travel(self, ctx, channel: discord.TextChannel):
         try:
-            update_location(ctx.author, channel)
+            await update_location(ctx.author, channel)
+            await ctx.send(*f"{ctx.author} traveled to {channel.mention}.*")
         except ValueError:
             await ctx.send(f"{ctx.author}, you haven't done enough at your current location to be able to move to"
                            f" travel to a new location yet. Try RPing a bit first.", delete_after=30)

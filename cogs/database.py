@@ -411,7 +411,7 @@ async def update_location(member: discord.Member, channel: discord.TextChannel):
     # old_location = await db.fetchval(f"SELECT location FROM users WHERE id = $1", member.id)
     new_location = channel.id
     recent_activity = await db.fetchval(f"SELECT recent_activity FROM users WHERE id = $1", member.id)
-    if recent_activity > MOVE_ACTIVITY_THRESHOLD:
+    if recent_activity < MOVE_ACTIVITY_THRESHOLD:
         raise ValueError
     await db.execute(f"UPDATE users SET recent_activity = 0 where id = $1", member.id)
     await db.execute(f"UPDATE users SET location = $1 where id = $2", new_location, member.id)
