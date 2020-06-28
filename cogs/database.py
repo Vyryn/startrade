@@ -7,7 +7,7 @@ from io import BytesIO
 import discord
 from discord.ext import commands
 import asyncpg as conn
-from functions import auth, now
+from functions import auth, now, level
 from privatevars import DBUSER, DBPASS
 
 global db
@@ -110,10 +110,16 @@ async def transfer_funds(from_user: discord.User, to_user: discord.User, amount:
     return from_balance, to_balance
 
 
-async def update_activity(member: discord.Member, amount: int):
+async def update_activity(channel: discord.TextChannel, member: discord.Member, amount: int):
     uid = member.id
     await connect()
     activity = (await db.fetchval(f"SELECT activity FROM users WHERE id = $1", uid)) + amount
+    print(f'Activity before: {activity - amount}, activity after: {activity}')
+    level_before = level(activity - amount)
+    level_after = level(activity)
+    if level_after > level_before:
+        await channel.send(f"Congratulations {member} on reaching activity level {level_after}!")
+        print(f'{member} ranked up their activity from level {level_before} to {level_after}')
     recent_activity = (await db.fetchval(f"SELECT recent_activity FROM users WHERE id = $1", uid)) + amount
     print(f'Adding {amount} activity score to {member} at {now()}. New activity score: {activity}. '
           f'New recent activity score: {recent_activity}')

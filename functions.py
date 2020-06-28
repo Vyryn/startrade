@@ -29,8 +29,6 @@ verificaiton_message_id = 718980234380181534
 # The startrade guild id
 startrade_id = 718893913976340561
 
-
-
 # The bot randomly selects one of these statuses at startup
 statuses = ["Being an adult is just walking around wondering what you're forgetting.",
             'A clean house is the sign of a broken computer.',
@@ -56,6 +54,17 @@ perms_info = {0: '(No other dev perms)', 1: 'Can use echo and auth check', 2: 'C
 number_reactions = ["1\u20e3", "2\u20e3", "3\u20e3", "4\u20e3", "5\u20e3", "6\u20e3", "7\u20e3",
                     "8\u20e3", "9\u20e3"]
 reactions_to_nums = {"1⃣": 1, "2⃣": 2, "3⃣": 3, "4⃣": 4, "5⃣": 5, "6⃣": 6, "7⃣": 7, "8⃣": 8, "9⃣": 9}
+
+
+# activity = floor( (5 / 6 * rank ) * (2 * rank ** 2 + 27 * rank + 91 ) )
+def level(a):
+    if a < 100:
+        return 1
+    else:
+        return int(a**(1/3) * 5/6 - 4)
+
+
+activity_ranks = dict(zip(range(0, 1000), [level(a) for a in range(0, 1000)]))
 
 
 # Helper method for opening a json

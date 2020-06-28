@@ -52,7 +52,7 @@ class Basics(commands.Cog):
         new_words = len(valid_words)
         added_activity_score = max(new_words - 2, 0)
         if added_activity_score > 0:
-            await update_activity(message.author, added_activity_score)
+            await update_activity(message.channel, message.author, added_activity_score)
         # ===========================LOG=============================
         ln = '\n'
         n_ln = '\\n'

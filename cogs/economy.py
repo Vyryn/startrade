@@ -199,7 +199,7 @@ class Economy(commands.Cog):
         await set_last_paycheck_now(ctx.author)
         balance = await add_funds(ctx.author, paycheck_amount)
         await ctx.send(f"{ctx.author} has found an odd job and earned {paycheck_amount} cool cash. "
-                       f"It's not much, but their balance is now {balance} credits.\nTip: You can earn substantially "
+                       f"It's not much, but their balance is now {balance} credits.\n\nTip: You can earn substantially "
                        f"more money from trading commodities. Check out ,buys [channel] and ,sells [channel]")
 
     @commands.command(aliases=['mine', 'backpack', 'items', 'inventory'], description='See what items you own.')
