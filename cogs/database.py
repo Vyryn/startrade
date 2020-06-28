@@ -163,11 +163,11 @@ async def check_bal_str(username: str):
 
 
 async def distribute_payouts():
-    WEALTH_FACTOR = 0.0005
+    WEALTH_FACTOR = 0.0005  # Currently set to 0.05-0.1% payout per hour
     await connect()
     users = await db.fetch("SELECT * FROM users")
     for user in users:
-        payout_generosity = random.random() / 2000  # Normalizes it to give between 0.05% and 0.1% payout each time
+        payout_generosity = random.random() * WEALTH_FACTOR  # Normalizes it to give between wf and 2* wf per hour
         payout = int(user[5] * (payout_generosity + WEALTH_FACTOR))
         new_user_balance = int(user[3]) + payout
         # print(f'User {user[1]}: investment: {user[5]}, payout_generosity: {payout_generosity * 1000}, payout:'
@@ -399,10 +399,22 @@ async def transact_possession(ctx, user: discord.Member, item: str, cost: float 
 
 async def view_items(member: discord.Member):
     await connect()
-    items = await db.fetch(f"SELECT amount, name FROM possessions WHERE owner = $1", member.id)
+    items = await db.fetchrow(f"SELECT amount, name FROM possessions WHERE owner = $1", member.id)
     await disconnect()
     print(items)
     return set(items)
+
+
+async def update_location(member: discord.Member, channel: discord.TextChannel):
+    MOVE_ACTIVITY_THRESHOLD = 200
+    await connect()
+    # old_location = await db.fetchval(f"SELECT location FROM users WHERE id = $1", member.id)
+    new_location = channel.id
+    recent_activity = await db.fetchval(f"SELECT recent_activity FROM users WHERE id = $1", member.id)
+    if recent_activity > MOVE_ACTIVITY_THRESHOLD:
+        raise ValueError
+    await db.execute(f"UPDATE users SET recent_activity = 0 where id = $1", member.id)
+    await db.execute(f"UPDATE users SET location = $1 where id = $2", new_location, member.id)
 
 
 async def send_formatted_browse(ctx, result, i_type):
