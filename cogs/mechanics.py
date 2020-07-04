@@ -29,6 +29,7 @@ class Mechanics(commands.Cog):
         summ = 0
         if content is not None:
             content = content.lower().split(' ')
+#            args_pre = content[0].lower().split('>')
             args = content[0].lower().split('d')
             try:
                 num_dice = int(args[0])
@@ -85,7 +86,8 @@ class Mechanics(commands.Cog):
     async def travel(self, ctx, channel: discord.TextChannel):
         try:
             await update_location(ctx.author, channel)
-            await ctx.send(*f"{ctx.author} traveled to {channel.mention}.*")
+            await ctx.send(f"*{ctx.author} traveled to {channel.mention}.*")
+            # TODO: Send in a dedicated travel channel instead
         except ValueError:
             await ctx.send(f"{ctx.author}, you haven't done enough at your current location to be able to move to"
                            f" travel to a new location yet. Try RPing a bit first.", delete_after=30)

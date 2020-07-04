@@ -2,6 +2,8 @@ import asyncio
 
 import discord
 from discord.ext import commands
+
+from cogs.database import add_funds
 from functions import deltime, auth, confirmed_ids, now
 
 
@@ -108,6 +110,17 @@ class Moderation(commands.Cog):
             await ctx.message.delete()  # delete the command
             self.bg_task = self.bot.loop.create_task(confirmation_on(ctx.author.id))
         print(f'Clearpins command used by {ctx.author} at {now()} in channel {ctx.channel.name}.')
+
+    @commands.command(description='Bestow upon someone the Certified Literate role!')
+    @commands.has_role(728797095951335424)
+    async def certify(self, ctx, *, member: discord.Member):
+        await ctx.send(f'{member.mention}\n```\nI hereby declare you an outstanding writer. May you be granted'
+                       f' fortune in your future endeavours.```')
+        await add_funds(member, 1000)
+        log_channel = ctx.guild.get_channel(725817803273404618)
+        await log_channel.send(f'{ctx.author} bestowed the Certified Literate role upon {member} at '
+                               f'{now()}. $1000 granted.')
+        await member.add_roles(ctx.guild.get_role(728797095951335424))
 
 
 def setup(bot):

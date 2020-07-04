@@ -406,7 +406,7 @@ async def view_items(member: discord.Member):
 
 
 async def update_location(member: discord.Member, channel: discord.TextChannel):
-    MOVE_ACTIVITY_THRESHOLD = 200
+    MOVE_ACTIVITY_THRESHOLD = 100
     await connect()
     # old_location = await db.fetchval(f"SELECT location FROM users WHERE id = $1", member.id)
     new_location = channel.id
