@@ -39,8 +39,6 @@ class Basics(commands.Cog):
 
     def __init__(self, bot):
         set_polls()
-        # Save the auth and polls variables to file every 5 minutes
-        # self.bg_task = self.bot.loop.create_task((300, reminder))
         self.bot = bot
 
     # Events
@@ -319,7 +317,7 @@ class Basics(commands.Cog):
                             'y': 60 * 60 * 24 * 365}
             increments *= time_options.get(increment, 1)
             print(f'{ctx.author} created a reminder to {user} for {increments} seconds from now; {t}')
-            self.bg_task = self.bot.loop.create_task(remind_routine(increments, user, ctx.author, reminder))
+            self.bot.loop.create_task(remind_routine(increments, user, ctx.author, reminder))
             await ctx.send(f"Got it. I'll send the reminder in {increments} seconds.", delete_after=deltime)
         else:
             await ctx.send('Please enter a valid time interval. You can use s, m, h, d, w, y as your interval time '

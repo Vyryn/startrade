@@ -109,14 +109,14 @@ class Moderation(commands.Cog):
                            "If so, use this command again.", delete_after=deltime)
             confirmed_ids[ctx.author.id] = 1
             await ctx.message.delete()  # delete the command
-            self.bg_task = self.bot.loop.create_task(confirmation_on(ctx.author.id))
+            self.bot.loop.create_task(confirmation_on(ctx.author.id))
         print(f'Clearpins command used by {ctx.author} at {now()} in channel {ctx.channel.name}.')
 
     @commands.command(description='Bestow upon someone the Certified Literate role!')
     async def certify(self, ctx, *, member: discord.Member):
         GRANT_AMOUNT = 1000
         literate = ctx.guild.get_role(728796399692677160)
-        if literate not in ctx.author.roles:  #Don't allow people without the role to grant it
+        if literate not in ctx.author.roles:  # Don't allow people without the role to grant it
             return await ctx.send(f'{ctx.author}, you need to be Certified Literate to use that command.')
         if literate in member.roles:  # Don't allow getting the role twice
             return await ctx.send(f'That user has already been granted the Certified Literate role.')
