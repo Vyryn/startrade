@@ -23,6 +23,18 @@ async def remind_routine(increments, user, author, message):
     print(f'{user} has been sent their reminder {message}')
 
 
+async def send_to_log_channel(ctx, content: str, event_name: str = ''):
+    author = ctx.author
+    m_id = ctx.message.id
+    log_channel = ctx.message.guild.get_channel(725817803273404618)
+
+    embed = discord.Embed(title='',
+                          description=f'**{event_name}**\n' + content,
+                          timestamp=datetime.now())
+    embed.set_footer(text=f'Author: {author} | Message ID: {m_id}')
+    await log_channel.send(embed=embed)
+
+
 class Basics(commands.Cog):
 
     def __init__(self, bot):

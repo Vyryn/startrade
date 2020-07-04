@@ -3,6 +3,7 @@ import asyncio
 import discord
 from discord.ext import commands
 
+from cogs.basics import send_to_log_channel
 from cogs.database import add_funds
 from functions import deltime, auth, confirmed_ids, now
 
@@ -112,15 +113,21 @@ class Moderation(commands.Cog):
         print(f'Clearpins command used by {ctx.author} at {now()} in channel {ctx.channel.name}.')
 
     @commands.command(description='Bestow upon someone the Certified Literate role!')
-    @commands.has_role(728797095951335424)
     async def certify(self, ctx, *, member: discord.Member):
+        GRANT_AMOUNT = 1000
+        literate = ctx.guild.get_role(728796399692677160)
+        if literate not in ctx.author.roles:  #Don't allow people without the role to grant it
+            return await ctx.send(f'{ctx.author}, you need to be Certified Literate to use that command.')
+        if literate in member.roles:  # Don't allow getting the role twice
+            return await ctx.send(f'That user has already been granted the Certified Literate role.')
         await ctx.send(f'{member.mention}\n```\nI hereby declare you an outstanding writer. May you be granted'
                        f' fortune in your future endeavours.```')
-        await add_funds(member, 1000)
+        await add_funds(member, GRANT_AMOUNT)
         log_channel = ctx.guild.get_channel(725817803273404618)
-        await log_channel.send(f'{ctx.author} bestowed the Certified Literate role upon {member} at '
-                               f'{now()}. $1000 granted.')
-        await member.add_roles(ctx.guild.get_role(728797095951335424))
+        await send_to_log_channel(ctx, f'{ctx.author.mention} bestowed the Certified Literate role upon'
+                                       f' {member.mention}. ${GRANT_AMOUNT} granted.',
+                                  event_name='**Certified Literate**')
+        await member.add_roles(literate)
 
 
 def setup(bot):
