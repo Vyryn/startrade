@@ -1,12 +1,11 @@
-import aiohttp
-from discord import Webhook, AsyncWebhookAdapter, Embed, TextChannel
+from discord import Embed, TextChannel
 from discord.ext import commands
-from functions import now, auth
+from functions import auth
 
 HOOK_URL = 'https://discordapp.com/api/webhooks/723354196988133376' \
            '/ioftOOV89uBH_A_cJhwBGOaFXBHisCzgZI_fHVVyGJYKtuQ5AvlNVKqk75pIjjB2t0yn '
 
-images = {
+IMAGES = {
     'Man': 'https://i.pinimg.com/originals/94/6e/82/946e829a135f68d7a041e3a83b445f55.jpg',
     'Woman': 'https://miro.medium.com/max/11030/1*GXLLjBU4IIZswmZrG4w3OA.jpeg',
     'Testman': 'https://bbts1.azureedge.net/images/p/full/2019/07/71fdc93f-13b6-4de8-b032-ee7c34843ef2.jpg',
@@ -49,34 +48,35 @@ class Webhooks(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
+        self.name = 'Startrade'
 
-    @commands.command(description=f"""Make an immersive NPC say something. If a profile picture exists for the name 
+    @commands.command(description=f"""Make an imersive NPC say something. If a profile picture exists for the name 
         provided, it will be used 
         otherwise the discord default will be used instead.
         Multi-space names can be provided either in quotes or with underscores as spaces.
         Names are case insensitive but must be an exact match otherwise to use the existing profile pictures.
         Known names are:
-        {images.keys()}""")
+        {IMAGES.keys()}""")
     @commands.check(auth(1))
     async def sayw(self, ctx, name: str = None, *, content):
-        f"""Make an immersive NPC say something. If a profile picture exists for the name provided, it will be used
+        f"""Make an imersive NPC say something. If a profile picture exists for the name provided, it will be used
         otherwise the discord default will be used instead.
         Multi-space names can be provided either in quotes or with underscores as spaces.
         Names are case insensitive but must be an exact match otherwise to use the existing profile pictures.
-        {images.keys()}"""
+        {IMAGES.keys()}"""
         await ctx.message.delete()
         if name is None:
-            name = 'Startrade'
+            name = self.name
         else:
             name = name.replace('_', ' ').title()
-        avatar = images.get(name, None)
+        avatar = IMAGES.get(name, None)
         try:
             hook = (await ctx.channel.webhooks())[0]
         except IndexError:
-            hook = await TextChannel.create_webhook(ctx.channel, name='Startrade',
-                                                    reason=f'Startrade NPC creation for #{ctx.channel.name}.')
+            hook = await TextChannel.create_webhook(ctx.channel, name=self.name,
+                                                    reason=f'{self.name} NPC creation for #{ctx.channel.name}.')
         embed = Embed(description=content)
-        await hook.send(content=None, username=name, embed=embed, avatar_url=avatar)
+        await hook.send(content='', username=name, embed=embed, avatar_url=avatar)
 
 
 def setup(bot):

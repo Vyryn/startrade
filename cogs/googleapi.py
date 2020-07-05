@@ -3,7 +3,6 @@ import os.path
 from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
-import discord
 from discord.ext import commands
 
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']

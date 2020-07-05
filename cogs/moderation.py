@@ -1,27 +1,39 @@
 import asyncio
-
 import discord
 from discord.ext import commands
-
 from cogs.basics import send_to_log_channel
 from cogs.database import add_funds
-from functions import deltime, auth, confirmed_ids, now
-
-
-async def confirmation_on(user):
-    await asyncio.sleep(deltime * 2)
-    confirmed_ids[user] = 0
-    return
+from functions import auth, now
 
 
 class Moderation(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.MAX_PURGE = 100  # Max number of messages that can be purged with ,forcepurge command at once
+        self.GRANT_AMOUNT = 1000  # Certified Literate payout amount
+        self.server = None
+        self.literate = None
+        self.deltime = None
+        self.confirmed_ids = None
+
+    async def confirmation_on(self, user):
+        await asyncio.sleep(self.deltime * 2)
+        self.confirmed_ids[user] = 0
+        return
 
     # Events
     @commands.Cog.listener()
     async def on_ready(self):
+        self.server = self.bot.get_guild(718893913976340561)
+        self.literate = self.server.get_role(728796399692677160)  # Certified Literate role
+        self.deltime = self.bot.deltime
+        self.confirmed_ids = self.bot.confirmed_ids
         print(f'Cog {self.qualified_name} is ready.')
+
+    @commands.Cog.listener()
+    async def on_reaction_add(self, reaction, user):
+        # TODO: Check for verified and add has character role as necessary
+        pass
 
     # Commands
     @commands.command(aliases=['clear', 'del'], description='Delete a number of messages')
@@ -31,31 +43,31 @@ class Moderation(commands.Cog):
                 Requires: Manage Message perms on your server
                 Amount: The number of messages to purge. Typically limited to 100.
                 People with Auth level 4 can delete more messages at once."""
-        if int(amount) <= 100:
+        if int(amount) <= self.MAX_PURGE:
             await ctx.channel.purge(limit=int(amount) + 1)
             return print(f'{ctx.author} deleted {amount} messages in channel {ctx.channel} in guild {ctx.guild}.')
         elif await auth(4)(ctx):
             await ctx.channel.purge(limit=int(amount) + 1)
             return print(f'{ctx.author} deleted {amount} messages in channel {ctx.channel} in guild {ctx.guild}.')
         else:
-            await ctx.send('You may only delete up to 100 messages', delete_after=deltime)
+            await ctx.send(f'You may only delete up to {self.MAX_PURGE} messages', delete_after=self.deltime)
 
     @commands.command(description='Delete a number of messages')
     @commands.check(auth(6))
     async def forcepurge(self, ctx, amount: int):
-        """Delete a bunch of messages
+        f"""Delete a bunch of messages
                 Requires: Auth 6. This is meant for use only in cases where the bot has caused spam that it shouldn't
                 have.
-                Amount: The number of messages to purge. Typically limited to 100.
+                Amount: The number of messages to purge. Typically limited to {self.MAX_PURGE}.
                 People with Auth level 4 can delete more messages at once."""
-        if int(amount) <= 100:
+        if int(amount) <= self.MAX_PURGE:
             await ctx.channel.purge(limit=int(amount) + 1)
             return print(f'{ctx.author} deleted {amount} messages in channel {ctx.channel} in guild {ctx.guild}.')
         elif await auth(4)(ctx):
             await ctx.channel.purge(limit=int(amount) + 1)
             return print(f'{ctx.author} deleted {amount} messages in channel {ctx.channel} in guild {ctx.guild}.')
         else:
-            await ctx.send('You may only delete up to 100 messages', delete_after=deltime)
+            await ctx.send('You may only delete up to 100 messages', delete_after=self.deltime)
 
     @commands.command(description='Kick a member from the server.')
     @commands.has_permissions(kick_members=True)
@@ -96,38 +108,35 @@ class Moderation(commands.Cog):
         """Clear all the pinned messages from a channel.
                 Requires: Manage Messages permission
                 Note: It is highly recommended to be absolutely sure before using this command."""
-        if confirmed_ids.get(ctx.author.id, 0) > 0:
+        if self.bot.confirmed_ids.get(ctx.author.id, 0) > 0:
             i = 0
             for pin in await ctx.channel.pins():
                 await pin.unpin()
                 i += 1
             await ctx.send(f'Okay {ctx.author}, {i} pins have been cleared.')
-            confirmed_ids[ctx.author.id] = 0
+            self.bot.confirmed_ids[ctx.author.id] = 0
             await ctx.message.delete()  # delete the command
         else:
             await ctx.send("Are you certain you wish to clear all the pins from this channel? This can not be undone. "
-                           "If so, use this command again.", delete_after=deltime)
-            confirmed_ids[ctx.author.id] = 1
+                           "If so, use this command again.", delete_after=self.deltime)
+            self.bot.confirmed_ids[ctx.author.id] = 1
             await ctx.message.delete()  # delete the command
-            self.bot.loop.create_task(confirmation_on(ctx.author.id))
+            self.bot.loop.create_task(self.confirmation_on(ctx.author.id))
         print(f'Clearpins command used by {ctx.author} at {now()} in channel {ctx.channel.name}.')
 
     @commands.command(description='Bestow upon someone the Certified Literate role!')
     async def certify(self, ctx, *, member: discord.Member):
-        GRANT_AMOUNT = 1000
-        literate = ctx.guild.get_role(728796399692677160)
-        if literate not in ctx.author.roles:  # Don't allow people without the role to grant it
+        if self.literate not in ctx.author.roles:  # Don't allow people without the role to grant it
             return await ctx.send(f'{ctx.author}, you need to be Certified Literate to use that command.')
-        if literate in member.roles:  # Don't allow getting the role twice
+        if self.literate in member.roles:  # Don't allow getting the role twice
             return await ctx.send(f'That user has already been granted the Certified Literate role.')
         await ctx.send(f'{member.mention}\n```\nI hereby declare you an outstanding writer. May you be granted'
                        f' fortune in your future endeavours.```')
-        await add_funds(member, GRANT_AMOUNT)
-        log_channel = ctx.guild.get_channel(725817803273404618)
+        await add_funds(member, self.GRANT_AMOUNT)
         await send_to_log_channel(ctx, f'{ctx.author.mention} bestowed the Certified Literate role upon'
-                                       f' {member.mention}. ${GRANT_AMOUNT} granted.',
+                                       f' {member.mention}. ${self.GRANT_AMOUNT} granted.',
                                   event_name='**Certified Literate**')
-        await member.add_roles(literate)
+        await member.add_roles(self.literate)
 
 
 def setup(bot):

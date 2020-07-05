@@ -1,11 +1,7 @@
 import random
 from collections import Counter
-
 import discord
-import typing
-
 from discord.ext import commands
-
 from cogs.database import update_location
 
 
@@ -13,6 +9,15 @@ class Mechanics(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
+        self.DEFUALT_DIE_SIDES = 20  # Default number of sides to assume a rolled die has
+        self.MAX_DIE_SIDES = 100  # Max number of sides each die may have
+        self.MAX_DIE_ROLES = 100000  # Max number of dice that can be rolled with one ,roll command
+        # TODO: Initialize Travel Channel
+
+    # Events
+    @commands.Cog.listener()
+    async def on_ready(self):
+        print(f'Cog {self.qualified_name} is ready.')
 
     # Commands
     @commands.command(aliases=['die', 'dice'], description='Roll some dice.')
@@ -29,7 +34,7 @@ class Mechanics(commands.Cog):
         summ = 0
         if content is not None:
             content = content.lower().split(' ')
-#            args_pre = content[0].lower().split('>')
+            #            args_pre = content[0].lower().split('>')
             args = content[0].lower().split('d')
             try:
                 num_dice = int(args[0])
@@ -38,21 +43,21 @@ class Mechanics(commands.Cog):
             try:
                 num_sides = int(args[1])
             except ValueError:
-                num_sides = 20
+                num_sides = self.DEFUALT_DIE_SIDES
             except IndexError:
-                num_sides = 20
+                num_sides = self.DEFUALT_DIE_SIDES
         else:
-            num_dice, num_sides = 1, 20
+            num_dice, num_sides = 1, self.DEFUALT_DIE_SIDES
         if num_sides < 2:
             num_sides = 2
-        elif num_sides > 50:
-            num_sides = 100
+        elif num_sides > self.MAX_DIE_SIDES:
+            num_sides = self.MAX_DIE_SIDES
         if num_dice < 1:
             num_dice = 1
         elif num_dice > 5:
-            if num_dice > 100000:
-                num_dice = 100000
-            results = Counter([random.choice(range(1, num_sides + 1)) for die in range(1, num_dice + 1)])
+            if num_dice > self.MAX_DIE_ROLES:
+                num_dice = self.MAX_DIE_ROLES
+            results = Counter([random.choice(range(1, num_sides + 1)) for __ in range(1, num_dice + 1)])
             to_send = f"I've rolled {num_dice}x {num_sides} sided dice and grouped them by roll:\n```\n"
             iterator = sorted(results.items(), key=lambda x: x[1], reverse=True)
             i = 0
@@ -71,7 +76,7 @@ class Mechanics(commands.Cog):
         if num_dice == 1:
             return await ctx.send(random.choice(range(1, num_sides + 1)))
         result = f'Rolled {num_dice}x {num_sides} sided dice:\n'
-        for die in range(1, num_dice+1):
+        for die in range(1, num_dice + 1):
             val = random.choice(range(1, num_sides + 1))
             summ += val
             try:
@@ -91,6 +96,7 @@ class Mechanics(commands.Cog):
         except ValueError:
             await ctx.send(f"{ctx.author}, you haven't done enough at your current location to be able to move to"
                            f" travel to a new location yet. Try RPing a bit first.", delete_after=30)
+
 
 def setup(bot):
     bot.add_cog(Mechanics(bot))

@@ -1,11 +1,9 @@
 import time
 import random
 from datetime import datetime
-
 import discord
 import typing
 from discord.ext import commands, tasks
-
 from cogs.database import add_invest, check_bal, transfer_funds, add_funds, distribute_payouts, check_last_paycheck, \
     set_last_paycheck_now, get_top, check_bal_str, transact_possession, add_possession, view_items, sell_possession
 from functions import auth, now
@@ -16,7 +14,12 @@ class Economy(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.send_payouts.start()
-        print('Started the payouts task (3).')
+        self.BUMP_PAYMENT = 100  # Payment for disboard bumps
+        self.DISBOARD = 302050872383242240  # Disboard uid
+        self.PAYCHECK_AMOUNT_MIN = 20  # Minimum paycheck payout
+        self.PAYCHECK_AMOUNT_MAX = 30  # Maximum paycheck payout
+        self.PAYCHECK_INTERVAL = 180  # Time between paychecks, in seconds
+        print('Started the payouts task (1).')
 
     def cog_unload(self):
         self.send_payouts.cancel()
@@ -29,23 +32,20 @@ class Economy(commands.Cog):
     # Events
     @commands.Cog.listener()
     async def on_ready(self):
-        print(f'Loading Cog {self.qualified_name}...')
-        # self.send_payouts.start()
-        # print('Started the payouts task.')
+        print(f'Cog {self.qualified_name} is ready.')
 
     # =============================This rewards for disboard bumps=========================
     @commands.Cog.listener()
     async def on_message(self, message):
-        if message.author.id == 302050872383242240 and len(message.embeds) > 0:  # From disboard and has an embed
+        if message.author.id == self.DISBOARD and len(message.embeds) > 0:  # From disboard and has an embed
             embed_content = message.embeds[0].to_dict()['description']
             if 'Bump Done' in embed_content:
-                BUMP_PAYMENT = 100
                 bumper_id = int(embed_content[3:21])
                 bumper = await self.bot.fetch_user(bumper_id)
-                balance = await add_funds(bumper, BUMP_PAYMENT)
+                balance = await add_funds(bumper, self.BUMP_PAYMENT)
                 await message.channel.send(f"Thank you for bumping Startrade on Disboard, {bumper.mention()}. I've "
-                                           f"added ${BUMP_PAYMENT} to your balance. Your new balance is {balance}.")
-        pass
+                                           f"added ${self.BUMP_PAYMENT} to your balance. "
+                                           f"Your new balance is {balance}.")
 
     # Commands
 
@@ -131,7 +131,6 @@ class Economy(commands.Cog):
         if amount < 1:
             return await ctx.send('Invalid sell amount.')
         await sell_possession(ctx, ctx.author, item.title(), amount)
-        # TODO: Create function
 
     @commands.command(description='Add an item to a users possessions without the need to buy it.')
     @commands.check(auth(2))
@@ -143,7 +142,7 @@ class Economy(commands.Cog):
         Optionally include an amount and or price after the username. The price will not take that money away from
         the target user, but will set the possession's base sell price.
         """
-        await add_possession(ctx, user, item, price, amount)
+        await add_possession(user, item, cost=price, amount=amount)
         await ctx.send(f'I have given {user} {amount} {item}.')
 
     @commands.command(name='top', aliases=['topbank'], description='List the top people in the specified category.')
@@ -166,15 +165,15 @@ class Economy(commands.Cog):
 
     @commands.command(description='Give someone money from nowhere. Staff only.')
     @commands.check(auth(2))
-    async def cheat_money(self, ctx, user: discord.User, amount: int):
+    async def cheat_money(self, ctx, member: discord.Member, amount: int):
         """
         Staff override to give people money. Can also take money away with negative amount.
         Requires Auth 2
         """
-        new_balance = await add_funds(user, amount)
-        print(f'Added {amount} credits to {user} by authority of {ctx.author}. Their new balance is {new_balance}')
+        new_balance = await add_funds(member, amount)
+        print(f'Added {amount} credits to {member} by authority of {ctx.author}. Their new balance is {new_balance}')
         await ctx.send(
-            f'Added {amount} credits to {user} by authority of {ctx.author}. Their new balance is {new_balance}')
+            f'Added {amount} credits to {member} by authority of {ctx.author}. Their new balance is {new_balance}')
 
     @commands.command(description='Distribute payouts based on investments.')
     @commands.check(auth(2))
@@ -193,15 +192,12 @@ class Economy(commands.Cog):
         """
         Get some free money. Only gives a little bit, though; you can get much more money from actually RPing.
         """
-        PAYCHECK_AMOUNT_MIN = 20
-        PAYCHECK_AMOUNT_MAX = 30
-        PAYCHECK_INTERVAL = 180  # Seconds
         last_paycheck = await check_last_paycheck(ctx.author)
-        if time.time() - last_paycheck < PAYCHECK_INTERVAL:
-            seconds_remaining = last_paycheck + PAYCHECK_INTERVAL - time.time()
+        if time.time() - last_paycheck < self.PAYCHECK_INTERVAL:
+            seconds_remaining = last_paycheck + self.PAYCHECK_INTERVAL - time.time()
             return await ctx.send(f"You aren't ready for a paycheck yet. Try again in {int(seconds_remaining + 1)}"
                                   f" seconds.")
-        paycheck_amount = random.randrange(PAYCHECK_AMOUNT_MIN, PAYCHECK_AMOUNT_MAX)
+        paycheck_amount = random.randrange(self.PAYCHECK_AMOUNT_MIN, self.PAYCHECK_AMOUNT_MAX)
         await set_last_paycheck_now(ctx.author)
         balance = await add_funds(ctx.author, paycheck_amount)
         await ctx.send(f"{ctx.author} has found an odd job and earned {paycheck_amount} cool cash. "

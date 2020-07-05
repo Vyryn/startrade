@@ -11,8 +11,7 @@ from functions import auth, now, level
 from privatevars import DBUSER, DBPASS
 
 global db
-
-commodities = ['hydrogen', 'deuterium', 'tritium', 'helium', 'nitrogen', 'phosphorous', 'iodine', 'lithium',
+COMMODITIES = ['hydrogen', 'deuterium', 'tritium', 'helium', 'nitrogen', 'phosphorous', 'iodine', 'lithium',
                'magnesium', 'aluminum', 'silicon', 'titanium', 'vanadium', 'chromium',
                'cobalt', 'nickel', 'copper', 'neodymium', 'tungsten',
                'rhodium', 'silver', 'osmium', 'iridium', 'platinum', 'gold',
@@ -26,6 +25,11 @@ commodities = ['hydrogen', 'deuterium', 'tritium', 'helium', 'nitrogen', 'phosph
                'saffron', 'coffee', 'pepper', 'cinnamon',
                'graphene', 'aerogel', 'cermets', 'm_glass', 'mol_glue', 'nanofibers', 'fullerenes', 'nanotubes',
                'h_fuel', 'antimatter']
+MOVE_ACTIVITY_THRESHOLD = 100  # Number of activity score that must be gained when moving to a new location
+REFUND_PORTION = 0.6  # Portion of buy price to refund when selling an item
+WEALTH_FACTOR = 0.0005  # Currently set to 0.05-0.1% payout per hour
+ITEMS_PER_TOP_PAGE = 10  # Number of items to show per page in ,top
+STARTING_BALANCE = 30000  # New user starting balance
 
 
 # carbon-carbon bond average length is 1.54 a = 0.154 nm. Molecular superglue is mol-glue.
@@ -33,17 +37,17 @@ commodities = ['hydrogen', 'deuterium', 'tritium', 'helium', 'nitrogen', 'phosph
 
 async def connect():
     global db
-    try:
-        db = await conn.connect(
-            host='localhost',
-            user=DBUSER,
-            password=DBPASS,
-            database='startrade'
-        )
-        # print('Connected to database.')
-    except:
-        print(f'An unexpected error occurred when trying to connect to the database for connect() at {now()}.')
-        pass
+    # try:
+    db = await conn.connect(
+        host='localhost',
+        user=DBUSER,
+        password=DBPASS,
+        database='startrade'
+    )
+    # print('Connected to database.')
+    # except:
+    #    print(f'An unexpected error occurred when trying to connect to the database for connect() at {now()}.')
+    #    pass
 
 
 async def disconnect():
@@ -58,26 +62,27 @@ async def new_user(user: discord.User):
     uid = user.id
     name = user.name
     messages = 0
-    balance = 30000
+    balance = STARTING_BALANCE
     last_pay = time.time() - 1800
     invested = 0
     await connect()
-    check = await db.fetchrow(f"SELECT * FROM users WHERE id = $1", uid)
-    if check is not None:
-        return f'User {name} Already Exists in database.'
+    # check = await db.fetchrow(f"SELECT * FROM users WHERE id = $1", uid)
+    # if check is not None:
+    #     await disconnect()
+    #     return f'User {name} Already Exists in database.'
     try:
         await db.execute(
             "INSERT INTO users VALUES($1, $2, $3, $4, $5, $6)", uid, name, messages, balance, last_pay, invested)
-    except conn.errors.UniqueViolation:
-        await db.commit()
-        await connect()
+        result = f'User {name} added to database at {now()}.'
+    except conn.UniqueViolationError:
         await db.execute("UPDATE users SET name = $1 WHERE id = $2", name, uid)
+        result = f'User {name} name updated in database at {now()}.'
     await disconnect()
-    return f'User {name} added to database at {now()}.'
+    return result
 
 
-async def add_invest(user: discord.User, amount: int):
-    uid = user.id
+async def add_invest(member: discord.Member, amount: float):
+    uid = member.id
     await connect()
     check = await db.fetchrow(f"SELECT * FROM users WHERE id = $1", uid)
     invested = check[5]
@@ -85,24 +90,24 @@ async def add_invest(user: discord.User, amount: int):
     if check is None:
         return -1, 0, 0
     print(f'{invested}, {amount}')
-    if int(amount) > int(balance):
+    if float(amount) > float(balance):
         return -2, 0, 0
-    await db.execute(f"UPDATE users SET invested = $1 where id = $2", int(invested) + int(amount), uid)
-    await db.execute(f"UPDATE users SET balance = $1 where id = $2", int(balance) - int(amount), uid)
+    await db.execute(f"UPDATE users SET invested = $1 where id = $2", float(invested) + float(amount), uid)
+    await db.execute(f"UPDATE users SET balance = $1 where id = $2", float(balance) - float(amount), uid)
     await disconnect()
-    return amount, int(invested) + int(amount), int(balance) - int(amount)
+    return amount, float(invested) + float(amount), float(balance) - float(amount)
 
 
-async def transfer_funds(from_user: discord.User, to_user: discord.User, amount: int):
+async def transfer_funds(from_user: discord.User, to_user: discord.User, amount: float):
     uid_from = from_user.id
     uid_to = to_user.id
     await connect()
     from_balance = (await db.fetchrow(f"SELECT balance FROM users WHERE id = $1", uid_from))[0]
     to_balance = (await db.fetchrow(f"SELECT balance FROM users WHERE id = $1", uid_to))[0]
     print(f'Transferring {amount} from {from_user} to {to_user} at {now()}.')
-    to_balance = int(to_balance) + int(amount)
-    from_balance = int(from_balance) - int(amount)
-    if int(from_balance) < 0:
+    to_balance = float(to_balance) + float(amount)
+    from_balance = float(from_balance) - float(amount)
+    if float(from_balance) < 0:
         return -1, 0
     await db.execute(f"UPDATE users SET balance = $1 where id = $2", from_balance, uid_from)
     await db.execute(f"UPDATE users SET balance = $1 where id = $2", to_balance, uid_to)
@@ -128,20 +133,20 @@ async def update_activity(channel: discord.TextChannel, member: discord.Member, 
     await disconnect()
 
 
-async def add_funds(user: discord.User, amount: int):
-    uid = user.id
+async def add_funds(member: discord.Member, amount: int):
+    uid = member.id
     await connect()
     result = await db.fetchrow(f"SELECT balance FROM users WHERE id = $1", uid)
     balance = result[0]
-    print(f'Adding {amount} to {user} with Staff authority at {now()}.')
+    print(f'Adding {amount} to {member} with Staff authority at {now()}.')
     balance += amount
     await db.execute(f"UPDATE users SET balance = $1 where id = $2", balance, uid)
     await disconnect()
     return balance
 
 
-async def check_bal(user: discord.User):
-    uid = user.id
+async def check_bal(member: discord.Member):
+    uid = member.id
     await connect()
     check = await db.fetchrow(f"SELECT * FROM users WHERE id = $1", uid)
     print(type(check))
@@ -163,7 +168,6 @@ async def check_bal_str(username: str):
 
 
 async def distribute_payouts():
-    WEALTH_FACTOR = 0.0005  # Currently set to 0.05-0.1% payout per hour
     await connect()
     users = await db.fetch("SELECT * FROM users")
     for user in users:
@@ -195,21 +199,20 @@ async def set_last_paycheck_now(user: discord.User):
 
 async def get_top(cat: str, page: int, user: discord.Member):
     await connect()
-    offset = 10 * (1 - page)
+    offset = ITEMS_PER_TOP_PAGE * (1 - page)
+    ind = 3
     if cat not in ['balance', 'invested', 'activity']:
         raise NameError(f'Category {cat} not found.')
     else:
-        if cat == 'balance':
-            ind = 3
-        elif cat == 'invested':
+        if cat == 'invested':
             ind = 5
         elif cat == 'activity':
             ind = 2
     num_users = await db.fetchval(f"SELECT COUNT(id) FROM users")
-    if num_users < page * 10:
+    if num_users < page * ITEMS_PER_TOP_PAGE:
         offset = 0
-    num_pages = int(num_users / 10 - 1E-10 + 1)
-    result = await db.fetch(f"""SELECT * FROM users ORDER BY {cat} DESC LIMIT 10 OFFSET $1""", offset)
+    num_pages = int(num_users / ITEMS_PER_TOP_PAGE - 1E-10 + 1)
+    result = await db.fetch(f"""SELECT * FROM users ORDER BY {cat} DESC LIMIT {ITEMS_PER_TOP_PAGE} OFFSET $1""", offset)
     tops = []
     for line in result:
         tops.append((line[1], line[ind]))
@@ -231,7 +234,7 @@ async def add_commodity_location(name: str, channel_id: int, is_buy: bool, **kwa
     await connect()
     query = f"INSERT INTO commodities_locations VALUES ($1, $2, $3 "
     counter = 3
-    for kwarg in kwargs:
+    for _ in kwargs:
         counter += 1
         query += f'${counter}, '
     query = query.rstrip()[:-1] + ')'
@@ -318,7 +321,7 @@ async def add_ships_commodities(user: discord.Member, commodity: str, amount: fl
     # TODO: NOT IMPLEMENTED YET, MAY NOT WORK AS EXPECTED
     uid = user.id
     await connect()
-    unique_key = await db.fetchval(f"SELECT MAX(id) FROM ships_commodities") + 1
+    # unique_key = await db.fetchval(f"SELECT MAX(id) FROM ships_commodities") + 1
     capacity = await db.fetchval(f"SELECT capacity FROM ships_commodities WHERE owner = $1", uid)
     has_amount = await db.fetchval(f"SELECT $1 FROM ships_commodities WHERE owner = $2", commodity, uid)
     if amount < 1:
@@ -332,7 +335,6 @@ async def add_ships_commodities(user: discord.Member, commodity: str, amount: fl
 
 
 async def sell_possession(ctx, user: discord.Member, item: str, amount: int = 1):
-    REFUND_PORTION = 0.6
     uid = user.id
     await connect()
     full_item = await db.fetchrow(f"SELECT * FROM items WHERE name = $1", item)
@@ -408,7 +410,6 @@ async def view_items(member: discord.Member):
 
 
 async def update_location(member: discord.Member, channel: discord.TextChannel):
-    MOVE_ACTIVITY_THRESHOLD = 100
     await connect()
     # old_location = await db.fetchval(f"SELECT location FROM users WHERE id = $1", member.id)
     new_location = channel.id
@@ -446,7 +447,7 @@ class Database(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        self.bot.commodities = commodities
+        self.bot.commodities = COMMODITIES
         self.session = aiohttp.ClientSession(loop=bot.loop)
 
     # Events
@@ -509,7 +510,7 @@ class Database(commands.Cog):
             print('Commodities table not found. Creating a new one...')
             commodities_creation_command = "CREATE TABLE commodities_locations(name VARCHAR(127) NOT NULL" \
                                            " PRIMARY KEY, channel_id BIGINT, type BOOL, "
-            for commodity in commodities:
+            for commodity in COMMODITIES:
                 commodities_creation_command += f'{commodity} DOUBLE PRECISION, '
             commodities_creation_command = commodities_creation_command.rstrip()[:-1] + ')'  # Get rid of final comma
             # and add closing bracket
@@ -520,7 +521,7 @@ class Database(commands.Cog):
             print('Ships Commodities table not found. Creating a new one...')
             commodities_creation_command = "CREATE TABLE ships_commodities(id BIGINT NOT NULL PRIMARY KEY," \
                                            " name VARCHAR(127), owner BIGINT, capacity INT, "
-            for commodity in commodities:
+            for commodity in COMMODITIES:
                 commodities_creation_command += f'{commodity} INT DEFAULT 0, '
             commodities_creation_command = commodities_creation_command.rstrip()[:-1] + ')'  # Get rid of final comma
             # and add closing bracket
@@ -563,13 +564,15 @@ class Database(commands.Cog):
         Does a direct database query. Not quite as dangerous as eval, but still restricted to Auth 8.
         """
         await connect()
+        add_text = ''
         try:
             result = await db.fetch(query)
             await disconnect()
             await ctx.send(result)
+            add_text = f'Result was:\n{result}'
         except conn.InterfaceError:
             await ctx.send("Okay. There's no result from that query.")
-        print(f'{ctx.author} executed a direct database query at {now()}:\n{query}\nResult was:\n{result}')
+        print(f'{ctx.author} executed a direct database query at {now()}:\n{query}\n{add_text}')
 
     @commands.command(description='add new user to database')
     @commands.check(auth(2))
@@ -612,7 +615,7 @@ class Database(commands.Cog):
     @commands.command(aliases=['addlocation'], description=f'Add a new location to the database. \nChannel is a '
                                                            f'channel mention for this shop, and is_buy is TRUE for'
                                                            f' purchase costs, FALSE for sell costs. Each value must'
-                                                           f' be a kwarg from: {commodities}')
+                                                           f' be a kwarg from: {COMMODITIES}')
     @commands.check(auth(3))
     async def newlocation(self, ctx, name: str, channel: discord.TextChannel, is_buy: bool, *, in_values: str):
         values = in_values.split(' ')

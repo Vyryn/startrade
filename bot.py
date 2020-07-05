@@ -7,10 +7,30 @@ import random
 import sys
 import asyncio
 from discord.ext import commands
-from itertools import cycle
-from functions import statuses, auth, get_prefix, deltime, owner_id, get_ignored_channels, set_ignored_channels
+from functions import get_prefix, global_prefix, get_ignored_channels, set_ignored_channels, confirmed_ids, auth
 from privatevars import TOKEN
 
+# The id of the bot creator
+owner_id = 125449182663278592
+# Default number of seconds to wait before deleting many bot responses and player commands
+deltime = 10
+# The bot randomly selects one of these statuses at startup
+statuses = ["Being an adult is just walking around wondering what you're forgetting.",
+            'A clean house is the sign of a broken computer.',
+            "I have as much authority as the Pope, i just don't have as many people who believe it.",
+            'A conclusion is the part where you got tired of thinking.',
+            'To the mathematicians who thought of the idea of zero, thanks for nothing!',
+            'My job is secure. No one else wants it.',
+            "If at first you don't succeed, we have a lot in common.",
+            'I think we should get rid of democracy. All in favor raise your hand.']
+# Which discord perms are consider basic/important
+basicperms = ['administrator', 'manage_guild', 'ban_members', 'manage_roles', 'manage_messages']
+# Which discord perms are consider significant/notable
+sigperms = ['deafen_members', 'kick_members', 'manage_channels', 'manage_emojis',
+            'manage_nicknames', 'manage_webhooks', 'mention_everyone', 'move_members', 'mute_members',
+            'priority_speaker', 'view_audit_log']
+# The directory for cogs
+cogs_dir = 'cogs'
 bot = commands.Bot(command_prefix=get_prefix, case_insensitive=True)
 
 
@@ -19,7 +39,13 @@ bot = commands.Bot(command_prefix=get_prefix, case_insensitive=True)
 async def on_ready():
     # Pick a random current status on startup
     await bot.change_presence(status=discord.Status.online, activity=discord.Game(random.choice(statuses)))
-    print('Bot is ready.')
+    bot.server = bot.get_guild(718893913976340561)
+    bot.log_channel = bot.get_channel(725817803273404618)
+    bot.global_prefix = global_prefix
+    bot.deltime = deltime
+    bot.confirmed_ids = confirmed_ids
+    await asyncio.sleep(2)
+    print(f'{bot.server.name} bot is fully ready.')
 
 
 # ================================= Error Handler =================================
@@ -83,9 +109,11 @@ async def on_command_error(ctx, error):
         traceback_text += '\n```'
         try:
             await ctx.send(
-                f"Hmm, something went wrong with {ctx.command}. I have let the developer know, and they will take a look.")
+                f"Hmm, something went wrong with {ctx.command}."
+                f" I have let the developer know, and they will take a look.")
             await bot.get_user(owner_id).send(
-                f'Hey Vyryn, there was an error in the command {ctx.command}: {error}.\n It was used by {ctx.author} in {ctx.guild}, {ctx.channel}.')
+                f'Hey Vyryn, there was an error in the command {ctx.command}: {error}.\n '
+                f'It was used by {ctx.author} in {ctx.guild}, {ctx.channel}.')
             await bot.get_user(owner_id).send(traceback_text)
         except:
             print(f"I was unable to send the error log for debugging.")
@@ -98,7 +126,7 @@ async def on_command_error(ctx, error):
 # Checks if a user has the requested authorization level or not, is a coroutine for async operation
 @bot.check_once
 def channel_check(ctx):
-    async def channel_perm_check(*args):
+    async def channel_perm_check():
         no_command_channels = get_ignored_channels()
         for channel in no_command_channels:
             if int(channel) == ctx.channel.id:
@@ -135,14 +163,14 @@ async def ignorech(ctx):
 
 @bot.command(name='restart', description='Restart the bot')
 @commands.check(auth(5))
-async def restart(ctx):
+async def restart():
     """The command to restart the bot
         Requires: Auth level 5
         """
     await bot.change_presence(status=discord.Status.idle, activity=discord.Game("Restarting..."))
-    for filename in os.listdir('./cogs'):
-        if filename.endswith('.py'):
-            bot.unload_extension(f'cogs.{filename[:-3]}')  # unload each extension gracefully before restart
+    for file_name in os.listdir(f'./{cogs_dir}'):
+        if file_name.endswith('.py'):
+            bot.unload_extension(f'cogs.{file_name[:-3]}')  # unload each extension gracefully before restart
     os.execv(sys.executable, ['python'] + sys.argv)
 
 

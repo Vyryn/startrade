@@ -1,6 +1,6 @@
 import json
 from discord.ext import commands
-from functions import global_prefix, now, auth
+from functions import auth, now
 
 
 class Management(commands.Cog):
@@ -20,7 +20,7 @@ class Management(commands.Cog):
         with open('prefixes.json', 'r') as f:
             prefixes = json.load(f)
 
-        prefixes[str(guild.id)] = global_prefix
+        prefixes[str(guild.id)] = self.bot.global_prefix
 
         with open('prefixes.json', 'w') as f:
             json.dump(prefixes, f, indent=4)
@@ -54,7 +54,9 @@ class Management(commands.Cog):
     @prefix.command()
     @commands.guild_only()
     @commands.has_permissions(manage_guild=True)
-    async def set(self, ctx, prefix=global_prefix):
+    async def set(self, ctx, prefix=None):
+        if prefix is None:
+            prefix = self.bot.global_prefix
         with open('prefixes.json', 'r') as f:
             prefixes = json.load(f)
         print(f'Changing {ctx.guild} prefix to {prefix}')

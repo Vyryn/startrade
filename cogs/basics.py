@@ -1,16 +1,22 @@
 import asyncio
 import json
-import random
 from datetime import datetime
-
 import discord
-
-from discord import NotFound, Embed
+from discord import NotFound
 from discord.ext import commands
-
 from cogs.database import new_user, update_activity
-from functions import deltime, poll_ids, now, log, number_reactions, reactions_to_nums, \
-    bot_id, set_polls, owner_id, verificaiton_message_id, startrade_id
+from functions import poll_ids, now, log, set_polls
+
+log_channel_id = 725817803273404618
+verified_role_id = 718949160170291203
+# The startrade verification message id
+verificaiton_message_id = 718980234380181534
+content_max = 1970  # The maximum number of characters that can safely be fit into a logged message
+time_options = {'s': 1, 'm': 60, 'h': 60 * 60, 'd': 60 * 60 * 24, 'w': 60 * 60 * 24 * 7,
+                'y': 60 * 60 * 24 * 365}
+number_reactions = ["1\u20e3", "2\u20e3", "3\u20e3", "4\u20e3", "5\u20e3", "6\u20e3", "7\u20e3",
+                    "8\u20e3", "9\u20e3"]
+reactions_to_nums = {"1⃣": 1, "2⃣": 2, "3⃣": 3, "4⃣": 4, "5⃣": 5, "6⃣": 6, "7⃣": 7, "8⃣": 8, "9⃣": 9}
 
 
 async def remind_routine(increments, user, author, message):
@@ -26,7 +32,7 @@ async def remind_routine(increments, user, author, message):
 async def send_to_log_channel(ctx, content: str, event_name: str = ''):
     author = ctx.author
     m_id = ctx.message.id
-    log_channel = ctx.message.guild.get_channel(725817803273404618)
+    log_channel = ctx.message.guild.get_channel(log_channel_id)
 
     embed = discord.Embed(title='',
                           description=f'**{event_name}**\n' + content,
@@ -40,11 +46,17 @@ class Basics(commands.Cog):
     def __init__(self, bot):
         set_polls()
         self.bot = bot
+        self.verified_role = None
+        self.log_channel = None
+        self.deltime = None
 
     # Events
     # When bot is ready, print to console
     @commands.Cog.listener()
     async def on_ready(self):
+        self.verified_role = self.bot.server.get_role(verified_role_id)
+        self.log_channel = self.bot.server.get_channel(log_channel_id)
+        self.deltime = self.bot.deltime
         print(f'Cog {self.qualified_name} is ready.')
 
     # =============================Message handler=========================
@@ -106,21 +118,19 @@ class Basics(commands.Cog):
         # =============================Verification Check======================
 
         if payload.message_id == verificaiton_message_id:
-            guild = self.bot.get_guild(startrade_id)
-            target = guild.get_member(payload.user_id)
-            verified_role = guild.get_role(718949160170291203)
-            if verified_role not in target.roles:
+            target = self.bot.server.get_member(payload.user_id)
+            if self.verified_role not in target.roles:
                 print(await (new_user(target)))
-                await target.add_roles(verified_role)
+                await target.add_roles(self.verified_role)
                 print(f'Verified role added to {target}')
         # Ignore bots
-        if payload.user_id == bot_id:
+        if payload.user_id == self.bot.user.id:
             return
         # ===============================Polls==================================
         if payload.message_id in poll_ids.keys():
             for channel in self.bot.get_all_channels():
                 if channel.id is poll_ids[payload.message_id]["id"]:
-                    user = await self.bot.fetch_user(payload.user_id)
+                    user = self.bot.get_user(payload.user_id)
                     try:
                         user_responses = poll_ids[payload.message_id][user.id]
                     except KeyError:
@@ -143,7 +153,7 @@ class Basics(commands.Cog):
                             for i in range(0, 9):
                                 if len(poll_ids[payload.message_id].get(i, [])) > 0:
                                     new_embed.add_field(name=f"Option {i + 1}:",
-                                                        value=len(poll_ids[payload.message_id][i]))
+                                                        value=str(len(poll_ids[payload.message_id][i])))
                             await msg.edit(embed=new_embed)
                             return
                         except NotFound:
@@ -155,12 +165,12 @@ class Basics(commands.Cog):
                                                                             f'your responses, remove '
                                                                             f'your previous reaction(s) and try '
                                                                             f'again.',
-                                                                            delete_after=deltime)
+                                                                            delete_after=self.deltime)
                         await (await self.bot.get_channel(payload.channel_id).fetch_message(
                             payload.message_id)).remove_reaction(payload.emoji,
                                                                  self.bot.get_guild(payload.guild_id).get_member(
                                                                      payload.user_id))
-        # print(f'Reaction {payload.emoji.name} added to message {payload.message_id} by user {payload.user_id}.') #temporarily commented for discord.py issue
+        print(f'Reaction {payload.emoji.name} added to message {payload.message_id} by user {payload.user_id}.')
 
     # Reaction removal handler
     @commands.Cog.listener()
@@ -170,18 +180,16 @@ class Basics(commands.Cog):
         # =============================Verification Check======================
 
         if payload.message_id == verificaiton_message_id:
-            guild = self.bot.get_guild(startrade_id)
-            target = guild.get_member(payload.user_id)
-            verified_role = guild.get_role(718949160170291203)
-            if verified_role in target.roles:
-                await target.remove_roles(verified_role)
+            target = self.bot.server.get_member(payload.user_id)
+            if self.verified_role in target.roles:
+                await target.remove_roles(self.verified_role)
                 print(f'Verified role removed from {target}')
         # =============================Polls===================================
 
         if payload.message_id in poll_ids.keys():
             for channel in self.bot.get_all_channels():
                 if channel.id is poll_ids[payload.message_id]["id"]:
-                    user = await self.bot.fetch_user(payload.user_id)
+                    user = self.bot.get_user(payload.user_id)
                     poll_ids[payload.message_id][reactions_to_nums[payload.emoji.name] - 1].remove(user.id)
                     poll_ids[payload.message_id][user.id] -= 1
                     print(poll_ids)
@@ -191,22 +199,22 @@ class Basics(commands.Cog):
                         new_embed.set_author(icon_url=user.avatar_url, name=poll_ids[payload.message_id]["title"])
                         for i in range(0, 9):
                             if len(poll_ids[payload.message_id].get(i, [])) > 0:
-                                new_embed.add_field(name=f"Option {i + 1}:", value=len(poll_ids[payload.message_id][i]))
+                                new_embed.add_field(name=f"Option {i + 1}:",
+                                                    value=str(len(poll_ids[payload.message_id][i])))
                         if len(new_embed.fields) == 0:
                             new_embed.add_field(name="Poll Results:", value="No votes yet.")
                         await msg.edit(embed=new_embed)
                         return
                     except NotFound:
                         continue
-        # print(f'Reaction {payload.emoji.name} removed from message {payload.message_id} by user {payload.user_id}.') #temporarily commented for discord.py issue
+        print(f'Reaction {payload.emoji.name} removed from message {payload.message_id} by user {payload.user_id}.')
 
     # Deleted message handler
     @commands.Cog.listener()
     async def on_message_delete(self, message):
-        if message.guild.id == 718893913976340561:  # If in startrade
-            log_channel = message.guild.get_channel(725817803273404618)
-            if len(message.content) > 1973:
-                content = message.content[:1970] + '...'
+        if message.guild.id == self.bot.server.id:
+            if len(message.content) > content_max + 3:
+                content = message.content[:content_max] + '...'
             else:
                 content = message.content
             embed = discord.Embed(title='',
@@ -215,22 +223,21 @@ class Basics(commands.Cog):
                                   timestamp=datetime.now())
             embed.set_author(icon_url=message.author.avatar_url, name=message.author)
             embed.set_footer(text=f'Author: {message.author.id} | Message ID: {message.id}')
-            await log_channel.send(embed=embed)
+            await self.log_channel.send(embed=embed)
 
     # Edited message handler
     @commands.Cog.listener()
     async def on_message_edit(self, before, after):
-        if before.guild.id == 718893913976340561 and not after.author.bot:  # If in startrade and not a bot message
-            log_channel = before.guild.get_channel(725817803273404618)
-            if len(before.content) > 1963:
-                before_content = before.content[:1960] + '...'
+        if before.guild.id == self.bot.server.id and not after.author.bot:  # If in Startrade and not a bot message
+            if len(before.content) > content_max - 7:
+                before_content = before.content[:content_max - 10] + '...'
             else:
                 before_content = before.content
-            if len(after.content) > 1973:
-                after_content = after.content[:1970] + '...'
+            if len(after.content) > content_max + 3:
+                after_content = after.content[:content_max] + '...'
             else:
                 after_content = after.content
-            if len(before_content) + len(after_content) > 1973:
+            if len(before_content) + len(after_content) > content_max + 3:
                 embed_1 = discord.Embed(title='',
                                         description=f'**Message by {before.author.mention} edited in '
                                                     f'{before.channel.mention}**\n**Before:**\n' + before_content,
@@ -241,8 +248,8 @@ class Basics(commands.Cog):
                 embed_1.set_footer(text=f'Author: {before.author.id} | Message ID: {after.id}')
                 embed_2.set_author(icon_url=before.author.avatar_url, name=before.author)
                 embed_2.set_footer(text=f'Author: {before.author.id} | Message ID: {after.id}')
-                await log_channel.send(embed=embed_1)
-                await log_channel.send(embed=embed_2)
+                await self.log_channel.send(embed=embed_1)
+                await self.log_channel.send(embed=embed_2)
             else:
                 embed = discord.Embed(title='',
                                       description=f'**Message by {before.author.mention} edited in '
@@ -251,18 +258,17 @@ class Basics(commands.Cog):
                                       timestamp=datetime.now())
                 embed.set_author(icon_url=before.author.avatar_url, name=before.author)
                 embed.set_footer(text=f'Author: {before.author.id} | Message ID: {after.id}')
-                await log_channel.send(embed=embed)
+                await self.log_channel.send(embed=embed)
         pass
 
     # Bulk delete handler
     @commands.Cog.listener()
     async def on_bulk_message_delete(self, messages):
-        if messages[0].guild.id != 718893913976340561:
+        if messages[0].guild.id != self.bot.server.id:
             return
-        log_channel = messages[0].guild.get_channel(725817803273404618)
         for message in messages:
-            if len(message.content) > 1973:
-                content = message.content[:1970] + '...'
+            if len(message.content) > content_max + 3:
+                content = message.content[:content_max] + '...'
             else:
                 content = message.content
             embed = discord.Embed(title='',
@@ -271,33 +277,36 @@ class Basics(commands.Cog):
                                   timestamp=datetime.now())
             embed.set_author(icon_url=message.author.avatar_url, name=message.author)
             embed.set_footer(text=f'Author: {message.author.id} | Message ID: {message.id}')
-            await log_channel.send(embed=embed)
+            await self.log_channel.send(embed=embed)
 
     # Commands
     @commands.command(aliases=['plonk'], description='Pong!')
     async def ping(self, ctx):
-        """Returns the ping to the bot"""
+        """
+        Returns the ping to the bot.
+        """
         ping = round(self.bot.latency * 1000)
-        await ctx.message.delete(delay=deltime)  # delete the command
-        await ctx.send(f'Ping is {ping}ms.', delete_after=deltime)
+        await ctx.message.delete(delay=self.deltime)  # delete the command
+        await ctx.send(f'Ping is {ping}ms.', delete_after=self.deltime)
         print(f'Ping command used by {ctx.author} at {now()} with ping {ping}')
 
     # Send you a reminder DM with a custom message in a custom amount of time
     @commands.command(name='remind', aliases=['rem', 're', 'r', 'remindme', 'tellme', 'timer'], pass_context=True,
                       description='Send reminders!')
     async def remind(self, ctx, *, reminder=None):
-        """Reminds you what you tell it to.
-                Example: remind Tell @neotheone he's a joker in 10m
-                Your reminder needs to end with in and then the amount of time you want to be reminded in.
-                New! Now you can also remind you're a joke in 10m @neotheone     to send him the reminder directly.
-                Please note that abuse of reminding other people **will** result in your perms being edited so that you
-                can't use the remind command at all.
-                10s: 10 seconds from now
-                10m: 10 minutes from now
-                1h:   1 hour from now
-                1d: tomorrow at this time
-                1w: next week at this time
-                1y: next year (or probably never, as the bot currently forgets reminders if it restarts)
+        """
+        Reminds you what you tell it to.
+        Example: remind Tell @neotheone he's a joker in 10m
+        Your reminder needs to end with in and then the amount of time you want to be reminded in.
+        New! Now you can also remind you're a joke in 10m @neotheone     to send him the reminder directly.
+        Please note that abuse of reminding other people **will** result in your perms being edited so that you
+        can't use the remind command at all.
+        10s: 10 seconds from now
+        10m: 10 minutes from now
+        1h:   1 hour from now
+        1d: tomorrow at this time
+        1w: next week at this time
+        1y: next year (or probably never, as the bot currently forgets reminders if it restarts)
         """
         try:
             print(ctx.message.raw_mentions[0])
@@ -313,32 +322,24 @@ class Basics(commands.Cog):
             # preceded by in
             increments = int(t[1][:-1])  # number of increment to wait
             increment = t[1][-1]  # s, m, h, d, w, y
-            time_options = {'s': 1, 'm': 60, 'h': 60 * 60, 'd': 60 * 60 * 24, 'w': 60 * 60 * 24 * 7,
-                            'y': 60 * 60 * 24 * 365}
             increments *= time_options.get(increment, 1)
             print(f'{ctx.author} created a reminder to {user} for {increments} seconds from now; {t}')
             self.bot.loop.create_task(remind_routine(increments, user, ctx.author, reminder))
-            await ctx.send(f"Got it. I'll send the reminder in {increments} seconds.", delete_after=deltime)
+            await ctx.send(f"Got it. I'll send the reminder in {increments} seconds.", delete_after=self.deltime)
         else:
             await ctx.send('Please enter a valid time interval. You can use s, m, h, d, w, y as your interval time '
-                           'prefix.', delete_after=deltime)
-        await ctx.message.delete(delay=deltime)  # delete the command
+                           'prefix.', delete_after=self.deltime)
+        await ctx.message.delete(delay=self.deltime)  # delete the command
         print(f'Remind command used by {ctx.author} at {now()} with reminder {reminder} to user {user} for '
               f'time {increments}.')
 
-    #    @remind.error
-    #    async def remind_error(self, ctx, error):
-    #        await ctx.send(f'{ctx.author}, the correct usage is **`/remind <reminder> in <0s>/<0m>/<0h>/<0d>/<0w>/<0y>`** '
-    #                       f'\n That "in" is important.',
-    #                       delete_after=deltime)
-    #        print(f"Silly {ctx.author} couldn\'t figure out how to use Remind. (lol)")
-
     @commands.command(name='poll', pass_context=True, description='Create a poll.')
     async def create_poll(self, ctx, num_options=2, max_options=1, *, text):
-        """Creates a poll.
-            num_options is how many options your poll has
-            max_options is the maximum number someone can select
-            text is what your poll is asking
+        """
+        Creates a poll.
+        num_options is how many options your poll has
+        max_options is the maximum number someone can select
+        text is what your poll is asking
         """
         if num_options < 1:
             num_options = 1
@@ -367,7 +368,8 @@ class Basics(commands.Cog):
 
     @commands.command(description='Check the current time')
     async def time(self, ctx):
-        """Check the current time
+        """
+        Check the current time
         """
         await ctx.send(f'It is currently {now()}.')
         print(f'Time command used by {ctx.author} at {now()}.')

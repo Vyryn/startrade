@@ -2,58 +2,25 @@ import datetime
 import json
 from attr import dataclass
 
-# The default global bot prefix
-global_prefix = ','
-# The directory for cogs
-cogs_dir = 'cogs'
-# The id of the bot creator
-owner_id = 125449182663278592
-# The id of the bot
-bot_id = 718971746862235679
-# Default number of seconds to wait before deleting many bot responses and player commands
-deltime = 10
 # The bot commanders (imported from a file)
 bot_commanders = {}  # {125449182663278592: 10, 631938498722529310: 7}
 # The ids of ongoing polls (imported from a file)
 poll_ids = {}
 # Whether this person has used a command that requires a confirmation
 confirmed_ids = {}
-
+# Authorization level of someone not in bot_commanders. Think carefully before changing this.
+DEFAULT_AUTH = 0
 # No command channels: A list of channels the bot will not respond to messages in.
 no_command_channels = []
+# The default global bot prefix
+global_prefix = ','
 
-# The number of seconds to wait to time out the registration process from inactivity
-timeout = 1800
-# The startrade verification message id
-verificaiton_message_id = 718980234380181534
-# The startrade guild id
-startrade_id = 718893913976340561
-
-# The bot randomly selects one of these statuses at startup
-statuses = ["Being an adult is just walking around wondering what you're forgetting.",
-            'A clean house is the sign of a broken computer.',
-            "I have as much authority as the Pope, i just don't have as many people who believe it.",
-            'A conclusion is the part where you got tired of thinking.',
-            'To the mathematicians who thought of the idea of zero, thanks for nothing!',
-            'My job is secure. No one else wants it.',
-            "If at first you don't succeed, we have a lot in common.",
-            'I think we should get rid of democracy. All in favor raise your hand.']
 # Which discord perms are consider basic/important
 basicperms = ['administrator', 'manage_guild', 'ban_members', 'manage_roles', 'manage_messages']
 # Which discord perms are consider significant/notable
 sigperms = ['deafen_members', 'kick_members', 'manage_channels', 'manage_emojis',
             'manage_nicknames', 'manage_webhooks', 'mention_everyone', 'move_members', 'mute_members',
             'priority_speaker', 'view_audit_log']
-# Authorization level of someone not in bot_commanders. Think carefully before changing this.
-default_auth = 0
-# Bot commanders levels
-perms_info = {0: '(No other dev perms)', 1: 'Can use echo and auth check', 2: 'Can make bot send DMs',
-              3: 'Can reload cogs', 4: 'Can load and unload cogs', 5: 'Can update bot status',
-              6: 'Can see the list of all bot commanders', 7: 'Can set other people\'s auth levels',
-              8: 'Trusted for dangerous dev commands', 9: 'Can use eval', 10: 'Created me'}
-number_reactions = ["1\u20e3", "2\u20e3", "3\u20e3", "4\u20e3", "5\u20e3", "6\u20e3", "7\u20e3",
-                    "8\u20e3", "9\u20e3"]
-reactions_to_nums = {"1⃣": 1, "2⃣": 2, "3⃣": 3, "4⃣": 4, "5⃣": 5, "6⃣": 6, "7⃣": 7, "8⃣": 8, "9⃣": 9}
 
 
 # activity = floor( (5 / 6 * rank ) * (2 * rank ** 2 + 27 * rank + 91 ) )
@@ -155,7 +122,7 @@ def save_aipkeys():
 def auth(level):
     async def user_auth_check(ctx, *args):
         for uid in bot_commanders.keys():
-            if int(uid) == ctx.author.id and bot_commanders.get(uid, default_auth) >= level:
+            if int(uid) == ctx.author.id and bot_commanders.get(uid, DEFAULT_AUTH) >= level:
                 return True
         print('User not found to be auth\'d')
         return False
@@ -197,11 +164,6 @@ def now():
 # Returns current datestamp as YYYY-MM-DD
 def today():
     return datetime.date.today().strftime("%Y-%m-%d")
-
-
-# For saying the footnot was requested by someone
-def embed_footer(author):
-    return f'Requested by {str(author)} at {now()}.'
 
 
 # Log a message.
