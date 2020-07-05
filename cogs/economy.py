@@ -1,5 +1,7 @@
 import time
 import random
+from datetime import datetime
+
 import discord
 import typing
 from discord.ext import commands, tasks
@@ -144,19 +146,23 @@ class Economy(commands.Cog):
         await add_possession(ctx, user, item, price, amount)
         await ctx.send(f'I have given {user} {amount} {item}.')
 
-    @commands.command(name='top', description='List the top people in the specified category.')
+    @commands.command(name='top', aliases=['topbank'], description='List the top people in the specified category.')
     async def topstat(self, ctx, look_type: typing.Optional[str] = 'balance', page: int = 1):
         # This method queries the database and returns a list of ten tuples of (name, stat) which is one page of results
         try:
-            lines = await get_top(look_type, page)
+            lines, num_pages, rank = await get_top(look_type, page, ctx.author)
         except NameError:
             return await ctx.send('Invalid category. Try balance, invested or activity.')
-        message = f'Top {look_type} page {page}:\n'
+        message = f'**Top {look_type.title()} Page {page}/{num_pages}**\n\n'
         count = 1
         for line in lines:
             message += f'{count}) {line[0]} - {line[1]}\n'
             count += 1
-        return await ctx.send(message)
+        embed = discord.Embed(title='',
+                              description=message,
+                              timestamp=datetime.now())
+        embed.set_footer(text=f'Your rank: {rank}')
+        await ctx.send(embed=embed)
 
     @commands.command(description='Give someone money from nowhere. Staff only.')
     @commands.check(auth(2))

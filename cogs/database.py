@@ -193,7 +193,7 @@ async def set_last_paycheck_now(user: discord.User):
     return time_now
 
 
-async def get_top(cat: str, page: int):
+async def get_top(cat: str, page: int, user: discord.Member):
     await connect()
     offset = 10 * (1 - page)
     if cat not in ['balance', 'invested', 'activity']:
@@ -205,16 +205,18 @@ async def get_top(cat: str, page: int):
             ind = 5
         elif cat == 'activity':
             ind = 2
-    result = await db.fetchrow(f"SELECT COUNT(id) FROM users")
-    num_users = result[0]
+    num_users = await db.fetchval(f"SELECT COUNT(id) FROM users")
     if num_users < page * 10:
         offset = 0
+    num_pages = int(num_users / 10 - 1E-10 + 1)
     result = await db.fetch(f"""SELECT * FROM users ORDER BY {cat} DESC LIMIT 10 OFFSET $1""", offset)
     tops = []
     for line in result:
         tops.append((line[1], line[ind]))
+    subjects_bal = await db.fetchval(f"SELECT {cat} FROM users WHERE id = $1", user.id)
+    rank = await db.fetchval(f"SELECT COUNT({cat}) FROM users WHERE {cat} > $1", subjects_bal) + 1
     await disconnect()
-    return tops
+    return tops, num_pages, rank
 
 
 async def add_item(name: str, category: str, picture: str, min_cost: float, max_cost: float, description: str,
