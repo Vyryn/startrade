@@ -1,5 +1,6 @@
 import asyncio
 import json
+import time
 from datetime import datetime
 import discord
 from discord import NotFound
@@ -49,6 +50,8 @@ class Basics(commands.Cog):
         self.verified_role = None
         self.log_channel = None
         self.deltime = None
+        self.recent_actives = dict()
+        self.ACTIVITY_COOLDOWN = 7  # Minimum number of seconds after last activity to have a message count as activity
 
     # Events
     # When bot is ready, print to console
@@ -73,7 +76,9 @@ class Basics(commands.Cog):
         # valid_words = [word for word in words if len(word) > 2]
         new_words = len(valid_words)
         added_activity_score = max(new_words - 2, 0)
-        if added_activity_score > 0:
+        recently_spoke = time.time() - self.recent_actives.get(message.author.id, 0) > self.ACTIVITY_COOLDOWN
+        if added_activity_score > 0 and not recently_spoke:
+            self.recent_actives[message.author.id] = time.time()
             await update_activity(message.channel, message.author, added_activity_score)
         # ===========================LOG=============================
         ln = '\n'

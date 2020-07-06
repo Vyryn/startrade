@@ -8,6 +8,7 @@ from cogs.database import add_invest, check_bal, transfer_funds, add_funds, dist
     set_last_paycheck_now, get_top, check_bal_str, transact_possession, add_possession, view_items, sell_possession
 from functions import auth, now
 
+PAYOUT_FREQUENCY = 60 * 60  # How frequently to send out investments, in seconds
 
 class Economy(commands.Cog):
 
@@ -284,7 +285,7 @@ class Economy(commands.Cog):
                 return
             count += 1
 
-    @tasks.loop(seconds=60 * 60)
+    @tasks.loop(seconds=PAYOUT_FREQUENCY)
     async def send_payouts(self):
         await distribute_payouts()
         print('Investment payouts sent.')

@@ -140,9 +140,11 @@ def channel_check(ctx):
 @bot.command(name='load', description='Load a cog')
 @commands.check(auth(4))
 async def load(ctx, extension):
-    """The command to load a cog
-            Requires: Auth level 4
-            Extension: the cog to load"""
+    """
+    The command to load a cog
+    Requires: Auth level 4
+    Extension: the cog to load
+    """
     bot.load_extension(f'cogs.{extension}')
     print(f'Loaded {extension}.')
     await ctx.send(f'Loaded {extension}.', delete_after=deltime)
@@ -152,6 +154,9 @@ async def load(ctx, extension):
 @bot.command(name='ignorech', description='Make the bot ignore commands in the channel this is used in.')
 @commands.check(auth(4))
 async def ignorech(ctx):
+    """
+    Makes the bot ignore commands in the channel this is used in.
+    """
     ch_id = str(ctx.channel.id)
     no_command_channels = get_ignored_channels()
     no_command_channels.append(ch_id)
@@ -164,13 +169,17 @@ async def ignorech(ctx):
 @bot.command(name='restart', description='Restart the bot')
 @commands.check(auth(5))
 async def restart():
-    """The command to restart the bot
-        Requires: Auth level 5
-        """
+    """
+    The command to restart the bot
+    Requires: Auth level 5
+    """
     await bot.change_presence(status=discord.Status.idle, activity=discord.Game("Restarting..."))
     for file_name in os.listdir(f'./{cogs_dir}'):
         if file_name.endswith('.py'):
+            # try:
             bot.unload_extension(f'cogs.{file_name[:-3]}')  # unload each extension gracefully before restart
+            # except:
+            #     print(f'Error unloading extension {file_name[:-3].title()}.')
     os.execv(sys.executable, ['python'] + sys.argv)
 
 
