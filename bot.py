@@ -39,7 +39,7 @@ bot = commands.Bot(command_prefix=get_prefix, case_insensitive=True)
 async def on_ready():
     # Pick a random current status on startup
     await bot.change_presence(status=discord.Status.online, activity=discord.Game(random.choice(statuses)))
-    bot.server = bot.get_guild(718893913976340561)
+    bot.server = bot.get_guild(407481043856261120)
     bot.log_channel = bot.get_channel(725817803273404618)
     bot.global_prefix = global_prefix
     bot.deltime = deltime
@@ -123,7 +123,7 @@ async def on_command_error(ctx, error):
 
 
 # Global checks
-# Checks if a user has the requested authorization level or not, is a coroutine for async operation
+# Checks that a command is not being run in an ignored channel
 @bot.check_once
 def channel_check(ctx):
     async def channel_perm_check():
@@ -183,10 +183,14 @@ async def restart():
     os.execv(sys.executable, ['python'] + sys.argv)
 
 
+bot.load_extension(f'cogs.dev')
+bot.load_extension(f'cogs.moderation')
+bot.load_extension(f'cogs.mechanics')
+bot.load_extension(f'cogs.management')
 # load all cogs in cogs folder at launch
-for filename in os.listdir('./cogs'):
-    if filename.endswith('.py'):
-        bot.load_extension(f'cogs.{filename[:-3]}')  # load up each extension
+#for filename in os.listdir('./cogs'):
+#    if filename.endswith('.py'):
+#        bot.load_extension(f'cogs.{filename[:-3]}')  # load up each extension
 
 # run bot
 bot.run(TOKEN)

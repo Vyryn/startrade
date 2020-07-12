@@ -3,7 +3,7 @@ import json
 from attr import dataclass
 
 # The bot commanders (imported from a file)
-bot_commanders = {}  # {125449182663278592: 10, 631938498722529310: 7}
+bot_commanders = {}  # {125449182663278592: 10}
 # The ids of ongoing polls (imported from a file)
 poll_ids = {}
 # Whether this person has used a command that requires a confirmation

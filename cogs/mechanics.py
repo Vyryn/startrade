@@ -1,8 +1,27 @@
-import random
+from random import randrange
 from collections import Counter
 import discord
 from discord.ext import commands
 from cogs.database import update_location
+
+
+def hit_determine(distance: float, effective_range: float, ship_length: float):
+    hit_chance = 1
+    luck = float(randrange(1, 100))
+    if distance > effective_range:
+        hit_chance = - (0.1111 * (distance / effective_range - 1) ** 2) + 1
+    if hit_chance < 0:
+        hit_chance = 0
+    intermediate_step = (101.0 * ship_length / distance) ** 2
+    result = hit_chance * (intermediate_step + luck / 10)
+    hit_chance = int(hit_chance * 100) / 100
+    result = int(result * 1000) / 1000
+    roll = randrange(1, 100)
+    if roll < result:
+        hit = True
+    else:
+        hit = False
+    return hit, luck, hit_chance, result, roll
 
 
 class Mechanics(commands.Cog):
@@ -96,6 +115,26 @@ class Mechanics(commands.Cog):
         except ValueError:
             await ctx.send(f"{ctx.author}, you haven't done enough at your current location to be able to move to"
                            f" travel to a new location yet. Try RPing a bit first.", delete_after=30)
+
+    @commands.command()
+    async def calchit(self, ctx, distance: float, effective_range: float, ship_length: float):
+        hit, luck, hit_chance, result, roll = hit_determine(distance, effective_range, ship_length)
+        await ctx.send(
+            f'Luck roll: {luck}. Hit chance: {hit_chance} Result: {result} For hit, rolled a {roll}. Hit? {hit}')
+
+    @commands.command()
+    async def calchits(self, ctx, distance: float, effective_range: float, ship_length: float, num_guns: int,
+                       weap_type: str = 'TC'):
+        if weap_type.casefold() == 'lc':
+            num_guns *= 30
+        elif weap_type.casefold() == 'pdc':
+            num_guns *= 100
+        hits = 0
+        for i in range(0, num_guns):
+            hit, _, _, _, _ = hit_determine(distance, effective_range, ship_length)
+            if hit:
+                hits += 1
+        await ctx.send(f'{hits} out of {num_guns} weapons hit their target.')
 
 
 def setup(bot):
