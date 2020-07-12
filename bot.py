@@ -183,6 +183,7 @@ async def restart():
     os.execv(sys.executable, ['python'] + sys.argv)
 
 
+bot.load_extension(f'cogs.basics')
 bot.load_extension(f'cogs.dev')
 bot.load_extension(f'cogs.moderation')
 bot.load_extension(f'cogs.mechanics')

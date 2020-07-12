@@ -5,13 +5,13 @@ from datetime import datetime
 import discord
 from discord import NotFound
 from discord.ext import commands
-from cogs.database import new_user, update_activity
+# from cogs.database import new_user, update_activity
 from functions import poll_ids, now, log, set_polls
 
 log_channel_id = 725817803273404618
-verified_role_id = 718949160170291203
+# verified_role_id = 718949160170291203
 # The startrade verification message id
-verificaiton_message_id = 718980234380181534
+# verificaiton_message_id = 718980234380181534
 content_max = 1970  # The maximum number of characters that can safely be fit into a logged message
 time_options = {'s': 1, 'm': 60, 'h': 60 * 60, 'd': 60 * 60 * 24, 'w': 60 * 60 * 24 * 7,
                 'y': 60 * 60 * 24 * 365}
@@ -57,7 +57,7 @@ class Basics(commands.Cog):
     # When bot is ready, print to console
     @commands.Cog.listener()
     async def on_ready(self):
-        self.verified_role = self.bot.server.get_role(verified_role_id)
+        # self.verified_role = self.bot.server.get_role(verified_role_id)
         self.log_channel = self.bot.server.get_channel(log_channel_id)
         self.deltime = self.bot.deltime
         print(f'Cog {self.qualified_name} is ready.')
@@ -79,7 +79,7 @@ class Basics(commands.Cog):
         recently_spoke = time.time() - self.recent_actives.get(message.author.id, 0) > self.ACTIVITY_COOLDOWN
         if added_activity_score > 0 and not recently_spoke:
             self.recent_actives[message.author.id] = time.time()
-            await update_activity(message.channel, message.author, added_activity_score)
+            # await update_activity(message.channel, message.author, added_activity_score)
         # ===========================LOG=============================
         ln = '\n'
         n_ln = '\\n'
@@ -122,12 +122,12 @@ class Basics(commands.Cog):
               f' {payload.channel_id} by user {payload.user_id}.')
         # =============================Verification Check======================
 
-        if payload.message_id == verificaiton_message_id:
-            target = self.bot.server.get_member(payload.user_id)
-            if self.verified_role not in target.roles:
-                print(await (new_user(target)))
-                await target.add_roles(self.verified_role)
-                print(f'Verified role added to {target}')
+        # if payload.message_id == verificaiton_message_id:
+        #    target = self.bot.server.get_member(payload.user_id)
+        #     if self.verified_role not in target.roles:
+        #        print(await (new_user(target)))
+        #        await target.add_roles(self.verified_role)
+        #        print(f'Verified role added to {target}')
         # Ignore bots
         if payload.user_id == self.bot.user.id:
             return
@@ -184,11 +184,11 @@ class Basics(commands.Cog):
               f' {payload.channel_id} by user {payload.user_id}.')
         # =============================Verification Check======================
 
-        if payload.message_id == verificaiton_message_id:
-            target = self.bot.server.get_member(payload.user_id)
-            if self.verified_role in target.roles:
-                await target.remove_roles(self.verified_role)
-                print(f'Verified role removed from {target}')
+        # if payload.message_id == verificaiton_message_id:
+        #    target = self.bot.server.get_member(payload.user_id)
+        #    if self.verified_role in target.roles:
+        #        await target.remove_roles(self.verified_role)
+        #        print(f'Verified role removed from {target}')
         # =============================Polls===================================
 
         if payload.message_id in poll_ids.keys():
