@@ -25,7 +25,7 @@ class Moderation(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         self.server = self.bot.get_guild(718893913976340561)
-        self.literate = self.server.get_role(728796399692677160)  # Certified Literate role
+        # self.literate = self.server.get_role(728796399692677160)  # Certified Literate role
         self.deltime = self.bot.deltime
         self.confirmed_ids = self.bot.confirmed_ids
         print(f'Cog {self.qualified_name} is ready.')

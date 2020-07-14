@@ -8,7 +8,7 @@ from discord.ext import commands
 # from cogs.database import new_user, update_activity
 from functions import poll_ids, now, log, set_polls
 
-log_channel_id = 725817803273404618
+log_channel_id = 731726249868656720
 # verified_role_id = 718949160170291203
 # The startrade verification message id
 # verificaiton_message_id = 718980234380181534
@@ -58,7 +58,7 @@ class Basics(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         # self.verified_role = self.bot.server.get_role(verified_role_id)
-        self.log_channel = self.bot.server.get_channel(log_channel_id)
+        # self.log_channel = self.bot.server.get_channel(log_channel_id)
         self.deltime = self.bot.deltime
         print(f'Cog {self.qualified_name} is ready.')
 

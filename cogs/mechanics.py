@@ -1,15 +1,18 @@
 from random import randrange
+import random
 from collections import Counter
 import discord
 from discord.ext import commands
 from cogs.database import update_location
 
 
-def hit_determine(distance: float, effective_range: float, ship_length: float):
+def hit_determine(distance: float, effective_range: float, ship_length: float, bonus: float = 0):
     hit_chance = 1
-    luck = float(randrange(1, 100))
+    luck = float(randrange(1, 100)) + bonus
     if distance > effective_range:
         hit_chance = - (0.1111 * (distance / effective_range - 1) ** 2) + 1
+    elif distance < effective_range * 0.3:
+        hit_chance = -100 * ( (distance / effective_range) - 0.32) ** 4 + 1
     if hit_chance < 0:
         hit_chance = 0
     intermediate_step = (101.0 * ship_length / distance) ** 2
@@ -21,8 +24,8 @@ def hit_determine(distance: float, effective_range: float, ship_length: float):
         hit = True
     else:
         hit = False
+    # http://prntscr.com/tgo2e3
     return hit, luck, hit_chance, result, roll
-
 
 class Mechanics(commands.Cog):
 
@@ -118,20 +121,50 @@ class Mechanics(commands.Cog):
 
     @commands.command()
     async def calchit(self, ctx, distance: float, effective_range: float, ship_length: float):
+        """Determine how a weapon hit goes.
+        This allows you to simulate a weapon firing. Specify distance to the target, effective range of the weapon,
+        and size of the target and it will do the rest: ,calchit 10000 8000 500 will tell you how it goes when a
+        weapon with effective range 8000m fires from 10000m at a 500m long target.
+        """
         hit, luck, hit_chance, result, roll = hit_determine(distance, effective_range, ship_length)
         await ctx.send(
             f'Luck roll: {luck}. Hit chance: {hit_chance} Result: {result} For hit, rolled a {roll}. Hit? {hit}')
 
     @commands.command()
     async def calchits(self, ctx, distance: float, effective_range: float, ship_length: float, num_guns: int,
+                       attacker_upgrade = 'norm',
                        weap_type: str = 'TC'):
+        """This allows you to simulate many weapons firing - rather more useful for combat. Specify distance to
+        the target, effective range of the weapon, size of the target, and number of weapons, and it will tell you
+        how many hits are successful. ,calchits 10000 8000 500 20 will tell you how many hits are successful when 20
+        of the weapon from example 2 above are fired.
+        You can also add a bonus for the attacker's luck chance if they are veteran, ace, etc, as follows:
+        vet: +10
+        ace: +15
+        hon: +20
+        vetace: +25
+        vethon: +30
+        These are used as: ,calchits 10000 8000 500 20 ace
+        """
         if weap_type.casefold() == 'lc':
             num_guns *= 30
         elif weap_type.casefold() == 'pdc':
             num_guns *= 100
+        if attacker_upgrade.casefold() == 'vet':
+            bonus = 10
+        elif attacker_upgrade.casefold() == 'ace':
+            bonus = 15
+        elif attacker_upgrade.casefold() == 'hon':
+            bonus = 20
+        elif attacker_upgrade.casefold() == 'vetace':
+            bonus = 25
+        elif attacker_upgrade.casefold() == 'vethon':
+            bonus = 30
+        else:
+            bonus = 0
         hits = 0
         for i in range(0, num_guns):
-            hit, _, _, _, _ = hit_determine(distance, effective_range, ship_length)
+            hit, _, _, _, _ = hit_determine(distance, effective_range, ship_length, bonus=bonus)
             if hit:
                 hits += 1
         await ctx.send(f'{hits} out of {num_guns} weapons hit their target.')

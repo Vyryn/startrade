@@ -40,7 +40,7 @@ async def on_ready():
     # Pick a random current status on startup
     await bot.change_presence(status=discord.Status.online, activity=discord.Game(random.choice(statuses)))
     bot.server = bot.get_guild(407481043856261120)
-    bot.log_channel = bot.get_channel(725817803273404618)
+    bot.log_channel = bot.get_channel(731726249868656720)
     bot.global_prefix = global_prefix
     bot.deltime = deltime
     bot.confirmed_ids = confirmed_ids
@@ -69,6 +69,13 @@ async def on_command_error(ctx, error):
         except:
             pass
         return print(f'Error, MissingRequiredArgument in command {ctx.command}: {error.args[0]}')
+    elif isinstance(error, discord.ext.commands.errors.BadArgument):
+        try:
+            await ctx.send("Inproper command. Check ,help [command] to help you formulate this command correctly.",
+                           delete_after=deltime)
+        except:
+            pass
+        return print(f'BadArgument error in {ctx.command} for {ctx.author}')
     elif isinstance(error, commands.MissingPermissions):
         try:
             await ctx.send(f'{ctx.author}, {error}', delete_after=deltime)
