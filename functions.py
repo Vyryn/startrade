@@ -3,7 +3,7 @@ import json
 from attr import dataclass
 
 # The bot commanders (imported from a file)
-bot_commanders = {}  # {125449182663278592: 10, 631938498722529310: 7}
+bot_commanders = {}  # {125449182663278592: 10}
 # The ids of ongoing polls (imported from a file)
 poll_ids = {}
 # Whether this person has used a command that requires a confirmation
@@ -36,13 +36,13 @@ activity_ranks = dict(zip(range(0, 1000), [level(a) for a in range(0, 1000)]))
 
 # Helper method for opening a json
 def load_json_var(name):
-    with open(f'{name}.json', 'r') as f:
+    with open(f'{name}.json', 'r', encoding='utf-8') as f:
         return json.load(f)
 
 
 # Helper method for writing a json
 def write_json_var(name, obj):
-    with open(f'{name}.json', 'w') as f:
+    with open(f'{name}.json', 'w', encoding='utf-8') as f:
         json.dump(obj, f, indent=4)
 
 
@@ -144,14 +144,14 @@ def channel_check(ctx):
 # Returns the bot prefix for the guild the message is within, or the global default prefix
 def get_prefix(bot, message):
     global no_command_channels
-    with open('ignored_channels.json', 'r') as f:
+    with open('ignored_channels.json', 'r', encoding='utf-8') as f:
         no_command_channels = json.load(f)
     # outside a guild
     if not message.guild:
         return global_prefix
     else:
         # Get guild custom prefixes from file
-        with open('prefixes.json', 'r') as f:
+        with open('prefixes.json', 'r', encoding='utf-8') as f:
             prefixes = json.load(f)
         return prefixes.get(str(message.guild.id), global_prefix)
 
@@ -177,14 +177,14 @@ def log(message, mm):
         channel = mm.channel.recipient
     # logmsg = 'MSG@{}:  {}:{}'.format(now(), message['guild']['name'],message['channel']['name'])
     try:
-        with open(f'./logs/{guild}/{channel}_{today()}_log.log', 'a+') as f:
+        with open(f'./logs/{guild}/{channel}_{today()}_log.log', 'a+', encoding='utf-8') as f:
             try:
                 f.write(str(message) + '\n')
             except UnicodeEncodeError:
                 f.write(f'WRN@{now()}: A UnicodeEncodeError occurred trying to write a message log.\n')
     except FileNotFoundError:
         try:
-            with open(f'./logs/{guild}_{today()}_log.log', 'a+') as f:
+            with open(f'./logs/{guild}_{today()}_log.log', 'a+', encoding='utf-8') as f:
                 try:
                     f.write(str(message) + '\n')
                 except UnicodeEncodeError:
