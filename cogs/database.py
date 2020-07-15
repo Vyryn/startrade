@@ -11,25 +11,13 @@ from functions import auth, now, level
 from privatevars import DBUSER, DBPASS
 
 global db
-COMMODITIES = ['hydrogen', 'deuterium', 'tritium', 'helium', 'nitrogen', 'phosphorous', 'iodine', 'lithium',
-               'magnesium', 'aluminum', 'silicon', 'titanium', 'vanadium', 'chromium',
-               'cobalt', 'nickel', 'copper', 'neodymium', 'tungsten',
-               'rhodium', 'silver', 'osmium', 'iridium', 'platinum', 'gold',
-               'plutonium', 'americium',
-               'methane', 'ammonia', 'water',
-               'methamphetamine', 'heroin', 'cocaine', 'lsd',
-               'painite', 'diamond', 'ruby', 'emerald', 'taaffeite',
-               'processors_50a', 'processors_14a', 'processors_10a', 'processors_7a',
-               'cotton', 'grain', 'milk', 'cocoa', 'salt', 'sugar', 'rubber',
-               'steel', 'carbon_fiber', 'plastic', 'biosamples', 'wood',
-               'saffron', 'coffee', 'pepper', 'cinnamon',
-               'graphene', 'aerogel', 'cermets', 'm_glass', 'mol_glue', 'nanofibers', 'fullerenes', 'nanotubes',
-               'h_fuel', 'antimatter']
+
 MOVE_ACTIVITY_THRESHOLD = 100  # Number of activity score that must be gained when moving to a new location
 REFUND_PORTION = 0.6  # Portion of buy price to refund when selling an item
 WEALTH_FACTOR = 0.0005  # Currently set to 0.05-0.1% payout per hour
 ITEMS_PER_TOP_PAGE = 10  # Number of items to show per page in ,top
 STARTING_BALANCE = 30000  # New user starting balance
+AUTH_LOCKDOWN = 1  # The base level for commands from this cog; set to 0 to enable public use, 1 to disable it
 
 
 # carbon-carbon bond average length is 1.54 a = 0.154 nm. Molecular superglue is mol-glue.
@@ -42,7 +30,7 @@ async def connect():
         host='localhost',
         user=DBUSER,
         password=DBPASS,
-        database='startrade'
+        database='gfw'
     )
     # print('Connected to database.')
     # except:
@@ -447,7 +435,6 @@ class Database(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        self.bot.commodities = COMMODITIES
         self.session = aiohttp.ClientSession(loop=bot.loop)
 
     # Events
@@ -506,26 +493,6 @@ class Database(commands.Cog):
                              )
         await disconnect()
         await connect()
-        if 'commodities_locations' not in tables:
-            print('Commodities table not found. Creating a new one...')
-            commodities_creation_command = "CREATE TABLE commodities_locations(name VARCHAR(127) NOT NULL" \
-                                           " PRIMARY KEY, channel_id BIGINT, type BOOL, "
-            for commodity in COMMODITIES:
-                commodities_creation_command += f'{commodity} DOUBLE PRECISION, '
-            commodities_creation_command = commodities_creation_command.rstrip()[:-1] + ')'  # Get rid of final comma
-            # and add closing bracket
-            await db.execute(commodities_creation_command)
-        await disconnect()
-        await connect()
-        if 'ships_commodities' not in tables:
-            print('Ships Commodities table not found. Creating a new one...')
-            commodities_creation_command = "CREATE TABLE ships_commodities(id BIGINT NOT NULL PRIMARY KEY," \
-                                           " name VARCHAR(127), owner BIGINT, capacity INT, "
-            for commodity in COMMODITIES:
-                commodities_creation_command += f'{commodity} INT DEFAULT 0, '
-            commodities_creation_command = commodities_creation_command.rstrip()[:-1] + ')'  # Get rid of final comma
-            # and add closing bracket
-            await db.execute(commodities_creation_command)
         users_config = await db.fetch("SELECT COLUMN_NAME from information_schema.COLUMNS WHERE TABLE_NAME = 'users' ")
         print(f'My Users table is configured thusly:\n{users_config}')
         # users = await db.fetch("SELECT * FROM users")
@@ -546,7 +513,7 @@ class Database(commands.Cog):
             pass
 
     @commands.command(description='Prints the list of users to the console.')
-    @commands.check(auth(4))
+    @commands.check(auth(max(4, AUTH_LOCKDOWN)))
     async def listusers(self, ctx):
         await connect()
         users = await db.fetch("SELECT * FROM users")
@@ -558,7 +525,7 @@ class Database(commands.Cog):
             f'The list of {num_users} users has been printed to the console. Here are their names only:\n{names}')
 
     @commands.command(description='Does a direct database query.')
-    @commands.check(auth(8))
+    @commands.check(auth(max(8, AUTH_LOCKDOWN)))
     async def directq(self, ctx, *, query):
         """
         Does a direct database query. Not quite as dangerous as eval, but still restricted to Auth 8.
@@ -575,7 +542,7 @@ class Database(commands.Cog):
         print(f'{ctx.author} executed a direct database query at {now()}:\n{query}\n{add_text}')
 
     @commands.command(description='add new user to database')
-    @commands.check(auth(2))
+    @commands.check(auth(max(2, AUTH_LOCKDOWN)))
     async def newuser(self, ctx, user: discord.User):
         """
         Add a new user to the database.
@@ -585,7 +552,7 @@ class Database(commands.Cog):
         await ctx.send(result)
 
     @commands.command(aliases=['additem'], description='add a new item to the database')
-    @commands.check(auth(3))
+    @commands.check(auth(max(3, AUTH_LOCKDOWN)))
     async def newitem(self, ctx, *, content):
         """
         Add a new item to the database. Each property must be on a new line.
@@ -612,29 +579,8 @@ class Database(commands.Cog):
         # return await ctx.send('An item with that name is already in the database.')
         await ctx.send(f'Added {item[0]} to the database.')
 
-    @commands.command(aliases=['addlocation'], description=f'Add a new location to the database. \nChannel is a '
-                                                           f'channel mention for this shop, and is_buy is TRUE for'
-                                                           f' purchase costs, FALSE for sell costs. Each value must'
-                                                           f' be a kwarg from: {COMMODITIES}')
-    @commands.check(auth(3))
-    async def newlocation(self, ctx, name: str, channel: discord.TextChannel, is_buy: bool, *, in_values: str):
-        values = in_values.split(' ')
-        kwargs = {}
-        for tic in values:
-            item, value = tic.split('=')
-            kwargs[item] = float(value)
-        print(f"Adding location {name} by request of {ctx.author}: {kwargs}")
-        try:
-            await add_commodity_location(name, channel.id, is_buy, **kwargs)
-        except ValueError:
-            return await ctx.send(f'Incorrect format. (1)')
-        except IndexError:
-            return await ctx.send(f'Incorrect format. (2)')
-        # return await ctx.send('A location with that name is already in the database.')
-        await ctx.send(f'Added {name} to the database.')
-
     @commands.command(aliases=['removeitem'], description='Remove an item from the database')
-    @commands.check(auth(4))
+    @commands.check(auth(max(4, AUTH_LOCKDOWN)))
     async def deleteitem(self, ctx, *, item: str):
         """
         Remove an item from the database. Requires Auth 4.
@@ -652,7 +598,7 @@ class Database(commands.Cog):
         await ctx.send(f'Successfully removed {item} from the database.')
 
     @commands.command(aliases=['updateitem'], description='Edit a value of an item in the database.')
-    @commands.check(auth(4))
+    @commands.check(auth(max(4, AUTH_LOCKDOWN)))
     async def edititem(self, ctx, item: str, field: str, value: str):
         """Edit a value of an item in the database.
         """
@@ -665,6 +611,7 @@ class Database(commands.Cog):
             await ctx.send(f'Category not found. Categories are case sensitive, double check!')
 
     @commands.command(description='browse the shop')
+    @commands.check(auth(AUTH_LOCKDOWN))
     async def browse(self, ctx, *, item: str = None):
         """
         Browse the items available for sale.

@@ -195,6 +195,7 @@ bot.load_extension(f'cogs.dev')
 bot.load_extension(f'cogs.moderation')
 bot.load_extension(f'cogs.mechanics')
 bot.load_extension(f'cogs.management')
+bot.load_extension(f'cogs.database')
 # load all cogs in cogs folder at launch
 #for filename in os.listdir('./cogs'):
 #    if filename.endswith('.py'):
