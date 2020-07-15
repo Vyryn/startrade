@@ -167,7 +167,7 @@ async def ignorech(ctx):
     ch_id = str(ctx.channel.id)
     no_command_channels = get_ignored_channels()
     no_command_channels.append(ch_id)
-    with open('ignored_channels.json', 'w') as f:
+    with open('ignored_channels.json', 'w', encoding='utf-8') as f:
         json.dump(no_command_channels, f, indent=4)
     set_ignored_channels()
     await ctx.send("Adding channel to ignore list.", delete_after=deltime)

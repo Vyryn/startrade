@@ -177,14 +177,14 @@ def log(message, mm):
         channel = mm.channel.recipient
     # logmsg = 'MSG@{}:  {}:{}'.format(now(), message['guild']['name'],message['channel']['name'])
     try:
-        with open(f'./logs/{guild}/{channel}_{today()}_log.log', 'a+') as f:
+        with open(f'./logs/{guild}/{channel}_{today()}_log.log', 'a+', encoding='utf-8') as f:
             try:
                 f.write(str(message) + '\n')
             except UnicodeEncodeError:
                 f.write(f'WRN@{now()}: A UnicodeEncodeError occurred trying to write a message log.\n')
     except FileNotFoundError:
         try:
-            with open(f'./logs/{guild}_{today()}_log.log', 'a+') as f:
+            with open(f'./logs/{guild}_{today()}_log.log', 'a+', encoding='utf-8') as f:
                 try:
                     f.write(str(message) + '\n')
                 except UnicodeEncodeError:
