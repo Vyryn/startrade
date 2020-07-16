@@ -6,6 +6,7 @@ import discord
 from discord import NotFound
 from discord.ext import commands
 # from cogs.database import new_user, update_activity
+from cogs.database import new_user, update_activity
 from functions import poll_ids, now, log, set_polls
 
 log_channel_id = 731726249868656720
@@ -65,6 +66,9 @@ class Basics(commands.Cog):
     # =============================Message handler=========================
     @commands.Cog.listener()
     async def on_message(self, message):
+        # =========================NEW USER==========================
+        if not message.author.bot:
+            await new_user(message.author)
         # =========================ACTIVITY==========================
         # if not message.author.bot:
         words = message.content.split(' ')
@@ -76,10 +80,10 @@ class Basics(commands.Cog):
         # valid_words = [word for word in words if len(word) > 2]
         new_words = len(valid_words)
         added_activity_score = max(new_words - 2, 0)
-        recently_spoke = time.time() - self.recent_actives.get(message.author.id, 0) > self.ACTIVITY_COOLDOWN
+        recently_spoke = time.time() - self.recent_actives.get(message.author.id, 0) < self.ACTIVITY_COOLDOWN
         if added_activity_score > 0 and not recently_spoke:
             self.recent_actives[message.author.id] = time.time()
-            # await update_activity(message.channel, message.author, added_activity_score)
+            await update_activity(message.channel, message.author, added_activity_score)
         # ===========================LOG=============================
         ln = '\n'
         n_ln = '\\n'
