@@ -125,7 +125,10 @@ async def update_activity(channel: discord.TextChannel, member: discord.Member, 
     if level_after > level_before:
         await channel.send(f"Congratulations {member} on reaching activity level {level_after}!")
         print(f'{member} ranked up their activity from level {level_before} to {level_after}')
-    recent_activity = (await db.fetchval(f"SELECT recent_activity FROM users WHERE id = $1", uid)) + amount
+    try:
+        recent_activity = (await db.fetchval(f"SELECT recent_activity FROM users WHERE id = $1", uid)) + amount
+    except TypeError:
+        recent_activity = amount
     print(f'Adding {amount} activity score to {member} at {now()}. New activity score: {activity}. '
           f'New recent activity score: {recent_activity}')
     await db.execute(f"UPDATE users SET activity = $1 where id = $2", activity, uid)

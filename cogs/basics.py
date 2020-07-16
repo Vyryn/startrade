@@ -76,7 +76,7 @@ class Basics(commands.Cog):
         # valid_words = [word for word in words if len(word) > 2]
         new_words = len(valid_words)
         added_activity_score = max(new_words - 2, 0)
-        recently_spoke = time.time() - self.recent_actives.get(message.author.id, 0) > self.ACTIVITY_COOLDOWN
+        recently_spoke = time.time() - self.recent_actives.get(message.author.id, 0) < self.ACTIVITY_COOLDOWN
         if added_activity_score > 0 and not recently_spoke:
             self.recent_actives[message.author.id] = time.time()
             await update_activity(message.channel, message.author, added_activity_score)
