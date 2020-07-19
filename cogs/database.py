@@ -13,10 +13,10 @@ from privatevars import DBUSER, DBPASS
 global db
 
 MOVE_ACTIVITY_THRESHOLD = 100  # Number of activity score that must be gained when moving to a new location
-REFUND_PORTION = 0.6  # Portion of buy price to refund when selling an item
+REFUND_PORTION = 0.9  # Portion of buy price to refund when selling an item
 WEALTH_FACTOR = 0.0005  # Currently set to 0.05-0.1% payout per hour
 ITEMS_PER_TOP_PAGE = 10  # Number of items to show per page in ,top
-STARTING_BALANCE = 30000  # New user starting balance
+STARTING_BALANCE = 50000000  # New user starting balance
 AUTH_LOCKDOWN = 1  # The base level for commands from this cog; set to 0 to enable public use, 1 to disable it
 
 
@@ -106,7 +106,11 @@ async def transfer_funds(from_user: discord.User, to_user: discord.User, amount:
 async def update_activity(channel: discord.TextChannel, member: discord.Member, amount: int):
     uid = member.id
     await connect()
-    activity = (await db.fetchval(f"SELECT activity FROM users WHERE id = $1", uid)) + amount
+    activity = (await db.fetchval(f"SELECT activity FROM users WHERE id = $1", uid))
+    if activity is None:
+        activity = amount
+    else:
+        activity += amount
     print(f'Activity before: {activity - amount}, activity after: {activity}')
     level_before = level(activity - amount)
     level_after = level(activity)

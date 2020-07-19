@@ -40,7 +40,7 @@ async def on_ready():
     # Pick a random current status on startup
     await bot.change_presence(status=discord.Status.online, activity=discord.Game(random.choice(statuses)))
     bot.server = bot.get_guild(407481043856261120)
-    bot.log_channel = bot.get_channel(731726249868656720)
+    bot.log_channel = bot.get_channel(408254707388383232)
     bot.global_prefix = global_prefix
     bot.deltime = deltime
     bot.confirmed_ids = confirmed_ids
@@ -69,9 +69,13 @@ async def on_command_error(ctx, error):
         except:
             pass
         return print(f'Error, MissingRequiredArgument in command {ctx.command}: {error.args[0]}')
+    elif isinstance(error, OSError):
+        return print(f'OSError in command {ctx.command}. Restart the server soon.')
+    elif isinstance(error, commands.errors.CommandInvokeError):
+        return print(error)
     elif isinstance(error, discord.ext.commands.errors.BadArgument):
         try:
-            await ctx.send("Inproper command. Check ,help [command] to help you formulate this command correctly.",
+            await ctx.send("Improper command. Check ,help [command] to help you formulate this command correctly.",
                            delete_after=deltime)
         except:
             pass
@@ -196,6 +200,7 @@ bot.load_extension(f'cogs.moderation')
 bot.load_extension(f'cogs.mechanics')
 bot.load_extension(f'cogs.management')
 bot.load_extension(f'cogs.database')
+bot.load_extension(f'cogs.economy')
 # load all cogs in cogs folder at launch
 #for filename in os.listdir('./cogs'):
 #    if filename.endswith('.py'):

@@ -9,7 +9,7 @@ from discord.ext import commands
 from cogs.database import new_user, update_activity
 from functions import poll_ids, now, log, set_polls
 
-log_channel_id = 731726249868656720
+log_channel_id = 408254707388383232
 # verified_role_id = 718949160170291203
 # The startrade verification message id
 # verificaiton_message_id = 718980234380181534
@@ -35,7 +35,6 @@ async def send_to_log_channel(ctx, content: str, event_name: str = ''):
     author = ctx.author
     m_id = ctx.message.id
     log_channel = ctx.message.guild.get_channel(log_channel_id)
-
     embed = discord.Embed(title='',
                           description=f'**{event_name}**\n' + content,
                           timestamp=datetime.now())
@@ -59,13 +58,15 @@ class Basics(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         # self.verified_role = self.bot.server.get_role(verified_role_id)
-        # self.log_channel = self.bot.server.get_channel(log_channel_id)
+        self.log_channel = self.bot.server.get_channel(log_channel_id)
         self.deltime = self.bot.deltime
         print(f'Cog {self.qualified_name} is ready.')
 
     # =============================Message handler=========================
     @commands.Cog.listener()
     async def on_message(self, message):
+        if message.guild is not self.bot.server:
+            return
         # =========================NEW USER==========================
         if not message.author.bot:
             await new_user(message.author)
@@ -237,7 +238,9 @@ class Basics(commands.Cog):
     # Edited message handler
     @commands.Cog.listener()
     async def on_message_edit(self, before, after):
-        if before.guild.id == self.bot.server.id and not after.author.bot:  # If in Startrade and not a bot message
+        print('on message edit triggered')
+        if before.guild.id == self.bot.server.id and not after.author.bot:  # If in GFW and not a bot message
+            print('edit log triggered')
             if len(before.content) > content_max - 7:
                 before_content = before.content[:content_max - 10] + '...'
             else:
@@ -268,7 +271,6 @@ class Basics(commands.Cog):
                 embed.set_author(icon_url=before.author.avatar_url, name=before.author)
                 embed.set_footer(text=f'Author: {before.author.id} | Message ID: {after.id}')
                 await self.log_channel.send(embed=embed)
-        pass
 
     # Bulk delete handler
     @commands.Cog.listener()

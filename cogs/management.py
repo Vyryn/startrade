@@ -66,6 +66,7 @@ class Management(commands.Cog):
         await ctx.send(f'Changed server prefix to {prefixes[str(ctx.guild.id)]}')
         print(f'Prefix set command used by {ctx.author} at {now()} in server {ctx.guild}, set to {prefix}.')
 
+
     @commands.check(auth(3))
     @commands.guild_only()
     @commands.command(description='Edit a bot message')
