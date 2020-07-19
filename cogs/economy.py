@@ -40,7 +40,7 @@ class Economy(commands.Cog):
     async def on_message(self, message):
         if message.author.id == self.DISBOARD and len(message.embeds) > 0:  # From disboard and has an embed
             embed_content = message.embeds[0].to_dict()['description']
-            if 'Bump Done' in embed_content:
+            if 'Bump done' in embed_content:
                 bumper_id = int(embed_content[3:21])
                 bumper = await self.bot.fetch_user(bumper_id)
                 balance = await add_funds(bumper, self.BUMP_PAYMENT)
