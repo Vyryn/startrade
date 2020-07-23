@@ -44,7 +44,7 @@ class Economy(commands.Cog):
                 bumper_id = int(embed_content[3:21])
                 bumper = await self.bot.fetch_user(bumper_id)
                 balance = await add_funds(bumper, self.BUMP_PAYMENT)
-                await message.channel.send(f"Thank you for bumping Startrade on Disboard, {bumper.mention()}. I've "
+                await message.channel.send(f"Thank you for bumping Startrade on Disboard, {bumper.mention}. I've "
                                            f"added ${self.BUMP_PAYMENT} to your balance. "
                                            f"Your new balance is {balance}.")
 
