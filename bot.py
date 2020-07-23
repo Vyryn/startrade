@@ -1,6 +1,8 @@
 import json
 from json import JSONDecodeError
 import traceback
+
+import aiohttp
 import discord
 import os
 import random
@@ -34,18 +36,51 @@ cogs_dir = 'cogs'
 bot = commands.Bot(command_prefix=get_prefix, case_insensitive=True)
 
 
+bot.global_prefix = global_prefix
+bot.deltime = deltime
+bot.confirmed_ids = confirmed_ids
+bot.settings_modifiers = [125449182663278592, 171810360473550849, 185496547436396545] # allow settings to be modified by Vyryn, Xifi and Brom
+bot.ACTIVITY_COOLDOWN = 7  # Minimum number of seconds after last activity to have a message count as activity
+bot.DEFUALT_DIE_SIDES = 20  # Default number of sides to assume a rolled die has
+bot.MAX_DIE_SIDES = 100  # Max number of sides each die may have
+bot.MAX_DIE_ROLES = 100000  # Max number of dice that can be rolled with one ,roll command
+bot.BUMP_PAYMENT = 0  # Payment for disboard bumps
+bot.DISBOARD = 302050872383242240  # Disboard uid
+bot.PAYCHECK_AMOUNT_MIN = 4000000  # Minimum paycheck payout
+bot.PAYCHECK_AMOUNT_MAX = 4000000  # Maximum paycheck payout
+bot.PAYCHECK_INTERVAL = 3600  # Time between paychecks, in seconds
+bot.MOVE_ACTIVITY_THRESHOLD = 100  # Number of activity score that must be gained when moving to a new location
+bot.REFUND_PORTION = 0.9  # Portion of buy price to refund when selling an item
+bot.WEALTH_FACTOR = 0.0005  # Currently set to 0.05-0.1% payout per hour
+bot.ITEMS_PER_TOP_PAGE = 10  # Number of items to show per page in ,top
+bot.STARTING_BALANCE = 50000000  # New user starting balance
+bot.AUTH_LOCKDOWN = 1  # The base level for commands from this cog; set to 0 to enable public use, 1 to disable it
+bot.PAYOUT_FREQUENCY = 60 * 60  # How frequently to send out investments, in seconds
+bot.credit_emoji = '<:Credits:423873771204640768>'
+bot.session = aiohttp.ClientSession(loop=bot.loop)
+bot.load_extension(f'cogs.basics')
+bot.load_extension(f'cogs.dev')
+bot.load_extension(f'cogs.moderation')
+bot.load_extension(f'cogs.mechanics')
+bot.load_extension(f'cogs.management')
+bot.load_extension(f'cogs.database')
+bot.load_extension(f'cogs.economy')
+
+
 # Events
 @bot.event
 async def on_ready():
-    # Pick a random current status on startup
-    await bot.change_presence(status=discord.Status.online, activity=discord.Game(random.choice(statuses)))
     bot.server = bot.get_guild(407481043856261120)
     bot.log_channel = bot.get_channel(408254707388383232)
-    bot.global_prefix = global_prefix
-    bot.deltime = deltime
-    bot.confirmed_ids = confirmed_ids
+    # Pick a random current status on startup
+    await bot.change_presence(status=discord.Status.online, activity=discord.Game(random.choice(statuses)))
     await asyncio.sleep(2)
+
     print(f'{bot.server.name} bot is fully ready.')
+
+
+def botget(arg: str):
+    return bot.__dict__[arg]
 
 
 # ================================= Error Handler =================================
@@ -55,57 +90,36 @@ async def on_command_error(ctx, error):
         print('An error occurred, but was handled command-locally.')
         return
     if isinstance(error, commands.NoPrivateMessage):
-        try:
-            await ctx.send(f'The {ctx.command} command can not be used in private messages.', delete_after=deltime)
-        except:
-            pass
+        await ctx.send(f'The {ctx.command} command can not be used in private messages.', delete_after=deltime)
         return print(f'Error, NoPrivateMessage in command {ctx.command}: {error.args}')
     elif isinstance(error, commands.CommandNotFound):
         print(f'Error, {ctx.author} triggered CommandNotFound in command {ctx.command}: {error.args[0]}')
         return
     elif isinstance(error, commands.MissingRequiredArgument):
-        try:
-            await ctx.send("Incomplete command.", delete_after=deltime)
-        except:
-            pass
+        await ctx.send("Incomplete command.", delete_after=deltime)
         return print(f'Error, MissingRequiredArgument in command {ctx.command}: {error.args[0]}')
     elif isinstance(error, OSError):
         return print(f'OSError in command {ctx.command}. Restart the server soon.')
     elif isinstance(error, commands.errors.CommandInvokeError):
         return print(error)
     elif isinstance(error, discord.ext.commands.errors.BadArgument):
-        try:
-            await ctx.send("Improper command. Check ,help [command] to help you formulate this command correctly.",
-                           delete_after=deltime)
-        except:
-            pass
+        await ctx.send("Improper command. Check help [command] to help you formulate this command correctly.",
+                       delete_after=deltime)
         return print(f'BadArgument error in {ctx.command} for {ctx.author}')
     elif isinstance(error, commands.MissingPermissions):
-        try:
-            await ctx.send(f'{ctx.author}, {error}', delete_after=deltime)
-        except:
-            pass
+        await ctx.send(f'{ctx.author}, {error}', delete_after=deltime)
         return print(f'{ctx.author} tried to use {ctx.command} without sufficient permissions.')
     elif isinstance(error, commands.CheckFailure):
-        try:
-            await ctx.send(f'{ctx.author}, you are not authorized to perform this command in this channel. If you '
-                           f'think this is a mistake, try using it in a channel where bot commands are not disabled.',
-                           delete_after=deltime)
-        except:
-            pass
+        await ctx.send(f'{ctx.author}, you are not authorized to perform this command in this channel. If you '
+                       f'think this is a mistake, try using it in a channel where bot commands are not disabled.',
+                       delete_after=deltime)
         return print(f'{ctx.author} tried to use {ctx.command} without sufficient auth level.')
     elif isinstance(error, JSONDecodeError):
-        try:
-            await ctx.send(f'{ctx.author}, that api appears to be down at the moment.', delete_after=deltime)
-        except:
-            pass
+        await ctx.send(f'{ctx.author}, that api appears to be down at the moment.', delete_after=deltime)
         return print(f'{ctx.author} tried to use {ctx.command} but got a JSONDecodeError.')
     elif isinstance(error, asyncio.TimeoutError):
-        try:
-            await ctx.send(f"{ctx.author}, you took too long. Please re-run the command to continue"
-                           f" when you're ready.", delete_after=deltime)
-        except:
-            pass
+        await ctx.send(f"{ctx.author}, you took too long. Please re-run the command to continue"
+                       f" when you're ready.", delete_after=deltime)
         return print(f'{ctx.author} tried to use {ctx.command} but got a JSONDecodeError.')
     else:
         # get data from exception
@@ -194,15 +208,8 @@ async def restart():
     os.execv(sys.executable, ['python'] + sys.argv)
 
 
-bot.load_extension(f'cogs.basics')
-bot.load_extension(f'cogs.dev')
-bot.load_extension(f'cogs.moderation')
-bot.load_extension(f'cogs.mechanics')
-bot.load_extension(f'cogs.management')
-bot.load_extension(f'cogs.database')
-bot.load_extension(f'cogs.economy')
 # load all cogs in cogs folder at launch
-#for filename in os.listdir('./cogs'):
+# for filename in os.listdir('./cogs'):
 #    if filename.endswith('.py'):
 #        bot.load_extension(f'cogs.{filename[:-3]}')  # load up each extension
 

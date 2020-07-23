@@ -4,6 +4,7 @@ import time
 import aiohttp
 from io import BytesIO
 
+import asyncpg
 import discord
 from discord.ext import commands
 import asyncpg as conn
@@ -11,17 +12,14 @@ from functions import auth, now, level
 from privatevars import DBUSER, DBPASS
 
 global db
+starting_balance = 50000000
+wealth_factor = 0.0005
+items_per_top_page = 10
+refund_portion = 0.9
+move_activity_threshold = 100
 
-MOVE_ACTIVITY_THRESHOLD = 100  # Number of activity score that must be gained when moving to a new location
-REFUND_PORTION = 0.9  # Portion of buy price to refund when selling an item
-WEALTH_FACTOR = 0.0005  # Currently set to 0.05-0.1% payout per hour
-ITEMS_PER_TOP_PAGE = 10  # Number of items to show per page in ,top
-STARTING_BALANCE = 50000000  # New user starting balance
-AUTH_LOCKDOWN = 1  # The base level for commands from this cog; set to 0 to enable public use, 1 to disable it
+AUTH_LOCKDOWN = 1
 
-
-# carbon-carbon bond average length is 1.54 a = 0.154 nm. Molecular superglue is mol-glue.
-# aluminum oxynitride is m-glass. Metallic hydrogen is h-fuel.
 
 async def connect():
     global db
@@ -50,7 +48,7 @@ async def new_user(user: discord.User):
     uid = user.id
     name = user.name
     messages = 0
-    balance = STARTING_BALANCE
+    balance = starting_balance
     last_pay = time.time() - 1800
     invested = 0
     await connect()
@@ -103,10 +101,14 @@ async def transfer_funds(from_user: discord.User, to_user: discord.User, amount:
     return from_balance, to_balance
 
 
-async def update_activity(channel: discord.TextChannel, member: discord.Member, amount: int):
+async def update_activity(member: discord.Member, amount: int):
     uid = member.id
     await connect()
-    activity = (await db.fetchval(f"SELECT activity FROM users WHERE id = $1", uid))
+    activity = None
+    try:
+        activity = (await db.fetchval(f"SELECT activity FROM users WHERE id = $1", uid))
+    except asyncpg.exceptions.InternalClientError:
+        print('Asyncpg is being stupid, but I did my best.')
     if activity is None:
         activity = amount
     else:
@@ -133,7 +135,7 @@ async def add_funds(member: discord.Member, amount: int):
     await connect()
     result = await db.fetchrow(f"SELECT balance FROM users WHERE id = $1", uid)
     balance = result[0]
-    print(f'Adding {amount} to {member} with Staff authority at {now()}.')
+    print(f'Adding {amount} credits to {member} at {now()}.')
     balance += amount
     await db.execute(f"UPDATE users SET balance = $1 where id = $2", balance, uid)
     await disconnect()
@@ -166,8 +168,8 @@ async def distribute_payouts():
     await connect()
     users = await db.fetch("SELECT * FROM users")
     for user in users:
-        payout_generosity = random.random() * WEALTH_FACTOR  # Normalizes it to give between wf and 2* wf per hour
-        payout = int(user[5] * (payout_generosity + WEALTH_FACTOR))
+        payout_generosity = random.random() * wealth_factor  # Normalizes it to give between wf and 2* wf per hour
+        payout = int(user[5] * (payout_generosity + wealth_factor))
         new_user_balance = int(user[3]) + payout
         # print(f'User {user[1]}: investment: {user[5]}, payout_generosity: {payout_generosity * 1000}, payout:'
         #       f' {payout}, new bal: {user[3]}')
@@ -194,7 +196,8 @@ async def set_last_paycheck_now(user: discord.User):
 
 async def get_top(cat: str, page: int, user: discord.Member):
     await connect()
-    offset = ITEMS_PER_TOP_PAGE * (1 - page)
+    offset = items_per_top_page * (1 - page)
+    offset *= -1
     ind = 3
     if cat not in ['balance', 'invested', 'activity']:
         raise NameError(f'Category {cat} not found.')
@@ -204,10 +207,11 @@ async def get_top(cat: str, page: int, user: discord.Member):
         elif cat == 'activity':
             ind = 2
     num_users = await db.fetchval(f"SELECT COUNT(id) FROM users")
-    if num_users < page * ITEMS_PER_TOP_PAGE:
+    if num_users < page * items_per_top_page:
         offset = 0
-    num_pages = int(num_users / ITEMS_PER_TOP_PAGE - 1E-10 + 1)
-    result = await db.fetch(f"""SELECT * FROM users ORDER BY {cat} DESC LIMIT {ITEMS_PER_TOP_PAGE} OFFSET $1""", offset)
+    num_pages = int(num_users / items_per_top_page - 1E-10)
+    result = await db.fetch(f"""SELECT * FROM users ORDER BY {cat} DESC LIMIT {items_per_top_page} OFFSET $1""",
+                            offset)
     tops = []
     for line in result:
         tops.append((line[1], line[ind]))
@@ -347,13 +351,13 @@ async def sell_possession(ctx, user: discord.Member, item: str, amount: int = 1)
     elif has_amount == amount:
         print(f'Removing: has_amount = {has_amount}, amount = {amount}.')
         balance = await db.fetchval(f"SELECT balance FROM users WHERE id = $1", uid)
-        new_balance = balance + (amount * i_cost) * REFUND_PORTION
+        new_balance = balance + (amount * i_cost) * refund_portion
         await db.execute(f"UPDATE users SET balance = $1 WHERE id = $2", new_balance, uid)
         await db.execute(f"DELETE FROM possessions WHERE owner = $1 AND name = $2", uid, item)
     else:
         print(f'Updating: has_amount = {has_amount}, amount = {amount}.')
         balance = await db.fetchval(f"SELECT balance FROM users WHERE id = $1", uid)
-        new_balance = balance + (amount * i_cost) * REFUND_PORTION
+        new_balance = balance + (amount * i_cost) * refund_portion
         await db.execute(f"UPDATE users SET balance = $1 WHERE id = $2", new_balance, uid)
         await db.execute(f"UPDATE possessions SET amount = $1 WHERE owner = $2 AND name = $3",
                          has_amount - amount, uid, i_name)
@@ -409,7 +413,7 @@ async def update_location(member: discord.Member, channel: discord.TextChannel):
     # old_location = await db.fetchval(f"SELECT location FROM users WHERE id = $1", member.id)
     new_location = channel.id
     recent_activity = await db.fetchval(f"SELECT recent_activity FROM users WHERE id = $1", member.id)
-    if recent_activity < MOVE_ACTIVITY_THRESHOLD:
+    if recent_activity < move_activity_threshold:
         raise ValueError
     await db.execute(f"UPDATE users SET recent_activity = 0 where id = $1", member.id)
     await db.execute(f"UPDATE users SET location = $1 where id = $2", new_location, member.id)
@@ -438,16 +442,36 @@ async def send_formatted_browse(ctx, result, i_type):
     await ctx.send(send)
 
 
+def check_author(author):
+    def in_check(message):
+        return message.author == author
+
+    return in_check
+
+
 class Database(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        self.session = aiohttp.ClientSession(loop=bot.loop)
+        self.session = None
+        global starting_balance
+        global wealth_factor
+        global items_per_top_page
+        global refund_portion
+        global move_activity_threshold
+        starting_balance = bot.STARTING_BALANCE
+        wealth_factor = bot.WEALTH_FACTOR
+        items_per_top_page = bot.ITEMS_PER_TOP_PAGE
+        refund_portion = bot.REFUND_PORTION
+        move_activity_threshold = bot.MOVE_ACTIVITY_THRESHOLD
 
     # Events
     @commands.Cog.listener()
     async def on_ready(self):
         print(f'Loading Cog {self.qualified_name}...')
+        self.session = self.bot.session
+        global AUTH_LOCKDOWN
+        AUTH_LOCKDOWN = self.bot.AUTH_LOCKDOWN
         await connect()
         # cursor.execute("SHOW DATABASES")
         # databases = cursor.fetchall()
@@ -457,6 +481,26 @@ class Database(commands.Cog):
             await db.fetch("SELECT * FROM pg_catalog.pg_tables WHERE schemaname != 'pg_catalog' AND schemaname "
                            "!='information_schema'"))
         # print(f'I have the following tables:\n{tables}')
+        if 'settings' not in tables:
+            print('Settings table not found. Creating a new one...')
+            await db.execute("CREATE TABLE settings( "
+                             "id BIGINT NOT NULL PRIMARY KEY, "
+                             "cooldown INT,"
+                             "amount DOUBLE PRECISION,"
+                             "starting DOUBLE PRECISION)")
+            await db.execute("INSERT INTO settings VALUES($1, $2, $3, $4)",
+                             1, self.bot.PAYCHECK_INTERVAL, self.bot.PAYCHECK_AMOUNT_MAX, self.bot.STARTING_BALANCE)
+            print('Saved default settings to database.')
+            await disconnect()
+            await connect()
+        else:
+            settings = await db.fetchrow("SELECT * FROM settings WHERE id = 1")
+            print(settings)
+            self.bot.PAYCHECK_INTERVAL = settings[1]
+            self.bot.PAYCHECK_AMOUNT_MAX = settings[2]
+            self.bot.PAYCHECK_AMOUNT_MIN = settings[2]
+            self.bot.STARTING_BALANCE = settings[3]
+            print(f'Loaded settings from database: {settings}')
         if 'users' not in tables:
             print('Users table not found. Creating a new one...')
             await db.execute("CREATE TABLE users( "
@@ -512,11 +556,6 @@ class Database(commands.Cog):
         try:
             db.terminate()
         except NameError:
-            pass
-        try:
-            self.session.close()
-        except AttributeError:
-            print(f'AttributeError trying to close aiohttp session at {now()}')
             pass
 
     @commands.command(description='Prints the list of users to the console.')
@@ -617,6 +656,54 @@ class Database(commands.Cog):
         except NameError:
             await ctx.send(f'Category not found. Categories are case sensitive, double check!')
 
+    @commands.command(description='Adjust bot settings')
+    @commands.check(auth(5))
+    async def settings(self, ctx, setting: str, value: str):
+        """Adjust bot settings.
+        Setting must be one of: 'cooldown', 'amount', 'starting'
+        Cooldown: the number of seconds between paychecks
+        Amount: the amount of credits per paycheck
+        Starting: the amount of credits a brand new player starts with
+        """
+        if ctx.author.id not in self.bot.settings_modifiers:
+            return await ctx.send(f"You do not have permission to run this command.")
+        config_opts = ['cooldown', 'amount', 'starting']
+        if setting not in config_opts:
+            return await ctx.send(f"Sorry, that isn't a configurable setting. Try one of {config_opts}.")
+        if setting == 'cooldown':
+            value = int(value)
+            self.bot.PAYCHECK_INTERVAL = value
+        elif setting == 'amount':
+            value = round(float(value), 2)
+            self.bot.PAYCHECK_AMOUNT_MAX = value
+            self.bot.PAYCHECK_AMOUNT_MIN = value
+        elif setting == 'starting':
+            value = round(float(value), 2)
+            self.bot.STARTING_BALANCE = value
+        await connect()
+        await db.execute(f"UPDATE settings SET {setting} = $1 WHERE id = 1", value)
+        await disconnect()
+        await ctx.send(f'Okay, {setting} set to {value}.')
+
+    @commands.command(description='Set all balances to the configured starting balance.')
+    async def wipe_the_whole_fucking_economy_like_seriously(self, ctx):
+        """Set everyone's balance to the configured starting balance. Several safeguards are in place."""
+        confirmation_phrase = "I understand I am wiping the whole economy"
+        await ctx.send(f"This will reset **everyone's** balance to {self.bot.STARTING_BALANCE}. "
+                       f"This is not reversible. If you are sure, type "
+                       f"`{confirmation_phrase}`. To be safe, it must match exactly. You have 30 seconds,"
+                       f" or this command will cancel without running.")
+        try:
+            confirmation = await self.bot.wait_for('message', check=check_author(ctx.author), timeout=30)
+        except asyncio.TimeoutError:
+            return await ctx.send(f"Cancelled operation: Took longer than 30 seconds to respond.")
+        if confirmation.content != confirmation_phrase:
+            return await ctx.send(f"Cancelled operation: Phrase did not match `{confirmation_phrase}`.")
+        await connect()
+        await db.execute(f"UPDATE users SET balance = $1", self.bot.STARTING_BALANCE)
+        await disconnect()
+        await ctx.send(f"Successfully reset everyone's balance to {self.bot.STARTING_BALANCE}")
+
     @commands.command(description='browse the shop')
     @commands.check(auth(AUTH_LOCKDOWN))
     async def browse(self, ctx, *, item: str = None):
@@ -665,5 +752,5 @@ class Database(commands.Cog):
                        f"\n> {result[5]}", file=discord.File(fp=buffer, filename='file.jpg'))
 
 
-def setup(bot):
-    bot.add_cog(Database(bot))
+def setup(bot_o):
+    bot_o.add_cog(Database(bot_o))

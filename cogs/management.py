@@ -45,7 +45,7 @@ class Management(commands.Cog):
         """Check or change the server prefix
                 With no parameters, tells you what the prefix is.
                 Considering you need to know what the prefix is to run the command, it's very helpful, I know.
-                However, /prefix set <prefix> is used to change the server prefix."""
+                However, prefix set <prefix> is used to change the server prefix."""
         with open('prefixes.json', 'r') as f:
             prefixes = json.load(f)
         await ctx.send(f'Prefix is {prefixes[str(ctx.guild.id)]}')
@@ -53,8 +53,9 @@ class Management(commands.Cog):
 
     @prefix.command()
     @commands.guild_only()
-    @commands.has_permissions(manage_guild=True)
     async def set(self, ctx, prefix=None):
+        if ctx.author.id not in self.bot.settings_modifiers:
+            return await ctx.send(f"You do not have permission to run this command.")
         if prefix is None:
             prefix = self.bot.global_prefix
         with open('prefixes.json', 'r') as f:

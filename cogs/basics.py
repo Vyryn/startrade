@@ -7,7 +7,7 @@ from discord import NotFound
 from discord.ext import commands
 # from cogs.database import new_user, update_activity
 from cogs.database import new_user, update_activity
-from functions import poll_ids, now, log, set_polls
+from functions import poll_ids, now, log, set_polls, auth
 
 log_channel_id = 408254707388383232
 # verified_role_id = 718949160170291203
@@ -51,7 +51,6 @@ class Basics(commands.Cog):
         self.log_channel = None
         self.deltime = None
         self.recent_actives = dict()
-        self.ACTIVITY_COOLDOWN = 7  # Minimum number of seconds after last activity to have a message count as activity
 
     # Events
     # When bot is ready, print to console
@@ -81,10 +80,10 @@ class Basics(commands.Cog):
         # valid_words = [word for word in words if len(word) > 2]
         new_words = len(valid_words)
         added_activity_score = max(new_words - 2, 0)
-        recently_spoke = time.time() - self.recent_actives.get(message.author.id, 0) < self.ACTIVITY_COOLDOWN
+        recently_spoke = time.time() - self.recent_actives.get(message.author.id, 0) < self.bot.ACTIVITY_COOLDOWN
         if added_activity_score > 0 and not recently_spoke:
             self.recent_actives[message.author.id] = time.time()
-            await update_activity(message.channel, message.author, added_activity_score)
+            await update_activity(message.author, added_activity_score)
         # ===========================LOG=============================
         ln = '\n'
         n_ln = '\\n'
@@ -123,8 +122,8 @@ class Basics(commands.Cog):
     # ==============================Reaction handler======================================
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload):
-        print(f'New reaction {payload.emoji} on message {payload.message_id} in'
-              f' {payload.channel_id} by user {payload.user_id}.')
+        print(f'New reaction {payload.emoji} on message {payload.message_id} in '
+              f'{self.bot.get_channel(payload.channel_id)} by user {self.bot.get_user(payload.user_id)}.')
         # =============================Verification Check======================
 
         # if payload.message_id == verificaiton_message_id:
@@ -136,57 +135,57 @@ class Basics(commands.Cog):
         # Ignore bots
         if payload.user_id == self.bot.user.id:
             return
-        # ===============================Polls==================================
-        if payload.message_id in poll_ids.keys():
-            for channel in self.bot.get_all_channels():
-                if channel.id is poll_ids[payload.message_id]["id"]:
-                    user = self.bot.get_user(payload.user_id)
-                    try:
-                        user_responses = poll_ids[payload.message_id][user.id]
-                    except KeyError:
-                        poll_ids[payload.message_id][user.id] = 0
-                        user_responses = 0
-                    if user_responses < poll_ids[payload.message_id]['max']:
-                        print(f'New reaction on poll {payload.message_id} by {user}.')
-                        poll_ids[payload.message_id][reactions_to_nums[payload.emoji.name] - 1] += [user.id]
-                        try:
-                            poll_ids[payload.message_id][user.id] += 1
-                        except KeyError:
-                            poll_ids[payload.message_id][user.id] = 1
-                        print(poll_ids)
-                        try:
-                            msg = await channel.fetch_message(payload.message_id)
-                            new_embed = discord.Embed(title='', description='',
-                                                      color=user.color)
-                            new_embed.set_author(icon_url=user.avatar_url,
-                                                 name=poll_ids[payload.message_id]["title"])
-                            for i in range(0, 9):
-                                if len(poll_ids[payload.message_id].get(i, [])) > 0:
-                                    new_embed.add_field(name=f"Option {i + 1}:",
-                                                        value=str(len(poll_ids[payload.message_id][i])))
-                            await msg.edit(embed=new_embed)
-                            return
-                        except NotFound:
-                            continue
-                    else:
-                        await self.bot.get_channel(payload.channel_id).send(f'{user}, you have already replied '
-                                                                            f'the maximum number of times '
-                                                                            f'to that poll. If you want to change '
-                                                                            f'your responses, remove '
-                                                                            f'your previous reaction(s) and try '
-                                                                            f'again.',
-                                                                            delete_after=self.deltime)
-                        await (await self.bot.get_channel(payload.channel_id).fetch_message(
-                            payload.message_id)).remove_reaction(payload.emoji,
-                                                                 self.bot.get_guild(payload.guild_id).get_member(
-                                                                     payload.user_id))
+        # # ===============================Polls==================================
+        # if payload.message_id in poll_ids.keys():
+        #     for channel in self.bot.get_all_channels():
+        #         if channel.id is poll_ids[payload.message_id]["id"]:
+        #             user = self.bot.get_user(payload.user_id)
+        #             try:
+        #                 user_responses = poll_ids[payload.message_id][user.id]
+        #             except KeyError:
+        #                 poll_ids[payload.message_id][user.id] = 0
+        #                 user_responses = 0
+        #             if user_responses < poll_ids[payload.message_id]['max']:
+        #                 print(f'New reaction on poll {payload.message_id} by {user}.')
+        #                 poll_ids[payload.message_id][reactions_to_nums[payload.emoji.name] - 1] += [user.id]
+        #                 try:
+        #                     poll_ids[payload.message_id][user.id] += 1
+        #                 except KeyError:
+        #                     poll_ids[payload.message_id][user.id] = 1
+        #                 print(poll_ids)
+        #                 try:
+        #                     msg = await channel.fetch_message(payload.message_id)
+        #                     new_embed = discord.Embed(title='', description='',
+        #                                               color=user.color)
+        #                     new_embed.set_author(icon_url=user.avatar_url,
+        #                                          name=poll_ids[payload.message_id]["title"])
+        #                     for i in range(0, 9):
+        #                         if len(poll_ids[payload.message_id].get(i, [])) > 0:
+        #                             new_embed.add_field(name=f"Option {i + 1}:",
+        #                                                 value=str(len(poll_ids[payload.message_id][i])))
+        #                     await msg.edit(embed=new_embed)
+        #                     return
+        #                 except NotFound:
+        #                     continue
+        #             else:
+        #                 await self.bot.get_channel(payload.channel_id).send(f'{user}, you have already replied '
+        #                                                                     f'the maximum number of times '
+        #                                                                     f'to that poll. If you want to change '
+        #                                                                     f'your responses, remove '
+        #                                                                     f'your previous reaction(s) and try '
+        #                                                                     f'again.',
+        #                                                                     delete_after=self.deltime)
+        #                 await (await self.bot.get_channel(payload.channel_id).fetch_message(
+        #                     payload.message_id)).remove_reaction(payload.emoji,
+        #                                                          self.bot.get_guild(payload.guild_id).get_member(
+        #                                                              payload.user_id))
         print(f'Reaction {payload.emoji.name} added to message {payload.message_id} by user {payload.user_id}.')
 
     # Reaction removal handler
     @commands.Cog.listener()
     async def on_raw_reaction_remove(self, payload):
         print(f'New reaction {payload.emoji} removed from message {payload.message_id} in'
-              f' {payload.channel_id} by user {payload.user_id}.')
+              f' {self.bot.get_channel(payload.channel_id)} by user {self.bot.get_user(payload.user_id)}.')
         # =============================Verification Check======================
 
         # if payload.message_id == verificaiton_message_id:
@@ -194,29 +193,29 @@ class Basics(commands.Cog):
         #    if self.verified_role in target.roles:
         #        await target.remove_roles(self.verified_role)
         #        print(f'Verified role removed from {target}')
-        # =============================Polls===================================
-
-        if payload.message_id in poll_ids.keys():
-            for channel in self.bot.get_all_channels():
-                if channel.id is poll_ids[payload.message_id]["id"]:
-                    user = self.bot.get_user(payload.user_id)
-                    poll_ids[payload.message_id][reactions_to_nums[payload.emoji.name] - 1].remove(user.id)
-                    poll_ids[payload.message_id][user.id] -= 1
-                    print(poll_ids)
-                    try:
-                        msg = await channel.fetch_message(payload.message_id)
-                        new_embed = discord.Embed(title='', description='', color=user.color)
-                        new_embed.set_author(icon_url=user.avatar_url, name=poll_ids[payload.message_id]["title"])
-                        for i in range(0, 9):
-                            if len(poll_ids[payload.message_id].get(i, [])) > 0:
-                                new_embed.add_field(name=f"Option {i + 1}:",
-                                                    value=str(len(poll_ids[payload.message_id][i])))
-                        if len(new_embed.fields) == 0:
-                            new_embed.add_field(name="Poll Results:", value="No votes yet.")
-                        await msg.edit(embed=new_embed)
-                        return
-                    except NotFound:
-                        continue
+        # # =============================Polls===================================
+        #
+        # if payload.message_id in poll_ids.keys():
+        #     for channel in self.bot.get_all_channels():
+        #         if channel.id is poll_ids[payload.message_id]["id"]:
+        #             user = self.bot.get_user(payload.user_id)
+        #             poll_ids[payload.message_id][reactions_to_nums[payload.emoji.name] - 1].remove(user.id)
+        #             poll_ids[payload.message_id][user.id] -= 1
+        #             print(poll_ids)
+        #             try:
+        #                 msg = await channel.fetch_message(payload.message_id)
+        #                 new_embed = discord.Embed(title='', description='', color=user.color)
+        #                 new_embed.set_author(icon_url=user.avatar_url, name=poll_ids[payload.message_id]["title"])
+        #                 for i in range(0, 9):
+        #                     if len(poll_ids[payload.message_id].get(i, [])) > 0:
+        #                         new_embed.add_field(name=f"Option {i + 1}:",
+        #                                             value=str(len(poll_ids[payload.message_id][i])))
+        #                 if len(new_embed.fields) == 0:
+        #                     new_embed.add_field(name="Poll Results:", value="No votes yet.")
+        #                 await msg.edit(embed=new_embed)
+        #                 return
+        #             except NotFound:
+        #                 continue
         print(f'Reaction {payload.emoji.name} removed from message {payload.message_id} by user {payload.user_id}.')
 
     # Deleted message handler
@@ -233,7 +232,7 @@ class Basics(commands.Cog):
                                   timestamp=datetime.now())
             embed.set_author(icon_url=message.author.avatar_url, name=message.author)
             embed.set_footer(text=f'Author: {message.author.id} | Message ID: {message.id}')
-            await self.log_channel.send(embed=embed)
+            await self.bot.log_channel.send(embed=embed)
 
     # Edited message handler
     @commands.Cog.listener()
@@ -260,8 +259,8 @@ class Basics(commands.Cog):
                 embed_1.set_footer(text=f'Author: {before.author.id} | Message ID: {after.id}')
                 embed_2.set_author(icon_url=before.author.avatar_url, name=before.author)
                 embed_2.set_footer(text=f'Author: {before.author.id} | Message ID: {after.id}')
-                await self.log_channel.send(embed=embed_1)
-                await self.log_channel.send(embed=embed_2)
+                await self.bot.log_channel.send(embed=embed_1)
+                await self.bot.log_channel.send(embed=embed_2)
             else:
                 embed = discord.Embed(title='',
                                       description=f'**Message by {before.author.mention} edited in '
@@ -270,7 +269,7 @@ class Basics(commands.Cog):
                                       timestamp=datetime.now())
                 embed.set_author(icon_url=before.author.avatar_url, name=before.author)
                 embed.set_footer(text=f'Author: {before.author.id} | Message ID: {after.id}')
-                await self.log_channel.send(embed=embed)
+                await self.bot.log_channel.send(embed=embed)
 
     # Bulk delete handler
     @commands.Cog.listener()
@@ -288,7 +287,7 @@ class Basics(commands.Cog):
                                   timestamp=datetime.now())
             embed.set_author(icon_url=message.author.avatar_url, name=message.author)
             embed.set_footer(text=f'Author: {message.author.id} | Message ID: {message.id}')
-            await self.log_channel.send(embed=embed)
+            await self.bot.log_channel.send(embed=embed)
 
     # Commands
     @commands.command(aliases=['plonk'], description='Pong!')
@@ -307,21 +306,18 @@ class Basics(commands.Cog):
     async def remind(self, ctx, *, reminder=None):
         """
         Reminds you what you tell it to.
-        Example: remind Tell @neotheone he's a joker in 10m
+        Example: remind do a paycheck in 1h
         Your reminder needs to end with in and then the amount of time you want to be reminded in.
-        New! Now you can also remind you're a joke in 10m @neotheone     to send him the reminder directly.
-        Please note that abuse of reminding other people **will** result in your perms being edited so that you
-        can't use the remind command at all.
         10s: 10 seconds from now
         10m: 10 minutes from now
         1h:   1 hour from now
         1d: tomorrow at this time
         1w: next week at this time
-        1y: next year (or probably never, as the bot currently forgets reminders if it restarts)
+        1y: next year (or probably never, as the bot intentionally forgets reminders when it restarts)
         """
         try:
             print(ctx.message.raw_mentions[0])
-            user = ctx.guild.get_member(ctx.message.raw_mentions[0])
+            user = ctx.author  # ctx.guild.get_member(ctx.message.raw_mentions[0]) turned off for spam
         except IndexError:
             user = None
         if user is None:
@@ -345,6 +341,7 @@ class Basics(commands.Cog):
               f'time {increments}.')
 
     @commands.command(name='poll', pass_context=True, description='Create a poll.')
+    @commands.check(auth(1))
     async def create_poll(self, ctx, num_options=2, max_options=1, *, text):
         """
         Creates a poll.

@@ -4,6 +4,7 @@ from collections import Counter
 import discord
 from discord.ext import commands
 from cogs.database import update_location
+from functions import auth
 
 
 def hit_determine(distance: float, effective_range: float, ship_length: float, bonus: float = 0):
@@ -12,7 +13,7 @@ def hit_determine(distance: float, effective_range: float, ship_length: float, b
     if distance > effective_range:
         hit_chance = - (0.1111 * (distance / effective_range - 1) ** 2) + 1
     elif distance < effective_range * 0.3:
-        hit_chance = -100 * ( (distance / effective_range) - 0.32) ** 4 + 1
+        hit_chance = -100 * ((distance / effective_range) - 0.32) ** 4 + 1
     if hit_chance < 0:
         hit_chance = 0
     intermediate_step = (101.0 * ship_length / distance) ** 2
@@ -27,13 +28,11 @@ def hit_determine(distance: float, effective_range: float, ship_length: float, b
     # http://prntscr.com/tgo2e3
     return hit, luck, hit_chance, result, roll
 
+
 class Mechanics(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        self.DEFUALT_DIE_SIDES = 20  # Default number of sides to assume a rolled die has
-        self.MAX_DIE_SIDES = 100  # Max number of sides each die may have
-        self.MAX_DIE_ROLES = 100000  # Max number of dice that can be rolled with one ,roll command
         # TODO: Initialize Travel Channel
 
     # Events
@@ -65,20 +64,20 @@ class Mechanics(commands.Cog):
             try:
                 num_sides = int(args[1])
             except ValueError:
-                num_sides = self.DEFUALT_DIE_SIDES
+                num_sides = self.bot.DEFUALT_DIE_SIDES
             except IndexError:
-                num_sides = self.DEFUALT_DIE_SIDES
+                num_sides = self.bot.DEFUALT_DIE_SIDES
         else:
-            num_dice, num_sides = 1, self.DEFUALT_DIE_SIDES
+            num_dice, num_sides = 1, self.bot.DEFUALT_DIE_SIDES
         if num_sides < 2:
             num_sides = 2
-        elif num_sides > self.MAX_DIE_SIDES:
-            num_sides = self.MAX_DIE_SIDES
+        elif num_sides > self.bot.MAX_DIE_SIDES:
+            num_sides = self.bot.MAX_DIE_SIDES
         if num_dice < 1:
             num_dice = 1
         elif num_dice > 5:
-            if num_dice > self.MAX_DIE_ROLES:
-                num_dice = self.MAX_DIE_ROLES
+            if num_dice > self.bot.MAX_DIE_ROLES:
+                num_dice = self.bot.MAX_DIE_ROLES
             results = Counter([random.choice(range(1, num_sides + 1)) for __ in range(1, num_dice + 1)])
             to_send = f"I've rolled {num_dice}x {num_sides} sided dice and grouped them by roll:\n```\n"
             iterator = sorted(results.items(), key=lambda x: x[1], reverse=True)
@@ -110,6 +109,7 @@ class Mechanics(commands.Cog):
         await ctx.send(result)
 
     @commands.command()
+    @commands.check(auth(1))
     async def travel(self, ctx, channel: discord.TextChannel):
         try:
             await update_location(ctx.author, channel)
@@ -132,7 +132,7 @@ class Mechanics(commands.Cog):
 
     @commands.command()
     async def calchits(self, ctx, distance: float, effective_range: float, ship_length: float, num_guns: int,
-                       attacker_upgrade = 'norm',
+                       attacker_upgrade='norm',
                        weap_type: str = 'TC'):
         """This allows you to simulate many weapons firing - rather more useful for combat. Specify distance to
         the target, effective range of the weapon, size of the target, and number of weapons, and it will tell you

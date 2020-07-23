@@ -8,20 +8,17 @@ from cogs.database import add_invest, check_bal, transfer_funds, add_funds, dist
     set_last_paycheck_now, get_top, check_bal_str, transact_possession, add_possession, view_items, sell_possession
 from functions import auth, now
 
-PAYOUT_FREQUENCY = 60 * 60  # How frequently to send out investments, in seconds
-credit_emoji = '<:Credits:423873771204640768>'
+global payout_frequency
+payout_frequency = 10000000
 
 
 class Economy(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
+        global payout_frequency
+        payout_frequency = self.bot.PAYOUT_FREQUENCY
         # self.send_payouts.start()
-        self.BUMP_PAYMENT = 100  # Payment for disboard bumps
-        self.DISBOARD = 302050872383242240  # Disboard uid
-        self.PAYCHECK_AMOUNT_MIN = 4000000  # Minimum paycheck payout
-        self.PAYCHECK_AMOUNT_MAX = 4000000  # Maximum paycheck payout
-        self.PAYCHECK_INTERVAL = 3600  # Time between paychecks, in seconds
         print('Started the payouts task (1).')
 
     def cog_unload(self):
@@ -40,15 +37,17 @@ class Economy(commands.Cog):
     # =============================This rewards for disboard bumps=========================
     @commands.Cog.listener()
     async def on_message(self, message):
-        if message.author.id == self.DISBOARD and len(message.embeds) > 0:  # From disboard and has an embed
+        if message.author.id == self.bot.DISBOARD and len(message.embeds) > 0:  # From disboard and has an embed
             embed_content = message.embeds[0].to_dict()['description']
             if 'Bump done' in embed_content:
-                bumper_id = int(embed_content[3:21])
+                bumper_id = int(embed_content[2:20])
                 bumper = await self.bot.fetch_user(bumper_id)
-                balance = await add_funds(bumper, self.BUMP_PAYMENT)
-                await message.channel.send(f"Thank you for bumping GFW on Disboard, {bumper.mention()}. I've "
-                                           f"added {self.BUMP_PAYMENT} {credit_emoji} to your balance. "
-                                           f"Your new balance is {balance}.")
+                balance = await add_funds(bumper, self.bot.BUMP_PAYMENT)
+                message = f"Thank you for bumping GFW on Disboard, {bumper.mention}." \
+                          f" I've added {self.bot.BUMP_PAYMENT}" \
+                          f" {self.bot.credit_emoji} to your balance. Your new balance is {balance}."
+                print(message)
+                # await message.channel.send(message)
 
     # Commands
 
@@ -90,7 +89,7 @@ class Economy(commands.Cog):
                 balance, invested = await check_bal(user)
             else:
                 balance, invested, user = await check_bal_str(user)
-            message = f"{user.name}'s balance is {int(balance)} {credit_emoji}"
+            message = f"{user.name}'s balance is {int(balance)} {self.bot.credit_emoji}"
             embed = discord.Embed(title='Balance',
                                   description=message,
                                   timestamp=datetime.now())
@@ -118,7 +117,7 @@ class Economy(commands.Cog):
             await ctx.send(f"You can not send more credits than you have.")
         else:
             await ctx.send(f'Successfully transferred {amount} to {user}. Your new balance is {from_balance}'
-                           f' {credit_emoji}, their new balance is {to_balance} {credit_emoji}.')
+                           f' {self.bot.credit_emoji}, their new balance is {to_balance} {self.bot.credit_emoji}.')
 
     @commands.command(name='buy', description='Buy an item from the browse listings.')
     @commands.check(auth(1))
@@ -155,7 +154,25 @@ class Economy(commands.Cog):
         await add_possession(user, item, cost=price, amount=amount)
         await ctx.send(f'I have given {user} {amount} {item}.')
 
-    @commands.command(name='top', aliases=['topbank'], description='List the top people in the specified category.')
+    @commands.command(name='top', aliases=['topbank'], description='List the top people in the bank.')
+    async def topbank(self, ctx, page: int = 1):
+        # This method queries the database and returns a list of ten tuples of (name, stat) which is one page of results
+        try:
+            lines, num_pages, rank = await get_top('balance', page, ctx.author)
+        except NameError:
+            return await ctx.send('Invalid category. Try balance, invested or activity.')
+        message = f"**Top {'balance'.title()} Page {page}/{num_pages}**\n\n"
+        count = (page - 1) * self.bot.ITEMS_PER_TOP_PAGE + 1
+        for line in lines:
+            message += f'{count}) {line[0]} - {line[1]}\n'
+            count += 1
+        embed = discord.Embed(title='',
+                              description=message,
+                              timestamp=datetime.now())
+        embed.set_footer(text=f'Your rank: {rank}')
+        await ctx.send(embed=embed)
+
+    @commands.command(description='List the top people in the specified category.')
     async def topstat(self, ctx, look_type: typing.Optional[str] = 'balance', page: int = 1):
         # This method queries the database and returns a list of ten tuples of (name, stat) which is one page of results
         try:
@@ -184,7 +201,8 @@ class Economy(commands.Cog):
             return await ctx.send("You are not authoried to use this command.")
         new_balance = await add_funds(member, amount)
         print(f'Added {amount} credits to {member} by authority of {ctx.author}. Their new balance is {new_balance}')
-        message = f"Added {int(amount)} {credit_emoji} to {member.name}'s account by request of {ctx.author.name}."
+        message = f"Added {int(amount)} {self.bot.credit_emoji} to {member.name}'s account by request of " \
+                  f"{ctx.author.name}."
         embed = discord.Embed(title='Money',
                               description=message,
                               timestamp=datetime.now())
@@ -204,7 +222,8 @@ class Economy(commands.Cog):
         new_balance = await add_funds(member, -1 * amount)
         print(
             f'Removed {amount} credits from {member} by authority of {ctx.author}. Their new balance is {new_balance}')
-        message = f"Removed {int(amount)} {credit_emoji} from {member.name}'s account by request of {ctx.author.name}."
+        message = f"Removed {int(amount)} {self.bot.credit_emoji} from {member.name}'s account by request" \
+                  f" of {ctx.author.name}."
         embed = discord.Embed(title='Money',
                               description=message,
                               timestamp=datetime.now())
@@ -219,7 +238,7 @@ class Economy(commands.Cog):
         """
         await distribute_payouts()
         print(f'Bonus investment payouts sent by {ctx.author}, enjoy!')
-        channel = self.bot.get_channel(718949686412705862)
+        channel = self.bot.log_channel
         await channel.send(f'Bonus investment payouts sent by {ctx.author}, enjoy!')
 
     @commands.command(description='Get some free credits!')
@@ -228,19 +247,20 @@ class Economy(commands.Cog):
         Get some free credits.
         """
         last_paycheck = await check_last_paycheck(ctx.author)
-        if time.time() - last_paycheck < self.PAYCHECK_INTERVAL:
-            seconds_remaining = int(last_paycheck + self.PAYCHECK_INTERVAL - time.time() + 1)
+        if time.time() - last_paycheck < self.bot.PAYCHECK_INTERVAL:
+            seconds_remaining = int(last_paycheck + self.bot.PAYCHECK_INTERVAL - time.time() + 1)
             minutes_remaining = seconds_remaining // 60
             seconds_remaining = seconds_remaining % 60
             return await ctx.send(f"You aren't ready for a paycheck yet. Try again in {minutes_remaining} minutes"
                                   f" and {seconds_remaining} seconds.")
-        if self.PAYCHECK_AMOUNT_MAX == self.PAYCHECK_AMOUNT_MIN:
-            paycheck_amount = self.PAYCHECK_AMOUNT_MAX
+
+        if self.bot.PAYCHECK_AMOUNT_MAX == self.bot.PAYCHECK_AMOUNT_MIN:
+            paycheck_amount = self.bot.PAYCHECK_AMOUNT_MAX
         else:
-            paycheck_amount = random.randrange(self.PAYCHECK_AMOUNT_MIN, self.PAYCHECK_AMOUNT_MAX)
-        await set_last_paycheck_now(ctx.author)
+            paycheck_amount = random.randrange(self.bot.PAYCHECK_AMOUNT_MIN, self.bot.PAYCHECK_AMOUNT_MAX)
         balance = await add_funds(ctx.author, paycheck_amount)
-        message = f'{ctx.author.name} has been paid {paycheck_amount} {credit_emoji} [{int(balance)}]'
+        message = f'{ctx.author.name} has been paid {paycheck_amount} {self.bot.credit_emoji} [{int(balance)}]'
+        await set_last_paycheck_now(ctx.author)
         embed = discord.Embed(title='Paycheck',
                               description=message,
                               timestamp=datetime.now())
@@ -327,7 +347,7 @@ class Economy(commands.Cog):
                 return
             count += 1
 
-    @tasks.loop(seconds=PAYOUT_FREQUENCY)
+    @tasks.loop(seconds=payout_frequency)
     async def send_payouts(self):
         await distribute_payouts()
         print('Investment payouts sent.')
