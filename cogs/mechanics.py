@@ -169,6 +169,11 @@ class Mechanics(commands.Cog):
                 hits += 1
         await ctx.send(f'{hits} out of {num_guns} weapons hit their target.')
 
+    @commands.command(description='Calculate points from shield (sbd), hull (ru), speed (mglt), length(m) and armament (pts)')
+    async def points(self, ctx, shield, hull, mglt, length, armament):
+        """Calculate points from shield (sbd), hull (ru), speed (mglt), length(m) and armament (pts)"""
+        await ctx.send(((shield + hull)/3) + (mglt*length/100) + armament)
+
 
 def setup(bot):
     bot.add_cog(Mechanics(bot))
