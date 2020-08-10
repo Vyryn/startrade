@@ -5,12 +5,7 @@ import json
 import ast
 from discord.ext import commands
 from functions import auth, set_commanders, get_commanders, now, DEFAULT_AUTH
-
-# Bot commanders levels
-PERMS_INFO = {0: '(No other dev perms)', 1: 'Can use echo and auth check', 2: 'Can make bot send DMs',
-              3: 'Can reload cogs', 4: 'Can load and unload cogs', 5: 'Can update bot status',
-              6: 'Can see the list of all bot commanders', 7: 'Can set other people\'s auth levels',
-              8: 'Trusted for dangerous dev commands', 9: 'Can use eval', 10: 'Created me'}
+from bot import log, logready
 
 
 # For saying the footnote was requested by someone
@@ -43,7 +38,7 @@ class Dev(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         self.deltime = self.bot.deltime
-        print(f'Cog {self.qualified_name} is ready.')
+        logready(self)
 
     # Commands
     # Echo what you said
@@ -56,7 +51,7 @@ class Dev(commands.Cog):
         """
         await ctx.message.delete()  # delete the command
         await ctx.send(message)
-        print(f'Echo command used by {ctx.author} at {now()} with message {message}')
+        log(f'Echo command used by {ctx.author} with message {message}.', self.bot.cmd)
 
     # Have the bot send a dm to someone with your message
     @commands.command(name='sendmsg', aliases=['dm', 'tell', 'message'], pass_context=True,
@@ -73,7 +68,7 @@ class Dev(commands.Cog):
         await ctx.message.delete()  # delete the command
         await ctx.send('Message sent.', delete_after=self.deltime)
         await user.send(message)
-        print(f'Send command used by {ctx.author} at {now()} to user {user} with message {message}')
+        log(f'Send command used by {ctx.author} to user {user} with message {message}.', self.bot.cmd)
 
     # Check someone's  auth level
     @commands.group(name='auth', aliases=['who', 'check', 'authorize'], description='Check the Auth Level of a user')
@@ -86,8 +81,7 @@ class Dev(commands.Cog):
         You can use auth set <user> <level> if you have auth level 7
         """
         # await ctx.send('Use auth check, auth set or auth all')
-        print(f'Auth command used by {ctx.author} at {now()}')
-        pass
+        log(f'Auth command used by {ctx.author}.', self.bot.cmd)
 
     # Checks a user's auth level
     @autho.command()
@@ -100,14 +94,15 @@ class Dev(commands.Cog):
                                                         f'authorized at level {auth_level}')
         if detail != '':
             perms = ''
-            for perm in sorted(PERMS_INFO.keys(), reverse=True):
+            for perm in sorted(self.bot.PERMS_INFO.keys(), reverse=True):
                 if perm <= auth_level:
-                    perms += str(perm) + ': ' + PERMS_INFO.get(perm) + '\n'
+                    perms += str(perm) + ': ' + self.bot.PERMS_INFO.get(perm) + '\n'
             embed.add_field(name='The Details:', value=perms)
         embed.set_footer(text=embed_footer(ctx.author))
         await ctx.send(content=None, embed=embed, delete_after=self.deltime * 5)
         await ctx.message.delete(delay=self.deltime)  # delete the command
-        print(f'Auth check command used by {ctx.author} at {now()}, {user} is authorized at level {auth_level}.')
+        log(f'Auth check command used by {ctx.author}, {user} is authorized at level {auth_level}.',
+            self.bot.cmd)
 
     # sets a user's auth level
     @commands.command()
@@ -117,7 +112,7 @@ class Dev(commands.Cog):
         if commanders[str(ctx.author.id)] > level and commanders.get(user.id, 0) < commanders[str(ctx.author.id)]:
             with open('auths.json', 'r') as f:
                 auths = json.load(f)
-            print(f'Changing {user} auth level to {level}')
+            log(f'Changing {user} auth level to {level}', self.bot.prio)
             auths[str(user.id)] = level
             with open('auths.json', 'w') as f:
                 json.dump(auths, f, indent=4)
@@ -128,7 +123,7 @@ class Dev(commands.Cog):
         else:
             await ctx.send(f"I'm sorry, but you can't change the auth level of someone with an auth level equal to or "
                            f"higher than you.")
-        print(f'Authset command used by {ctx.author} at {now()} to set {user}\'s auth level to {level}')
+        log(f'Authset command used by {ctx.author} to set {user}\'s auth level to {level}.', self.bot.cmd)
 
     # lists all bot commanders and their auth levels
     @autho.command(name='all')
@@ -143,7 +138,7 @@ class Dev(commands.Cog):
         embed.add_field(name='Bot Commanders:', value=message)
         embed.set_footer(text=embed_footer(ctx.author))
         await ctx.send(content=None, embed=embed)
-        print(f'Auth All command used by {ctx.author} at {now()}')
+        log(f'Auth All command used by {ctx.author}.', self.bot.cmd)
 
     # Unload a cog
     @commands.command(description='Unload a cog')
@@ -155,10 +150,10 @@ class Dev(commands.Cog):
         Extension: The cog to unload
         """
         self.bot.unload_extension(f'cogs.{extension}')
-        print(f'Unloaded {extension}')
+        log(f'Unloaded {extension}')
         await ctx.send(f'Unloaded {extension}.', delete_after=self.deltime)
         await ctx.message.delete(delay=self.deltime)  # delete the command
-        print(f'Unload command used by {ctx.author} at {now()} on cog {extension}')
+        log(f'Unload command used by {ctx.author} on cog {extension}.', self.bot.cmd)
 
     # Reload a cog
     @commands.command(description='Reload a cog')
@@ -174,10 +169,10 @@ class Dev(commands.Cog):
         except discord.ext.commands.errors.ExtensionNotLoaded:
             await ctx.send(f"Cog {extension} wasn't loaded, loading it now.")
         self.bot.load_extension(f'cogs.{extension}')
-        print(f'Reloaded {extension}')
+        log(f'Reloaded {extension}')
         await ctx.send(f'Reloaded {extension}', delete_after=self.deltime)
         await ctx.message.delete(delay=self.deltime)  # delete the command
-        print(f'Reload command used by {ctx.author} at {now()} on cog {extension}')
+        log(f'Reload command used by {ctx.author} on cog {extension}.', self.bot.cmd)
 
     # Update bot status
     @commands.command(description='Change what the bot is playing')
@@ -189,10 +184,10 @@ class Dev(commands.Cog):
         Message: The message to change it to
         """
         await self.bot.change_presence(activity=discord.Game(message))
-        print(f'Updated status to {message}.')
+        log(f'Updated status to {message}.')
         await ctx.send(f'Updated status to {message}.', delete_after=self.deltime)
         await ctx.message.delete(delay=self.deltime)  # delete the command
-        print(f'Status command used by {ctx.author} at {now()} to set bot status to {message}')
+        log(f'Status command used by {ctx.author} to set bot status to {message}.', self.bot.cmd)
 
     @commands.command(name='eval', description='Evaluates input.')
     @commands.check(auth(9))
@@ -201,6 +196,7 @@ class Dev(commands.Cog):
         Evaluates input.
         This command requires Auth 9 for obvious reasons.
         """
+        log(f'Evaluating {cmd} for {ctx.author}.', self.bot.cmd)
         starttime = time.time_ns()
         fn_name = "_eval_expr"
         cmd = cmd.strip("` ")
@@ -227,7 +223,10 @@ class Dev(commands.Cog):
         exec(compile(parsed, filename="<ast>", mode="exec"), env)
         result = (await eval(f"{fn_name}()", env))
         endtime = time.time_ns()
-        await ctx.send(f'Command took {int((endtime - starttime) / 10000) / 100}ms to run.\nResult: {result}')
+        await ctx.send(f'Command took {int((endtime - starttime) / 10000) / 100}ms to run.')
+        if result is not None:
+            await ctx.send(f'Result: {result}')
+        log(f'Evaluation of {cmd} for {ctx.author} gave the following result: {result}.', self.bot.cmd)
 
     @commands.command(description='Delete a single message by ID')
     @commands.check(auth(6))
@@ -239,7 +238,7 @@ class Dev(commands.Cog):
         """
         await (await ctx.channel.fetch_message(message_id)).delete()
         await ctx.message.delete(delay=self.deltime)  # delete the command
-        print(f'Deleted message {message_id} in channel {ctx.channel} for user {ctx.author} at {now()}')
+        log(f'Deleted message {message_id} in channel {ctx.channel} for user {ctx.author}.', self.bot.cmd)
 
 
 def setup(bot):

@@ -3,22 +3,33 @@ import json
 import time
 from datetime import datetime
 import discord
-from discord import NotFound
 from discord.ext import commands
-# from cogs.database import new_user, update_activity
-from cogs.database import new_user, update_activity
-from functions import poll_ids, now, log, set_polls, auth
 
-log_channel_id = 408254707388383232
-# verified_role_id = 718949160170291203
-# The startrade verification message id
-# verificaiton_message_id = 718980234380181534
-content_max = 1970  # The maximum number of characters that can safely be fit into a logged message
-time_options = {'s': 1, 'm': 60, 'h': 60 * 60, 'd': 60 * 60 * 24, 'w': 60 * 60 * 24 * 7,
-                'y': 60 * 60 * 24 * 365}
-number_reactions = ["1\u20e3", "2\u20e3", "3\u20e3", "4\u20e3", "5\u20e3", "6\u20e3", "7\u20e3",
-                    "8\u20e3", "9\u20e3"]
-reactions_to_nums = {"1⃣": 1, "2⃣": 2, "3⃣": 3, "4⃣": 4, "5⃣": 5, "6⃣": 6, "7⃣": 7, "8⃣": 8, "9⃣": 9}
+from bot import log, logready
+from cogs.database import new_user, update_activity, update_n_word
+from functions import poll_ids, now, set_polls, auth
+
+
+async def do_activity_update(bot, author: discord.Member, content: str):
+    # if not message.author.bot:
+    words = content.split(' ')
+    valid_words = []
+    for word in words:
+        case_word = word.casefold()
+        if len(case_word) > 2 and case_word not in valid_words:
+            valid_words.append(case_word)
+    # valid_words = [word for word in words if len(word) > 2]
+    new_words = len(valid_words)
+    added_activity_score = max(new_words - 2, 0)
+    recently_spoke = time.time() - bot.recent_actives.get(author.id, 0) < bot.ACTIVITY_COOLDOWN
+    if added_activity_score > 0 and not recently_spoke:
+        bot.recent_actives[author.id] = time.time()
+        await update_activity(author, added_activity_score)
+
+
+async def do_n_word_update(author: discord.Member, content: str, word_list: [str]):
+    if any(substring in content.casefold() for substring in word_list):
+        await update_n_word(author, 1)
 
 
 async def remind_routine(increments, user, author, message):
@@ -28,13 +39,12 @@ async def remind_routine(increments, user, author, message):
         message = f':alarm_clock: **Reminder from {author}**: \n' + message
     await asyncio.sleep(increments)
     await user.send(message)
-    print(f'{user} has been sent their reminder {message}')
+    log(f'{user} has been sent their reminder {message}')
 
 
-async def send_to_log_channel(ctx, content: str, event_name: str = ''):
+async def send_to_log_channel(log_channel, ctx, content: str, event_name: str = ''):
     author = ctx.author
     m_id = ctx.message.id
-    log_channel = ctx.message.guild.get_channel(log_channel_id)
     embed = discord.Embed(title='',
                           description=f'**{event_name}**\n' + content,
                           timestamp=datetime.now())
@@ -50,16 +60,18 @@ class Basics(commands.Cog):
         self.verified_role = None
         self.log_channel = None
         self.deltime = None
-        self.recent_actives = dict()
+        self.bot.recent_actives = dict()
+        # This was specially requested by the client.
+        self.word_list = [i.casefold() for i in ['nigga', 'nigger', 'niger', 'niga', 'niggah']]
 
     # Events
     # When bot is ready, print to console
     @commands.Cog.listener()
     async def on_ready(self):
-        # self.verified_role = self.bot.server.get_role(verified_role_id)
-        self.log_channel = self.bot.server.get_channel(log_channel_id)
+        # self.verified_role = self.bot.server.get_role(self.bot.verified_role_id)
+        self.log_channel = self.bot.server.get_channel(self.bot.log_channel_id)
         self.deltime = self.bot.deltime
-        print(f'Cog {self.qualified_name} is ready.')
+        logready(self)
 
     # =============================Message handler=========================
     @commands.Cog.listener()
@@ -70,68 +82,23 @@ class Basics(commands.Cog):
         if not message.author.bot:
             await new_user(message.author)
         # =========================ACTIVITY==========================
-        # if not message.author.bot:
-        words = message.content.split(' ')
-        valid_words = []
-        for word in words:
-            case_word = word.casefold()
-            if len(case_word) > 2 and case_word not in valid_words:
-                valid_words.append(case_word)
-        # valid_words = [word for word in words if len(word) > 2]
-        new_words = len(valid_words)
-        added_activity_score = max(new_words - 2, 0)
-        recently_spoke = time.time() - self.recent_actives.get(message.author.id, 0) < self.bot.ACTIVITY_COOLDOWN
-        if added_activity_score > 0 and not recently_spoke:
-            self.recent_actives[message.author.id] = time.time()
-            await update_activity(message.author, added_activity_score)
-        # ===========================LOG=============================
-        ln = '\n'
-        n_ln = '\\n'
-        # Build a log of this message
-        log_msg = ''
-        log_dict = {'log': 'message', 'timestamp': now()}
-        if message.author.bot:
-            log_msg += f'Message logged at {now()} by Bot {message.author}'
-            log_dict['bot'] = True
-        else:
-            log_msg += f'Message logged at {now()} by User {message.author}'
-            log_dict['bot'] = False
-        log_dict['author'] = {'id': message.author.id, 'name': message.author.name}
-        if message.guild is not None:
-            log_msg += f' in Guild: {message.guild} in Channel {message.channel}:'
-            log_dict['guild'] = {'id': message.guild.id, 'name': message.guild.name}
-            log_dict['channel'] = {'id': message.channel.id, 'name': message.channel.name}
-        else:
-            log_msg += f' in Channel {message.channel}:'
-            log_dict['guild'] = {'id': 'private', 'name': message.author.name}
-            log_dict['channel'] = {'id': message.channel.id, 'name': message.author.name}
-        if message.content != "":
-            log_msg += f" with Content: {message.system_content.replace(ln, n_ln)}"
-            log_dict['content'] = message.content
-        if len(message.embeds) > 0:
-            log_msg += f' with Embed: {message.embeds[0].to_dict()}'
-            log_dict['embed'] = message.embeds[0].to_dict()
-        if len(message.attachments) > 0:
-            log_msg += f' with Attachment: {message.attachments[0].filename},{message.attachments[0].url}'
-            log_dict['attachment'] = {'filename': message.attachments[0].filename, 'url': message.attachments[0].url}
-        # Log message
-        # log(log_dict)
-        log(log_msg, message)
-        # print(log_msg)
+        await do_activity_update(self.bot, message.author, message.content)
+        # ========================N-Word=============================
+        await do_n_word_update(message.author, message.content, self.word_list)
 
     # ==============================Reaction handler======================================
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload):
-        print(f'New reaction {payload.emoji} on message {payload.message_id} in '
-              f'{self.bot.get_channel(payload.channel_id)} by user {self.bot.get_user(payload.user_id)}.')
+        log(f'New reaction {payload.emoji} on message {payload.message_id} in '
+            f'{self.bot.get_channel(payload.channel_id)} by user {self.bot.get_user(payload.user_id)}.')
         # =============================Verification Check======================
 
-        # if payload.message_id == verificaiton_message_id:
+        # if payload.message_id == verification_message_id:
         #    target = self.bot.server.get_member(payload.user_id)
         #     if self.verified_role not in target.roles:
-        #        print(await (new_user(target)))
+        #        log(await (new_user(target)))
         #        await target.add_roles(self.verified_role)
-        #        print(f'Verified role added to {target}')
+        #        log(f'Verified role added to {target}')
         # Ignore bots
         if payload.user_id == self.bot.user.id:
             return
@@ -146,13 +113,13 @@ class Basics(commands.Cog):
         #                 poll_ids[payload.message_id][user.id] = 0
         #                 user_responses = 0
         #             if user_responses < poll_ids[payload.message_id]['max']:
-        #                 print(f'New reaction on poll {payload.message_id} by {user}.')
+        #                 log(f'New reaction on poll {payload.message_id} by {user}.')
         #                 poll_ids[payload.message_id][reactions_to_nums[payload.emoji.name] - 1] += [user.id]
         #                 try:
         #                     poll_ids[payload.message_id][user.id] += 1
         #                 except KeyError:
         #                     poll_ids[payload.message_id][user.id] = 1
-        #                 print(poll_ids)
+        #                 log(poll_ids)
         #                 try:
         #                     msg = await channel.fetch_message(payload.message_id)
         #                     new_embed = discord.Embed(title='', description='',
@@ -179,20 +146,20 @@ class Basics(commands.Cog):
         #                     payload.message_id)).remove_reaction(payload.emoji,
         #                                                          self.bot.get_guild(payload.guild_id).get_member(
         #                                                              payload.user_id))
-        print(f'Reaction {payload.emoji.name} added to message {payload.message_id} by user {payload.user_id}.')
+        log(f'Reaction {payload.emoji.name} added to message {payload.message_id} by user {payload.user_id}.')
 
     # Reaction removal handler
     @commands.Cog.listener()
     async def on_raw_reaction_remove(self, payload):
-        print(f'New reaction {payload.emoji} removed from message {payload.message_id} in'
-              f' {self.bot.get_channel(payload.channel_id)} by user {self.bot.get_user(payload.user_id)}.')
+        log(f'New reaction {payload.emoji} removed from message {payload.message_id} in'
+            f' {self.bot.get_channel(payload.channel_id)} by user {self.bot.get_user(payload.user_id)}.')
         # =============================Verification Check======================
 
-        # if payload.message_id == verificaiton_message_id:
+        # if payload.message_id == verification_message_id:
         #    target = self.bot.server.get_member(payload.user_id)
         #    if self.verified_role in target.roles:
         #        await target.remove_roles(self.verified_role)
-        #        print(f'Verified role removed from {target}')
+        #        log(f'Verified role removed from {target}')
         # # =============================Polls===================================
         #
         # if payload.message_id in poll_ids.keys():
@@ -201,7 +168,7 @@ class Basics(commands.Cog):
         #             user = self.bot.get_user(payload.user_id)
         #             poll_ids[payload.message_id][reactions_to_nums[payload.emoji.name] - 1].remove(user.id)
         #             poll_ids[payload.message_id][user.id] -= 1
-        #             print(poll_ids)
+        #             log(poll_ids)
         #             try:
         #                 msg = await channel.fetch_message(payload.message_id)
         #                 new_embed = discord.Embed(title='', description='', color=user.color)
@@ -216,14 +183,14 @@ class Basics(commands.Cog):
         #                 return
         #             except NotFound:
         #                 continue
-        print(f'Reaction {payload.emoji.name} removed from message {payload.message_id} by user {payload.user_id}.')
+        log(f'Reaction {payload.emoji.name} removed from message {payload.message_id} by user {payload.user_id}.')
 
     # Deleted message handler
     @commands.Cog.listener()
     async def on_message_delete(self, message):
         if message.guild.id == self.bot.server.id:
-            if len(message.content) > content_max + 3:
-                content = message.content[:content_max] + '...'
+            if len(message.content) > self.bot.content_max + 3:
+                content = message.content[:self.bot.content_max] + '...'
             else:
                 content = message.content
             embed = discord.Embed(title='',
@@ -237,18 +204,18 @@ class Basics(commands.Cog):
     # Edited message handler
     @commands.Cog.listener()
     async def on_message_edit(self, before, after):
-        print('on message edit triggered')
+        log('on message edit triggered', self.bot.debug)
         if before.guild.id == self.bot.server.id and not after.author.bot:  # If in GFW and not a bot message
-            print('edit log triggered')
-            if len(before.content) > content_max - 7:
-                before_content = before.content[:content_max - 10] + '...'
+            log('edit log triggered', self.bot.debug)
+            if len(before.content) > self.bot.content_max - 7:
+                before_content = before.content[:self.bot.content_max - 10] + '...'
             else:
                 before_content = before.content
-            if len(after.content) > content_max + 3:
-                after_content = after.content[:content_max] + '...'
+            if len(after.content) > self.bot.content_max + 3:
+                after_content = after.content[:self.bot.content_max] + '...'
             else:
                 after_content = after.content
-            if len(before_content) + len(after_content) > content_max + 3:
+            if len(before_content) + len(after_content) > self.bot.content_max + 3:
                 embed_1 = discord.Embed(title='',
                                         description=f'**Message by {before.author.mention} edited in '
                                                     f'{before.channel.mention}**\n**Before:**\n' + before_content,
@@ -277,8 +244,8 @@ class Basics(commands.Cog):
         if messages[0].guild.id != self.bot.server.id:
             return
         for message in messages:
-            if len(message.content) > content_max + 3:
-                content = message.content[:content_max] + '...'
+            if len(message.content) > self.bot.content_max + 3:
+                content = message.content[:self.bot.content_max] + '...'
             else:
                 content = message.content
             embed = discord.Embed(title='',
@@ -298,7 +265,7 @@ class Basics(commands.Cog):
         ping = round(self.bot.latency * 1000)
         await ctx.message.delete(delay=self.deltime)  # delete the command
         await ctx.send(f'Ping is {ping}ms.', delete_after=self.deltime)
-        print(f'Ping command used by {ctx.author} at {now()} with ping {ping}')
+        log(f'Ping command used by {ctx.author} with ping {ping}.', self.bot.cmd)
 
     # Send you a reminder DM with a custom message in a custom amount of time
     @commands.command(name='remind', aliases=['rem', 're', 'r', 'remindme', 'tellme', 'timer'], pass_context=True,
@@ -316,7 +283,7 @@ class Basics(commands.Cog):
         1y: next year (or probably never, as the bot intentionally forgets reminders when it restarts)
         """
         try:
-            print(ctx.message.raw_mentions[0])
+            log(ctx.message.raw_mentions[0], self.bot.debug)
             user = ctx.author  # ctx.guild.get_member(ctx.message.raw_mentions[0]) turned off for spam
         except IndexError:
             user = None
@@ -329,16 +296,16 @@ class Basics(commands.Cog):
             # preceded by in
             increments = int(t[1][:-1])  # number of increment to wait
             increment = t[1][-1]  # s, m, h, d, w, y
-            increments *= time_options.get(increment, 1)
-            print(f'{ctx.author} created a reminder to {user} for {increments} seconds from now; {t}')
+            increments *= self.bot.time_options.get(increment, 1)
+            log(f'{ctx.author} created a reminder to {user} for {increments} seconds from now; {t}')
             self.bot.loop.create_task(remind_routine(increments, user, ctx.author, reminder))
             await ctx.send(f"Got it. I'll send the reminder in {increments} seconds.", delete_after=self.deltime)
         else:
             await ctx.send('Please enter a valid time interval. You can use s, m, h, d, w, y as your interval time '
                            'prefix.', delete_after=self.deltime)
         await ctx.message.delete(delay=self.deltime)  # delete the command
-        print(f'Remind command used by {ctx.author} at {now()} with reminder {reminder} to user {user} for '
-              f'time {increments}.')
+        log(f'Remind command used by {ctx.author} with reminder {reminder} to user {user} for '
+            f'time {increments}.', self.bot.cmd)
 
     @commands.command(name='poll', pass_context=True, description='Create a poll.')
     @commands.check(auth(1))
@@ -358,12 +325,12 @@ class Basics(commands.Cog):
         results = f'No Votes Yet.'
         embed.add_field(name='Poll Results:', value=results)
         poll_message = await ctx.send(content=None, embed=embed)
-        print(f'Created a new poll from the message in channel {poll_message.channel.id} with id {poll_message.id}.')
+        log(f'Created a new poll from the message in channel {poll_message.channel.id} with id {poll_message.id}.')
         poll_ids[poll_message.id] = {'id': poll_message.channel.id}
         poll_ids[poll_message.id]['title'] = text
         poll_ids[poll_message.id]['max'] = max_options
         for i in range(0, num_options):
-            await poll_message.add_reaction(number_reactions[i])
+            await poll_message.add_reaction(self.bot.number_reactions[i])
             poll_ids[poll_message.id][i] = []
             await asyncio.sleep(0.1)
         with open('polls.json', 'r') as f:
@@ -371,8 +338,8 @@ class Basics(commands.Cog):
         polls[poll_message.id] = poll_ids[poll_message.id]
         with open('polls.json', 'w') as f:
             json.dump(polls, f, indent=4)
-        print(poll_message.embeds[0].fields[0].value)
-        print(f'Poll command used by {ctx.author} at {now()} with poll {text}.')
+        log(poll_message.embeds[0].fields[0].value, self.bot.debug)
+        log(f'Poll command used by {ctx.author} with poll {text}.', self.bot.cmd)
 
     @commands.command(description='Check the current time')
     async def time(self, ctx):
@@ -380,7 +347,7 @@ class Basics(commands.Cog):
         Check the current time
         """
         await ctx.send(f'It is currently {now()}.')
-        print(f'Time command used by {ctx.author} at {now()}.')
+        log(f'Time command used by {ctx.author}.', self.bot.cmd)
 
 
 def setup(bot):

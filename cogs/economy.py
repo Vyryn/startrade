@@ -4,11 +4,17 @@ from datetime import datetime
 import discord
 import typing
 from discord.ext import commands, tasks
+
+from bot import log, logready
 from cogs.database import add_invest, check_bal, transfer_funds, add_funds, distribute_payouts, check_last_paycheck, \
-    set_last_paycheck_now, get_top, check_bal_str, transact_possession, add_possession, view_items, sell_possession
-from functions import auth, now
+    set_last_paycheck_now, get_top, check_bal_str, transact_possession, add_possession, view_items, sell_possession, \
+    items_per_top_page
+from functions import auth
 
 global payout_frequency
+# These parameters need to be in this scope due to constraints of the library.
+# I set them based on the bot attributes of the same names in init and on_ready.
+# These are just "default default values" so to speak, and are never actually used.
 payout_frequency = 10000000
 
 
@@ -19,20 +25,20 @@ class Economy(commands.Cog):
         global payout_frequency
         payout_frequency = self.bot.PAYOUT_FREQUENCY
         # self.send_payouts.start()
-        print('Started the payouts task (1).')
+        log('Started the investment payouts task (1).', self.bot.debug)
 
     def cog_unload(self):
         self.send_payouts.cancel()
-        print('Ended the investment payout task.')
+        log('Ended the investment payout task.')
 
     def cog_load(self):
         self.send_payouts.start()
-        print('Started the payouts task (2).')
+        log('Weirldy Started the investment payouts task (2).')
 
     # Events
     @commands.Cog.listener()
     async def on_ready(self):
-        print(f'Cog {self.qualified_name} is ready.')
+        logready(self)
 
     # =============================This rewards for disboard bumps=========================
     @commands.Cog.listener()
@@ -46,7 +52,8 @@ class Economy(commands.Cog):
                 message = f"Thank you for bumping GFW on Disboard, {bumper.mention}." \
                           f" I've added {self.bot.BUMP_PAYMENT}" \
                           f" {self.bot.credit_emoji} to your balance. Your new balance is {balance}."
-                print(message)
+                log(f'{bumper} bumpbed the server on Disboard. Gave them {self.bot.BUMP_PAYMENT}, '
+                    f'new balance {balance}.')
                 # await message.channel.send(message)
 
     # Commands
@@ -75,7 +82,7 @@ class Economy(commands.Cog):
             result = f"{ctx.author}, you have just invested {invested} for a total of invested of {total_invested}." \
                      f" You now have {new_balance} credits left."
         await ctx.send(result)
-        print(result)
+        log(f'{ctx.author} used invest command with result: {result}.', self.bot.cmd)
 
     @commands.command(aliases=['bal', 'cash'], description='Check your balance.')
     async def balance(self, ctx, user: typing.Union[discord.Member, str] = None):
@@ -94,14 +101,17 @@ class Economy(commands.Cog):
                                   description=message,
                                   timestamp=datetime.now())
             await ctx.send(embed=embed)
+            log(f"{ctx.author} checked {user}'s balance, it was {balance}.", self.bot.cmd)
         except TypeError:
             await ctx.send("User not found.")
+            log(f"{ctx.author} attempted to check {user}'s balance, but it was not found.", self.bot.cmd)
 
     @commands.command(aliases=['send'], description='Send someone else credits.')
     async def pay(self, ctx, user: discord.User, transfer):
         """
         Send someone else some credits.
         """
+        log(f'{ctx.author} attempted to transfer {transfer} to {user}.', self.bot.cmd)
         try:
             amount = float(transfer)
         except ValueError:
@@ -118,6 +128,7 @@ class Economy(commands.Cog):
         else:
             await ctx.send(f'Successfully transferred {amount} to {user}. Your new balance is {from_balance}'
                            f' {self.bot.credit_emoji}, their new balance is {to_balance} {self.bot.credit_emoji}.')
+            log(f'{ctx.author} transferred {amount} to {user}.')
 
     @commands.command(name='buy', description='Buy an item from the browse listings.')
     @commands.check(auth(1))
@@ -127,7 +138,7 @@ class Economy(commands.Cog):
          name of the item to buy multiple. Exact name is required to prevent accidental matching.
         """
         # TODO: Add price determination depending on context
-        print(f'{ctx.author} is attempting to purchase {amount} {item}s at {now()}.')
+        log(f'{ctx.author} is attempting to purchase {amount} {item}(s).', self.bot.cmd)
         await transact_possession(ctx, ctx.author, item.title(), amount=amount)
 
     @commands.command(name='sell', description='Sell an item from your possessions for 60% of its purchase value.')
@@ -137,6 +148,7 @@ class Economy(commands.Cog):
         Sell an item from your possessions for 60% of its purchase value. You can specify the amount of the
          item to buy before the name of the item to buy multiple. Exact name is required to prevent accidental matching.
         """
+        log(f'{ctx.author} is attempting to sell {amount} {item}(s).', self.bot.cmd)
         if amount < 1:
             return await ctx.send('Invalid sell amount.')
         await sell_possession(ctx, ctx.author, item.title(), amount)
@@ -153,10 +165,12 @@ class Economy(commands.Cog):
         """
         await add_possession(user, item, cost=price, amount=amount)
         await ctx.send(f'I have given {user} {amount} {item}.')
+        log(f'{ctx.author} added {amount} {item} to {user}.', self.bot.cmd)
 
     @commands.command(name='top', aliases=['topbank'], description='List the top people in the bank.')
     async def topbank(self, ctx, page: int = 1):
         # This method queries the database and returns a list of ten tuples of (name, stat) which is one page of results
+        log(f'{ctx.author} used topbank {page}.', self.bot.cmd)
         try:
             lines, num_pages, rank = await get_top('balance', page, ctx.author)
         except NameError:
@@ -175,14 +189,17 @@ class Economy(commands.Cog):
     @commands.command(description='List the top people in the specified category.')
     async def topstat(self, ctx, look_type: typing.Optional[str] = 'balance', page: int = 1):
         # This method queries the database and returns a list of ten tuples of (name, stat) which is one page of results
+        log(f'{ctx.author} used topbank {look_type} {page}.', self.bot.cmd)
         try:
             lines, num_pages, rank = await get_top(look_type, page, ctx.author)
         except NameError:
-            return await ctx.send('Invalid category. Try balance, invested or activity.')
+            return await ctx.send('Invalid category. Try balance, n or activity.')
+        if page > num_pages:
+            page %= num_pages
         message = f'**Top {look_type.title()} Page {page}/{num_pages}**\n\n'
         count = 1
         for line in lines:
-            message += f'{count}) {line[0]} - {line[1]}\n'
+            message += f'{count + (page - 1) * items_per_top_page}) {line[0]} - {line[1]}\n'
             count += 1
         embed = discord.Embed(title='',
                               description=message,
@@ -196,11 +213,12 @@ class Economy(commands.Cog):
         Staff override to give people credits. Can also take credits away with negative amount.
         Requires Commander role
         """
+        log(f'{ctx.author} used credadd command with amount {amount} and member {member}.', self.bot.cmd)
         commander = ctx.guild.get_role(456506763139612695)
         if commander not in ctx.author.roles:
             return await ctx.send("You are not authoried to use this command.")
         new_balance = await add_funds(member, amount)
-        print(f'Added {amount} credits to {member} by authority of {ctx.author}. Their new balance is {new_balance}')
+        log(f'Added {amount} credits to {member} by authority of {ctx.author}. Their new balance is {new_balance}')
         message = f"Added {int(amount)} {self.bot.credit_emoji} to {member.name}'s account by request of " \
                   f"{ctx.author.name}."
         embed = discord.Embed(title='Money',
@@ -216,12 +234,12 @@ class Economy(commands.Cog):
         Staff override to give people credits. Can also take credits away with negative amount.
         Requires Commander role
         """
+        log(f'{ctx.author} used credremove command with amount {amount} and member {member}.', self.bot.cmd)
         commander = ctx.guild.get_role(456506763139612695)
         if commander not in ctx.author.roles:
             return await ctx.send("You are not authoried to use this command.")
         new_balance = await add_funds(member, -1 * amount)
-        print(
-            f'Removed {amount} credits from {member} by authority of {ctx.author}. Their new balance is {new_balance}')
+        log(f'Removed {amount} credits from {member} by authority of {ctx.author}. Their new balance is {new_balance}')
         message = f"Removed {int(amount)} {self.bot.credit_emoji} from {member.name}'s account by request" \
                   f" of {ctx.author.name}."
         embed = discord.Embed(title='Money',
@@ -236,8 +254,9 @@ class Economy(commands.Cog):
         Staff command to distribute investment payout money.
         Requires Auth 2
         """
+        log(f'{ctx.author} used the payout command.', self.bot.cmd)
         await distribute_payouts()
-        print(f'Bonus investment payouts sent by {ctx.author}, enjoy!')
+        log(f'Bonus investment payouts successfully distributed by {ctx.author}.')
         channel = self.bot.log_channel
         await channel.send(f'Bonus investment payouts sent by {ctx.author}, enjoy!')
 
@@ -246,6 +265,7 @@ class Economy(commands.Cog):
         """
         Get some free credits.
         """
+        log(f'{ctx.author} used the paycheck command.', self.bot.cmd)
         last_paycheck = await check_last_paycheck(ctx.author)
         if time.time() - last_paycheck < self.bot.PAYCHECK_INTERVAL:
             seconds_remaining = int(last_paycheck + self.bot.PAYCHECK_INTERVAL - time.time() + 1)
@@ -265,14 +285,16 @@ class Economy(commands.Cog):
                               description=message,
                               timestamp=datetime.now())
         await ctx.send(embed=embed)
+        log(f'Paycheck of {paycheck_amount} successfully distributed to {ctx.author}. New balance {balance}.')
 
     @commands.command(aliases=['mine', 'backpack', 'items', 'inventory'], description='See what items you own.')
     @commands.check(auth(1))
     async def possessions(self, ctx, member: discord.Member = None):
         if member is None:
             member = ctx.author
+        log(f'{ctx.author} checked the inventory of {member}.', self.bot.cmd)
         items = await view_items(member)
-        print(items)
+        log(items, self.bot.debug)
         to_send = f'**You have {sum(item for item, _ in items)} items of {len(items)} different types:**\n'
         for item in items:
             to_send += f'{item[0]}x {item[1]}\n'
@@ -283,8 +305,9 @@ class Economy(commands.Cog):
     @commands.command()
     @commands.check(auth(2))
     async def econ_printout(self, ctx):
-        print(self.bot.commodities_sell_prices)
-        print(self.bot.commodities_buy_prices)
+        log(f'{ctx.author} used the econ_printout command.', self.bot.cmd)
+        log(self.bot.commodities_sell_prices, self.bot.debug)
+        log(self.bot.commodities_buy_prices, self.bot.debug)
         send = '\n'.join([str(line) for line in self.bot.commodities_sell_prices if line[0] != ''])
         counter = 0
         to_send = ''
@@ -304,6 +327,7 @@ class Economy(commands.Cog):
             threshold = (await check_bal(ctx.author))[0]
         ch_id = channel.id
         count = 0
+        log(f'{ctx.author} checked sell prices for {channel}, threshold {threshold}.', self.bot.cmd)
         for location_sell in self.bot.commodities_sell_prices:
             if location_sell[0] == ch_id:
                 to_send = f'Sell prices at {location_sell[1]}:\n```\n'
@@ -311,7 +335,7 @@ class Economy(commands.Cog):
                     if price < threshold or threshold < 0:
                         spaces = ' ' * (17 - len(item))
                         random_modifier = random.random() * 0.001 + 1 - 0.0005
-                        print(random_modifier)
+                        log(random_modifier, self.bot.debug)
                         to_send += f'{item}:{spaces} ~{price * random_modifier:,.2f}\n'
                 append = '```'
                 while len(to_send) > 1995:
@@ -329,6 +353,7 @@ class Economy(commands.Cog):
             threshold = (await check_bal(ctx.author))[0]
         ch_id = channel.id
         count = 0
+        log(f'{ctx.author} checked buy prices for {channel}, threshold {threshold}.', self.bot.cmd)
         for location_buy in self.bot.commodities_buy_prices:
             if location_buy[0] == ch_id:
                 to_send = f'\nBuy prices at {location_buy[1]}:\n```\n'
@@ -336,7 +361,7 @@ class Economy(commands.Cog):
                     if price < threshold or threshold < 0:
                         spaces = ' ' * (17 - len(item))
                         random_modifier = random.random() * 0.001 + 1 - 0.0005
-                        print(random_modifier)
+                        log(random_modifier, self.bot.debug)
                         to_send += f'{item}:{spaces} ~{price * random_modifier:,.2f}\n'
                 append = '```'
                 while len(to_send) > 1990:
@@ -350,7 +375,7 @@ class Economy(commands.Cog):
     @tasks.loop(seconds=payout_frequency)
     async def send_payouts(self):
         await distribute_payouts()
-        print('Investment payouts sent.')
+        log('Investment payouts sent.')
         channel = self.bot.get_channel(718949686412705862)
         if channel is not None:
             await channel.send('Investment payouts sent.')

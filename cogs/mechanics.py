@@ -5,6 +5,7 @@ import discord
 from discord.ext import commands
 from cogs.database import update_location
 from functions import auth
+from bot import log, logready
 
 
 def hit_determine(distance: float, effective_range: float, ship_length: float, bonus: float = 0):
@@ -38,7 +39,7 @@ class Mechanics(commands.Cog):
     # Events
     @commands.Cog.listener()
     async def on_ready(self):
-        print(f'Cog {self.qualified_name} is ready.')
+        logready(self)
 
     # Commands
     @commands.command(aliases=['die', 'dice'], description='Roll some dice.')
@@ -52,6 +53,7 @@ class Mechanics(commands.Cog):
          with spaces between after your roll. For example,
          "roll 2d20 constitution strength" will give you two d20s, one labeled Constitution and one labeled Strength.
         """
+        log(f'{ctx.author} used the roll command with content: {content}.', self.bot.cmd)
         summ = 0
         if content is not None:
             content = content.lower().split(' ')
@@ -111,6 +113,7 @@ class Mechanics(commands.Cog):
     @commands.command()
     @commands.check(auth(1))
     async def travel(self, ctx, channel: discord.TextChannel):
+        log(f'{ctx.author} attempted to travel to {channel}.')
         try:
             await update_location(ctx.author, channel)
             await ctx.send(f"*{ctx.author} traveled to {channel.mention}.*")
@@ -129,6 +132,9 @@ class Mechanics(commands.Cog):
         hit, luck, hit_chance, result, roll = hit_determine(distance, effective_range, ship_length)
         await ctx.send(
             f'Luck roll: {luck}. Hit chance: {hit_chance} Result: {result} For hit, rolled a {roll}. Hit? {hit}')
+        log(f'{ctx.author} used the calchit command with [distance: {distance}, effective_range: {effective_range},'
+            f' ship_length: {ship_length}]. Their result was [luck: {luck}, hit_chance: {hit_chance},'
+            f' result:{result}, roll: {roll}, hit: {hit}].')
 
     @commands.command()
     async def calchits(self, ctx, distance: float, effective_range: float, ship_length: float, num_guns: int,
@@ -168,11 +174,16 @@ class Mechanics(commands.Cog):
             if hit:
                 hits += 1
         await ctx.send(f'{hits} out of {num_guns} weapons hit their target.')
+        log(f'{ctx.author} used the calchits command with [distance: {distance}, effective_range: {effective_range},'
+            f' ship_length: {ship_length}, num_guns: {num_guns}, attacker_upgrade: {attacker_upgrade}]. Their result'
+            f' was: {hits} out of {num_guns} hit their target.')
 
-    @commands.command(description='Calculate points from shield (sbd), hull (ru), speed (mglt), length(m) and armament (pts)')
+    @commands.command(description='Calculate points from shield (sbd), hull (ru), speed (mglt), length(m)'
+                                  ' and armament (pts)')
     async def points(self, ctx, shield, hull, mglt, length, armament):
         """Calculate points from shield (sbd), hull (ru), speed (mglt), length(m) and armament (pts)"""
         await ctx.send(((shield + hull)/3) + (mglt*length/100) + armament)
+        log(f'{ctx.author} used the points command.')
 
 
 def setup(bot):
