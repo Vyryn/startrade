@@ -1,15 +1,8 @@
 import datetime
 import os
-
 from discord.ext import commands
-
 from bot import log, logready
-from functions import now
-
-
-# Returns current datestamp as YYYY-MM-DD
-def today():
-    return datetime.date.today().strftime("%Y-%m-%d")
+from functions import now, today
 
 
 def writeline(path: str, line: str):

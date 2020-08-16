@@ -75,6 +75,8 @@ bot.PERMS_INFO = {0: '(No other dev perms)', 1: 'Can use echo and auth check', 2
                   3: 'Can reload cogs', 4: 'Can load and unload cogs', 5: 'Can update bot status',
                   6: 'Can see the list of all bot commanders', 7: 'Can set other people\'s auth levels',
                   8: 'Trusted for dangerous dev commands', 9: 'Can use eval', 10: 'Created me'}
+# Array to contain ids of each database-registered user to check for inclusion without database query
+bot.list_of_users = []
 # Constants to do with the goolge sheet pulls the bot makes.
 bot.SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
 bot.SHEET_ID = '1p8mtlGzJHeu_ta0ZoowJhBB1t5xM5QRGbRSHCgkyjYg'
@@ -111,21 +113,6 @@ def logready(item):
         log(f'{item} is ready.')
 
 
-async def initialize_loop(bott):
-    return aiohttp.ClientSession(loop=bott.loop)
-
-
-bot.session = initialize_loop(bot)
-bot.load_extension(f'cogs.logging')
-bot.load_extension(f'cogs.dev')
-bot.load_extension(f'cogs.management')
-bot.load_extension(f'cogs.database')
-bot.load_extension(f'cogs.basics')
-bot.load_extension(f'cogs.moderation')
-bot.load_extension(f'cogs.mechanics')
-bot.load_extension(f'cogs.economy')
-
-
 # Events
 @bot.event
 async def on_ready():
@@ -140,8 +127,10 @@ async def on_ready():
 
 # ================================= Error Handler =================================
 @bot.event
-@bot.event
 async def on_command_error(ctx, error):
+    print(type(error))
+    error = getattr(error, 'original', error)
+    print(type(error))
     if hasattr(ctx.command, 'on_error'):
         log('An error occurred, but was handled command-locally.', bot.error)
         return
@@ -174,7 +163,11 @@ async def on_command_error(ctx, error):
     elif isinstance(error, discord.ext.commands.errors.CommandOnCooldown):
         await ctx.send(f"{ctx.author.name}, {error}.")
     elif isinstance(error, OSError):
-        return log(f'OSError occured: {error}', bot.critical)
+        log(f'OSError in command {ctx.command}, restart recommended: {error.__traceback__}', bot.critical)
+    elif isinstance(error, discord.ext.commands.errors.CommandInvokeError):
+        log(f"CommandInvokeError contained a CommandInvokeError. This shouldn't be possible. "
+            f"Submit a github issue with the following info:"
+            f" Command: {ctx.command}, Author: {ctx.author}, Error: {error.__traceback__}")
     else:
         # get data from exception
         etype = type(error)
@@ -266,6 +259,17 @@ async def restart():
 # for filename in os.listdir('./cogs'):
 #    if filename.endswith('.py'):
 #        bot.load_extension(f'cogs.{filename[:-3]}')  # load up each extension
+
+
+bot.session = aiohttp.ClientSession(loop=bot.loop)
+bot.load_extension(f'cogs.logging')
+bot.load_extension(f'cogs.dev')
+bot.load_extension(f'cogs.management')
+bot.load_extension(f'cogs.database')
+bot.load_extension(f'cogs.basics')
+bot.load_extension(f'cogs.moderation')
+bot.load_extension(f'cogs.mechanics')
+bot.load_extension(f'cogs.economy')
 
 # run bot
 bot.run(TOKEN)

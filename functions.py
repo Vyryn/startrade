@@ -1,5 +1,9 @@
 import datetime
 import json
+
+import aiohttp
+import discord
+from discord.ext import commands
 from attr import dataclass
 
 # The bot commanders (imported from a file)
@@ -28,7 +32,7 @@ def level(a):
     if a < 100:
         return 1
     else:
-        return int(a**(1/3) * 5/6 - 4)
+        return int(a ** (1 / 3) * 5 / 6 - 4)
 
 
 activity_ranks = dict(zip(range(0, 1000), [level(a) for a in range(0, 1000)]))
@@ -158,12 +162,20 @@ def get_prefix(bot, message):
 
 # Returns current timestamp in the desired format, in this case MM/DD/YYYY HH:MM:SS
 def now():
-    return datetime.datetime.now().strftime("%m/%d/%y %H:%M:%S")
+    try:
+        return datetime.datetime.now().strftime("%m/%d/%y %H:%M:%S")
+    except commands.CommandInvokeError as e:
+        return f'(Could not get timestamp)'
+    except aiohttp.ClientOSError:
+        return f'(Could not get timestamp #2)'
 
 
 # Returns current datestamp as YYYY-MM-DD
 def today():
-    return datetime.date.today().strftime("%Y-%m-%d")
+    try:
+        return datetime.date.today().strftime("%Y-%m-%d")
+    except commands.CommandInvokeError as e:
+        return f'(Could not get date)'
 
 
 # Log a message.

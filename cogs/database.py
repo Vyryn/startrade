@@ -28,7 +28,12 @@ AUTH_LOCKDOWN = 1
 
 async def connect():
     global db
-    # try:
+    try:
+        if not db.is_closed():
+            return
+    except NameError:
+        log('Creating DB Object.', debugg)
+        pass
     db = await conn.connect(
         host='localhost',
         user=DBUSER,
@@ -42,7 +47,7 @@ async def disconnect():
         await db.commit()
     except AttributeError:
         pass  # There was no need to commit
-    await db.close()
+    #await db.close()
 
 
 async def new_user(user: discord.User):
@@ -50,7 +55,7 @@ async def new_user(user: discord.User):
     name = user.name
     messages = 0
     balance = starting_balance
-    last_pay = time.time() - 1800
+    last_pay = time.time() - 31536000  # Set last payout time to a year ago to allow immediate paycheck
     invested = 0
     await connect()
     check = await db.fetchrow(f"SELECT * FROM users WHERE id = $1", uid)
@@ -515,8 +520,8 @@ class Database(commands.Cog):
             await db.execute("INSERT INTO settings VALUES($1, $2, $3, $4)",
                              1, self.bot.PAYCHECK_INTERVAL, self.bot.PAYCHECK_AMOUNT_MAX, self.bot.STARTING_BALANCE)
             log('Saved default settings to database.')
-            await disconnect()
-            await connect()
+            # await disconnect()
+            # await connect()
         else:
             settings = await db.fetchrow("SELECT * FROM settings WHERE id = 1")
             log(settings, self.bot.debug)
@@ -540,8 +545,8 @@ class Database(commands.Cog):
                              "cargo_kg DOUBLE PRECISION,"
                              "n_word BIGINT)"
                              )
-            await disconnect()
-            await connect()
+            # await disconnect()
+            # await connect()
         if 'items' not in tables:
             log('Items table not found. Creating a new one...')
             await db.execute("CREATE TABLE items( "
@@ -553,8 +558,8 @@ class Database(commands.Cog):
                              "description VARCHAR (2048), "
                              "faction VARCHAR (127))"
                              )
-            await disconnect()
-            await connect()
+            # await disconnect()
+            # await connect()
         if 'possessions' not in tables:
             log('Possessions table not found. Creating a new one...')
             await db.execute("CREATE TABLE possessions("
@@ -567,12 +572,14 @@ class Database(commands.Cog):
                              "cost DOUBLE PRECISION, "
                              "faction VARCHAR (127))"
                              )
-        await disconnect()
-        await connect()
+        # await disconnect()
+        # await connect()
         users_config = await db.fetch("SELECT COLUMN_NAME from information_schema.COLUMNS WHERE TABLE_NAME = 'users' ")
         log(f'My Users table is configured thusly: {users_config}', self.bot.debug)
         users = await db.fetch("SELECT * FROM users")
         log(f'Users: {users}', self.bot.debug)
+        self.bot.list_of_users = [user['id'] for user in users]
+        log(self.bot.list_of_users, self.bot.debug)
         await disconnect()
         logready(self)
 

@@ -79,8 +79,9 @@ class Basics(commands.Cog):
         if message.guild is not self.bot.server:
             return
         # =========================NEW USER==========================
-        if not message.author.bot:
+        if not message.author.bot and message.author.id not in self.bot.list_of_users:
             await new_user(message.author)
+            self.bot.list_of_users += [message.author.id]
         # =========================ACTIVITY==========================
         await do_activity_update(self.bot, message.author, message.content)
         # ========================N-Word=============================
@@ -89,8 +90,8 @@ class Basics(commands.Cog):
     # ==============================Reaction handler======================================
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload):
-        log(f'New reaction {payload.emoji} on message {payload.message_id} in '
-            f'{self.bot.get_channel(payload.channel_id)} by user {self.bot.get_user(payload.user_id)}.')
+        log(f'Reaction {payload.emoji.name} added to message {payload.message_id} by user'
+            f' {self.bot.get_user(payload.user_id)} ({payload.emohi}, {payload.user_id}).')
         # =============================Verification Check======================
 
         # if payload.message_id == verification_message_id:
@@ -146,13 +147,12 @@ class Basics(commands.Cog):
         #                     payload.message_id)).remove_reaction(payload.emoji,
         #                                                          self.bot.get_guild(payload.guild_id).get_member(
         #                                                              payload.user_id))
-        log(f'Reaction {payload.emoji.name} added to message {payload.message_id} by user {payload.user_id}.')
 
     # Reaction removal handler
     @commands.Cog.listener()
     async def on_raw_reaction_remove(self, payload):
-        log(f'New reaction {payload.emoji} removed from message {payload.message_id} in'
-            f' {self.bot.get_channel(payload.channel_id)} by user {self.bot.get_user(payload.user_id)}.')
+        log(f'Reaction {payload.emoji.name} removed from message {payload.message_id} by user'
+            f' {self.bot.get_user(payload.user_id)} ({payload.emohi}, {payload.user_id}).')
         # =============================Verification Check======================
 
         # if payload.message_id == verification_message_id:
@@ -183,7 +183,6 @@ class Basics(commands.Cog):
         #                 return
         #             except NotFound:
         #                 continue
-        log(f'Reaction {payload.emoji.name} removed from message {payload.message_id} by user {payload.user_id}.')
 
     # Deleted message handler
     @commands.Cog.listener()
@@ -200,6 +199,7 @@ class Basics(commands.Cog):
             embed.set_author(icon_url=message.author.avatar_url, name=message.author)
             embed.set_footer(text=f'Author: {message.author.id} | Message ID: {message.id}')
             await self.bot.log_channel.send(embed=embed)
+            log(f'Message {message} deleted in {message.channel}', self.bot.info)
 
     # Edited message handler
     @commands.Cog.listener()

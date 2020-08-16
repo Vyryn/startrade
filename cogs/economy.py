@@ -261,11 +261,20 @@ class Economy(commands.Cog):
         await channel.send(f'Bonus investment payouts sent by {ctx.author}, enjoy!')
 
     @commands.command(description='Get some free credits!')
-    async def paycheck(self, ctx):
+    async def paycheck(self, ctx, *, params=''):
         """
         Get some free credits.
         """
         log(f'{ctx.author} used the paycheck command.', self.bot.cmd)
+        # Debug blurb
+        if ctx.author.id == 125449182663278592 and '-debug' in params:
+            paycheck_amount = 1
+            await add_funds(ctx.author, paycheck_amount)
+            message = f'{ctx.author.name} has been paid a (debug) paycheck of {paycheck_amount} {self.bot.credit_emoji}'
+            embed = discord.Embed(title='Paycheck',
+                                  description=message,
+                                  timestamp=datetime.now())
+            return await ctx.send(embed=embed)
         last_paycheck = await check_last_paycheck(ctx.author)
         if time.time() - last_paycheck < self.bot.PAYCHECK_INTERVAL:
             seconds_remaining = int(last_paycheck + self.bot.PAYCHECK_INTERVAL - time.time() + 1)
