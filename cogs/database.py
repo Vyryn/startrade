@@ -115,6 +115,8 @@ async def update_activity(member: discord.Member, amount: int):
         activity = (await db.fetchval(f"SELECT activity FROM users WHERE id = $1", uid))
     except asyncpg.exceptions.InternalClientError:
         log('Asyncpg is being stupid, but I did my best.', warnn)
+    except asyncpg.exceptions.InterfaceError:
+        log('Asyncpg is being stupid, but I did my best (2).', warnn)
     if activity is None:
         activity = amount
     else:
@@ -124,7 +126,7 @@ async def update_activity(member: discord.Member, amount: int):
     level_after = level(activity)
     if level_after > level_before:
         # await channel.send(f"Congratulations {member} on reaching activity level {level_after}!")
-        log(f'{member} ranked up their activity from level {level_before} to {level_after}')
+        log(f'{member} ranked up their activity from level {level_before} to {level_after}', 'RKUP')
     try:
         recent_activity = (await db.fetchval(f"SELECT recent_activity FROM users WHERE id = $1", uid)) + amount
     except TypeError:

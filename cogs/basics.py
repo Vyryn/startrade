@@ -91,7 +91,7 @@ class Basics(commands.Cog):
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload):
         log(f'Reaction {payload.emoji.name} added to message {payload.message_id} by user'
-            f' {self.bot.get_user(payload.user_id)} ({payload.emohi}, {payload.user_id}).')
+            f' {self.bot.get_user(payload.user_id)} ({payload.emoji}, {payload.user_id}).')
         # =============================Verification Check======================
 
         # if payload.message_id == verification_message_id:

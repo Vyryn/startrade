@@ -92,8 +92,9 @@ bot.critical = 'CRIT'
 bot.cmd = 'CMMD'
 bot.tofix = 'TOFX'
 bot.prio = 'PRIO'
-# bot.msg = 'MESG'
-bot.logging_status = [bot.debug]  # Any logging levels here will be *excluded* from being logged
+bot.rankup = 'RKUP'
+bot.msg = 'MESG'
+bot.logging_status = [bot.debug, bot.msg]  # Any logging levels here will be *excluded* from being logged
 
 
 def botget(arg: str):
