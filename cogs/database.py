@@ -24,7 +24,7 @@ items_per_top_page = 10
 refund_portion = 0.9
 move_activity_threshold = 100
 AUTH_LOCKDOWN = 1
-
+COMMODITIES = {}
 
 async def connect():
     global db

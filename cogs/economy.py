@@ -49,7 +49,7 @@ class Economy(commands.Cog):
                 bumper_id = int(embed_content[2:20])
                 bumper = await self.bot.fetch_user(bumper_id)
                 balance = await add_funds(bumper, self.bot.BUMP_PAYMENT)
-                message = f"Thank you for bumping GFW on Disboard, {bumper.mention}." \
+                message = f"Thank you for bumping {self.bot.server.name} on Disboard, {bumper.mention}." \
                           f" I've added {self.bot.BUMP_PAYMENT}" \
                           f" {self.bot.credit_emoji} to your balance. Your new balance is {balance}."
                 log(f'{bumper} bumpbed the server on Disboard. Gave them {self.bot.BUMP_PAYMENT}, '
