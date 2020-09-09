@@ -262,7 +262,6 @@ async def restart():
 #        bot.load_extension(f'cogs.{filename[:-3]}')  # load up each extension
 
 
-bot.session = aiohttp.ClientSession(loop=bot.loop)
 bot.load_extension(f'cogs.logging')
 bot.load_extension(f'cogs.dev')
 bot.load_extension(f'cogs.management')

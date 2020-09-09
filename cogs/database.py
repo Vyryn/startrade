@@ -502,7 +502,7 @@ class Database(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         log(f'Loading {self.qualified_name}...', self.bot.debug)
-        self.session = self.bot.session
+        self.session = aiohttp.ClientSession(loop=self.bot.loop)
         await connect()
         # cursor.execute("SHOW DATABASES")
         # databases = cursor.fetchall()
