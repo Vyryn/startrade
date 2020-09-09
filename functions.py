@@ -1,5 +1,9 @@
 import datetime
 import json
+
+import aiohttp
+import discord
+from discord.ext import commands
 from attr import dataclass
 
 # The bot commanders (imported from a file)
@@ -28,7 +32,7 @@ def level(a):
     if a < 100:
         return 1
     else:
-        return int(a**(1/3) * 5/6 - 4)
+        return int(a ** (1 / 3) * 5 / 6 - 4)
 
 
 activity_ranks = dict(zip(range(0, 1000), [level(a) for a in range(0, 1000)]))
@@ -36,13 +40,13 @@ activity_ranks = dict(zip(range(0, 1000), [level(a) for a in range(0, 1000)]))
 
 # Helper method for opening a json
 def load_json_var(name):
-    with open(f'{name}.json', 'r', encoding='utf-8') as f:
+    with open(f'{name}.json', 'r') as f:
         return json.load(f)
 
 
 # Helper method for writing a json
 def write_json_var(name, obj):
-    with open(f'{name}.json', 'w', encoding='utf-8') as f:
+    with open(f'{name}.json', 'w') as f:
         json.dump(obj, f, indent=4)
 
 
@@ -144,26 +148,34 @@ def channel_check(ctx):
 # Returns the bot prefix for the guild the message is within, or the global default prefix
 def get_prefix(bot, message):
     global no_command_channels
-    with open('ignored_channels.json', 'r', encoding='utf-8') as f:
+    with open('ignored_channels.json', 'r') as f:
         no_command_channels = json.load(f)
     # outside a guild
     if not message.guild:
         return global_prefix
     else:
         # Get guild custom prefixes from file
-        with open('prefixes.json', 'r', encoding='utf-8') as f:
+        with open('prefixes.json', 'r') as f:
             prefixes = json.load(f)
         return prefixes.get(str(message.guild.id), global_prefix)
 
 
 # Returns current timestamp in the desired format, in this case MM/DD/YYYY HH:MM:SS
 def now():
-    return datetime.datetime.now().strftime("%m/%d/%y %H:%M:%S")
+    try:
+        return datetime.datetime.now().strftime("%m/%d/%y %H:%M:%S")
+    except commands.CommandInvokeError as e:
+        return f'(Could not get timestamp)'
+    except aiohttp.ClientOSError:
+        return f'(Could not get timestamp #2)'
 
 
 # Returns current datestamp as YYYY-MM-DD
 def today():
-    return datetime.date.today().strftime("%Y-%m-%d")
+    try:
+        return datetime.date.today().strftime("%Y-%m-%d")
+    except commands.CommandInvokeError as e:
+        return f'(Could not get date)'
 
 
 # Log a message.
