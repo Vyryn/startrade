@@ -1,5 +1,4 @@
 import json
-from json import JSONDecodeError
 import traceback
 import aiohttp
 import discord
@@ -12,10 +11,46 @@ from functions import get_prefix, global_prefix, get_ignored_channels, set_ignor
 from privatevars import TOKEN
 
 bot = commands.Bot(command_prefix=get_prefix, case_insensitive=True)
+# ========================== Easily Configurable Values ========================
 # The id of the bot creator
 owner_id = 125449182663278592
 # Default number of seconds to wait before deleting many bot responses and player commands
 deltime = 10
+# The id of the primary guild the bot is operating in
+bot.serverid = 407481043856261120  # 718893913976340561 for startrade
+bot.settings_modifiers = [125449182663278592, 171810360473550849,
+                          185496547436396545]  # allow settings to be modified by Vyryn, Xifi and Brom
+bot.BUMP_PAYMENT = 0  # Payment for disboard bumps
+bot.PAYCHECK_AMOUNT_MIN = 4_000_000  # Minimum paycheck payout
+bot.PAYCHECK_AMOUNT_MAX = 4_000_000  # Maximum paycheck payout
+bot.PAYCHECK_INTERVAL = 3600  # Time between paychecks, in seconds
+bot.REFUND_PORTION = 0.9  # Portion of buy price to refund when selling an item
+bot.WEALTH_FACTOR = 0.0005  # Currently set to 0.05-0.1% payout per hour
+bot.STARTING_BALANCE = 50_000_000  # New user starting balance
+bot.PAYOUT_FREQUENCY = 60 * 60  # How frequently to send out investments, in seconds
+bot.GRANT_AMOUNT = 1000  # Certified Literate payout amount
+bot.log_channel_id = 408254707388383232  # The channel set up for logging message edits and the like.
+# bot.verified_role_id = 718949160170291203  # The verification role id
+# bot.literate_role_id = 728796399692677160  # The certified literate role id
+# bot.verification_message_id = 718980234380181534  # The startrade verification message id
+bot.DISBOARD = 302050872383242240  # Disboard uid
+bot.credit_emoji = '<:Credits:423873771204640768>'
+# Constants to do with the goolge sheet pulls the bot makes.
+bot.SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
+bot.SHEET_ID = '1p8mtlGzJHeu_ta0ZoowJhBB1t5xM5QRGbRSHCgkyjYg'
+bot.RANGE = 'Sheet1!A1:EL'
+# Don't log or do any other on_message action in the following guilds
+bot.ignored_guilds = [336642139381301249]  # (this one is d.py)
+bot.ACTIVITY_COOLDOWN = 7  # Minimum number of seconds after last activity to have a message count as activity
+bot.MOVE_ACTIVITY_THRESHOLD = 100  # Number of activity score that must be gained when moving to a new location
+bot.DEFUALT_DIE_SIDES = 20  # Default number of sides to assume a rolled die has
+bot.MAX_DIE_SIDES = 100  # Max number of sides each die may have
+bot.MAX_DIE_ROLES = 100000  # Max number of dice that can be rolled with one ,roll command
+bot.ITEMS_PER_TOP_PAGE = 10  # Number of items to show per page in ,top
+bot.AUTH_LOCKDOWN = 1  # The base level for commands from this cog; set to 0 to enable public use, 1 to disable it
+bot.MAX_PURGE = 100  # Max number of messages that can be purged with ,forcepurge command at once
+
+# ============================ Less Easily Configured Values =======================
 # The bot randomly selects one of these statuses at startup
 statuses = ["Being an adult is just walking around wondering what you're forgetting.",
             'A clean house is the sign of a broken computer.',
@@ -33,37 +68,9 @@ sigperms = ['deafen_members', 'kick_members', 'manage_channels', 'manage_emojis'
             'priority_speaker', 'view_audit_log']
 # The directory for cogs
 cogs_dir = 'cogs'
-
-# The id of the primary guild the bot is operating in
-bot.serverid = 407481043856261120  # 718893913976340561 for startrade
 bot.global_prefix = global_prefix
 bot.deltime = deltime
 bot.confirmed_ids = confirmed_ids
-bot.settings_modifiers = [125449182663278592, 171810360473550849,
-                          185496547436396545]  # allow settings to be modified by Vyryn, Xifi and Brom
-bot.ACTIVITY_COOLDOWN = 7  # Minimum number of seconds after last activity to have a message count as activity
-bot.DEFUALT_DIE_SIDES = 20  # Default number of sides to assume a rolled die has
-bot.MAX_DIE_SIDES = 100  # Max number of sides each die may have
-bot.MAX_DIE_ROLES = 100000  # Max number of dice that can be rolled with one ,roll command
-bot.BUMP_PAYMENT = 0  # Payment for disboard bumps
-bot.DISBOARD = 302050872383242240  # Disboard uid
-bot.PAYCHECK_AMOUNT_MIN = 4000000  # Minimum paycheck payout
-bot.PAYCHECK_AMOUNT_MAX = 4000000  # Maximum paycheck payout
-bot.PAYCHECK_INTERVAL = 3600  # Time between paychecks, in seconds
-bot.MOVE_ACTIVITY_THRESHOLD = 100  # Number of activity score that must be gained when moving to a new location
-bot.REFUND_PORTION = 0.9  # Portion of buy price to refund when selling an item
-bot.WEALTH_FACTOR = 0.0005  # Currently set to 0.05-0.1% payout per hour
-bot.ITEMS_PER_TOP_PAGE = 10  # Number of items to show per page in ,top
-bot.STARTING_BALANCE = 50000000  # New user starting balance
-bot.AUTH_LOCKDOWN = 1  # The base level for commands from this cog; set to 0 to enable public use, 1 to disable it
-bot.PAYOUT_FREQUENCY = 60 * 60  # How frequently to send out investments, in seconds
-bot.credit_emoji = '<:Credits:423873771204640768>'
-bot.log_channel_id = 408254707388383232  # The channel set up for logging message edits and the like.
-# bot.verified_role_id = 718949160170291203  # The verification role id
-# bot.literate_role_id = 728796399692677160  # The certified literate role id
-bot.GRANT_AMOUNT = 1000  # Certified Literate payout amount
-bot.MAX_PURGE = 100  # Max number of messages that can be purged with ,forcepurge command at once
-# bot.verification_message_id = 718980234380181534  # The startrade verification message id
 bot.content_max = 1970  # The maximum number of characters that can safely be fit into a logged message
 bot.time_options = {'s': 1, 'm': 60, 'h': 60 * 60, 'd': 60 * 60 * 24, 'w': 60 * 60 * 24 * 7,
                     'y': 60 * 60 * 24 * 365}
@@ -77,12 +84,6 @@ bot.PERMS_INFO = {0: '(No other dev perms)', 1: 'Can use echo and auth check', 2
                   8: 'Trusted for dangerous dev commands', 9: 'Can use eval', 10: 'Created me'}
 # Array to contain ids of each database-registered user to check for inclusion without database query
 bot.list_of_users = []
-# Constants to do with the goolge sheet pulls the bot makes.
-bot.SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
-bot.SHEET_ID = '1p8mtlGzJHeu_ta0ZoowJhBB1t5xM5QRGbRSHCgkyjYg'
-bot.RANGE = 'Sheet1!A1:EL'
-# Don't log or do any other on_message action in the following guilds
-bot.ignored_guilds = [336642139381301249]  # (this one is d.py)
 # Set debug display values
 bot.debug = 'DBUG'
 bot.info = 'INFO'
@@ -94,6 +95,7 @@ bot.tofix = 'TOFX'
 bot.prio = 'PRIO'
 bot.rankup = 'RKUP'
 bot.msg = 'MESG'
+
 bot.logging_status = [bot.debug, bot.msg]  # Any logging levels here will be *excluded* from being logged
 
 
@@ -118,7 +120,7 @@ def logready(item):
 @bot.event
 async def on_ready():
     bot.server = bot.get_guild(bot.serverid)
-    bot.log_channel = bot.get_channel(408254707388383232)
+    bot.log_channel = bot.get_channel(bot.log_channel_id)
     # Pick a random current status on startup
     await bot.change_presence(status=discord.Status.online, activity=discord.Game(random.choice(statuses)))
     await asyncio.sleep(2)
@@ -154,7 +156,7 @@ async def on_command_error(ctx, error):
         await ctx.send("Improper command. Check help [command] to help you formulate this command correctly.",
                        delete_after=deltime)
         return log(f'BadArgument error in {ctx.command} for {ctx.author}', bot.info)
-    elif isinstance(error, JSONDecodeError):
+    elif isinstance(error, json.JSONDecodeError):
         await ctx.send(f'{ctx.author}, that api appears to be down at the moment.')
         return log(f'{ctx.author} tried to use {ctx.command} but got a JSONDecodeError.', bot.error)
     elif isinstance(error, asyncio.TimeoutError):
