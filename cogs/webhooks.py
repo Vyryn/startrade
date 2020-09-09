@@ -1,9 +1,7 @@
 from discord import Embed, TextChannel
 from discord.ext import commands
 from functions import auth
-
-HOOK_URL = 'https://discordapp.com/api/webhooks/723354196988133376' \
-           '/ioftOOV89uBH_A_cJhwBGOaFXBHisCzgZI_fHVVyGJYKtuQ5AvlNVKqk75pIjjB2t0yn '
+from bot import log, logready
 
 IMAGES = {
     'Man': 'https://i.pinimg.com/originals/94/6e/82/946e829a135f68d7a041e3a83b445f55.jpg',
@@ -48,7 +46,10 @@ class Webhooks(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        self.name = 'Startrade'
+
+    @commands.Cog.listener()
+    async def on_ready(self):
+        logready(self)
 
     @commands.command(description=f"""Make an imersive NPC say something. If a profile picture exists for the name 
         provided, it will be used 
@@ -66,17 +67,18 @@ class Webhooks(commands.Cog):
         {IMAGES.keys()}"""
         await ctx.message.delete()
         if name is None:
-            name = self.name
+            name = self.bot.name
         else:
             name = name.replace('_', ' ').title()
         avatar = IMAGES.get(name, None)
         try:
             hook = (await ctx.channel.webhooks())[0]
         except IndexError:
-            hook = await TextChannel.create_webhook(ctx.channel, name=self.name,
-                                                    reason=f'{self.name} NPC creation for #{ctx.channel.name}.')
+            hook = await TextChannel.create_webhook(ctx.channel, name=self.bot.name,
+                                                    reason=f'{self.bot.name} NPC creation for #{ctx.channel.name}.')
         embed = Embed(description=content)
         await hook.send(content='', username=name, embed=embed, avatar_url=avatar)
+        log(f'{ctx.author} used a webhook named {name} to send {content} in channel {ctx.channel}.')
 
 
 def setup(bot):

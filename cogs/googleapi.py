@@ -4,10 +4,7 @@ from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from discord.ext import commands
-
-SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
-SHEET_ID = '1p8mtlGzJHeu_ta0ZoowJhBB1t5xM5QRGbRSHCgkyjYg'
-RANGE = 'Sheet1!A1:EL'
+from bot import log, logready
 
 
 class Googleapi(commands.Cog):
@@ -15,6 +12,7 @@ class Googleapi(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         creds = None
+        log(f'Loading data from spreadsheet...')
         # Find the authorizations file
         if os.path.exists('token.pickle'):
             with open('token.pickle', 'rb') as token:
@@ -25,7 +23,7 @@ class Googleapi(commands.Cog):
                 creds.refresh(Request())
             else:
                 flow = InstalledAppFlow.from_client_secrets_file(
-                    'credentials.json', SCOPES)
+                    'credentials.json', self.bot.SCOPES)
                 creds = flow.run_local_server(port=0)
             # Save the credentials for the next run
             with open('token.pickle', 'wb') as token:
@@ -33,15 +31,15 @@ class Googleapi(commands.Cog):
         service = build('sheets', 'v4', credentials=creds)
         # Load in buy and sell prices from google sheets using sheets api
         sheet = service.spreadsheets()
-        result = sheet.values().get(spreadsheetId=SHEET_ID, range=RANGE).execute()
+        result = sheet.values().get(spreadsheetId=self.bot.SHEET_ID, range=self.bot.RANGE).execute()
         values = result.get('values', [])
         bot.commodities_sell_prices = []
         bot.commodities_buy_prices = []
         if not values:
-            print('No data found.')
+            log('No data found.', self.bot.warn)
             return
         reference_row = values[1]
-        # print(reference_row)
+        log(reference_row, self.bot.debug)
         row_count = -3  # Start at -3 because this simplifies indexing below; we don't want the first two rows.
         for row in values:
             row_count += 1
@@ -65,10 +63,13 @@ class Googleapi(commands.Cog):
                     counter += 1
             # print(row)
             # print([row[2], row[0], row[3:]])
-        print('Commodities Buy Prices:')
-        print(bot.commodities_buy_prices)
-        print('Commodities Sell Prices:')
-        print(bot.commodities_sell_prices)
+        log(f'Commodities Buy Prices: {bot.commodities_buy_prices}')
+        log(f'Commodities Sell Prices: {bot.commodities_sell_prices}')
+
+    # Events
+    @commands.Cog.listener()
+    async def on_ready(self):
+        logready(self)
 
 
 def setup(bot):

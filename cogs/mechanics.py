@@ -1,23 +1,45 @@
+from random import randrange
 import random
 from collections import Counter
 import discord
 from discord.ext import commands
 from cogs.database import update_location
+from functions import auth
+from bot import log, logready
+
+
+def hit_determine(distance: float, effective_range: float, ship_length: float, bonus: float = 0):
+    hit_chance = 1
+    luck = float(randrange(1, 100)) + bonus
+    if distance > effective_range:
+        hit_chance = - (0.1111 * (distance / effective_range - 1) ** 2) + 1
+    elif distance < effective_range * 0.3:
+        hit_chance = -100 * ((distance / effective_range) - 0.32) ** 4 + 1
+    if hit_chance < 0:
+        hit_chance = 0
+    intermediate_step = (101.0 * ship_length / distance) ** 2
+    result = hit_chance * (intermediate_step + luck / 10)
+    hit_chance = int(hit_chance * 100) / 100
+    result = int(result * 1000) / 1000
+    roll = randrange(1, 100)
+    if roll < result:
+        hit = True
+    else:
+        hit = False
+    # http://prntscr.com/tgo2e3
+    return hit, luck, hit_chance, result, roll
 
 
 class Mechanics(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        self.DEFUALT_DIE_SIDES = 20  # Default number of sides to assume a rolled die has
-        self.MAX_DIE_SIDES = 100  # Max number of sides each die may have
-        self.MAX_DIE_ROLES = 100000  # Max number of dice that can be rolled with one ,roll command
         # TODO: Initialize Travel Channel
 
     # Events
     @commands.Cog.listener()
     async def on_ready(self):
-        print(f'Cog {self.qualified_name} is ready.')
+        logready(self)
 
     # Commands
     @commands.command(aliases=['die', 'dice'], description='Roll some dice.')
@@ -31,6 +53,7 @@ class Mechanics(commands.Cog):
          with spaces between after your roll. For example,
          "roll 2d20 constitution strength" will give you two d20s, one labeled Constitution and one labeled Strength.
         """
+        log(f'{ctx.author} used the roll command with content: {content}.', self.bot.cmd)
         summ = 0
         if content is not None:
             content = content.lower().split(' ')
@@ -43,20 +66,20 @@ class Mechanics(commands.Cog):
             try:
                 num_sides = int(args[1])
             except ValueError:
-                num_sides = self.DEFUALT_DIE_SIDES
+                num_sides = self.bot.DEFUALT_DIE_SIDES
             except IndexError:
-                num_sides = self.DEFUALT_DIE_SIDES
+                num_sides = self.bot.DEFUALT_DIE_SIDES
         else:
-            num_dice, num_sides = 1, self.DEFUALT_DIE_SIDES
+            num_dice, num_sides = 1, self.bot.DEFUALT_DIE_SIDES
         if num_sides < 2:
             num_sides = 2
-        elif num_sides > self.MAX_DIE_SIDES:
-            num_sides = self.MAX_DIE_SIDES
+        elif num_sides > self.bot.MAX_DIE_SIDES:
+            num_sides = self.bot.MAX_DIE_SIDES
         if num_dice < 1:
             num_dice = 1
         elif num_dice > 5:
-            if num_dice > self.MAX_DIE_ROLES:
-                num_dice = self.MAX_DIE_ROLES
+            if num_dice > self.bot.MAX_DIE_ROLES:
+                num_dice = self.bot.MAX_DIE_ROLES
             results = Counter([random.choice(range(1, num_sides + 1)) for __ in range(1, num_dice + 1)])
             to_send = f"I've rolled {num_dice}x {num_sides} sided dice and grouped them by roll:\n```\n"
             iterator = sorted(results.items(), key=lambda x: x[1], reverse=True)
@@ -88,7 +111,9 @@ class Mechanics(commands.Cog):
         await ctx.send(result)
 
     @commands.command()
+    @commands.check(auth(1))
     async def travel(self, ctx, channel: discord.TextChannel):
+        log(f'{ctx.author} attempted to travel to {channel}.')
         try:
             await update_location(ctx.author, channel)
             await ctx.send(f"*{ctx.author} traveled to {channel.mention}.*")
@@ -96,6 +121,69 @@ class Mechanics(commands.Cog):
         except ValueError:
             await ctx.send(f"{ctx.author}, you haven't done enough at your current location to be able to move to"
                            f" travel to a new location yet. Try RPing a bit first.", delete_after=30)
+
+    @commands.command()
+    async def calchit(self, ctx, distance: float, effective_range: float, ship_length: float):
+        """Determine how a weapon hit goes.
+        This allows you to simulate a weapon firing. Specify distance to the target, effective range of the weapon,
+        and size of the target and it will do the rest: ,calchit 10000 8000 500 will tell you how it goes when a
+        weapon with effective range 8000m fires from 10000m at a 500m long target.
+        """
+        hit, luck, hit_chance, result, roll = hit_determine(distance, effective_range, ship_length)
+        await ctx.send(
+            f'Luck roll: {luck}. Hit chance: {hit_chance} Result: {result} For hit, rolled a {roll}. Hit? {hit}')
+        log(f'{ctx.author} used the calchit command with [distance: {distance}, effective_range: {effective_range},'
+            f' ship_length: {ship_length}]. Their result was [luck: {luck}, hit_chance: {hit_chance},'
+            f' result:{result}, roll: {roll}, hit: {hit}].')
+
+    @commands.command()
+    async def calchits(self, ctx, distance: float, effective_range: float, ship_length: float, num_guns: int,
+                       attacker_upgrade='norm',
+                       weap_type: str = 'TC'):
+        """This allows you to simulate many weapons firing - rather more useful for combat. Specify distance to
+        the target, effective range of the weapon, size of the target, and number of weapons, and it will tell you
+        how many hits are successful. ,calchits 10000 8000 500 20 will tell you how many hits are successful when 20
+        of the weapon from example 2 above are fired.
+        You can also add a bonus for the attacker's luck chance if they are veteran, ace, etc, as follows:
+        vet: +10
+        ace: +15
+        hon: +20
+        vetace: +25
+        vethon: +30
+        These are used as: ,calchits 10000 8000 500 20 ace
+        """
+        if weap_type.casefold() == 'lc':
+            num_guns *= 30
+        elif weap_type.casefold() == 'pdc':
+            num_guns *= 100
+        if attacker_upgrade.casefold() == 'vet':
+            bonus = 10
+        elif attacker_upgrade.casefold() == 'ace':
+            bonus = 15
+        elif attacker_upgrade.casefold() == 'hon':
+            bonus = 20
+        elif attacker_upgrade.casefold() == 'vetace':
+            bonus = 25
+        elif attacker_upgrade.casefold() == 'vethon':
+            bonus = 30
+        else:
+            bonus = 0
+        hits = 0
+        for i in range(0, num_guns):
+            hit, _, _, _, _ = hit_determine(distance, effective_range, ship_length, bonus=bonus)
+            if hit:
+                hits += 1
+        await ctx.send(f'{hits} out of {num_guns} weapons hit their target.')
+        log(f'{ctx.author} used the calchits command with [distance: {distance}, effective_range: {effective_range},'
+            f' ship_length: {ship_length}, num_guns: {num_guns}, attacker_upgrade: {attacker_upgrade}]. Their result'
+            f' was: {hits} out of {num_guns} hit their target.')
+
+    @commands.command(description='Calculate points from shield (sbd), hull (ru), speed (mglt), length(m)'
+                                  ' and armament (pts)')
+    async def points(self, ctx, shield, hull, mglt, length, armament):
+        """Calculate points from shield (sbd), hull (ru), speed (mglt), length(m) and armament (pts)"""
+        await ctx.send(((shield + hull)/3) + (mglt*length/100) + armament)
+        log(f'{ctx.author} used the points command.')
 
 
 def setup(bot):
