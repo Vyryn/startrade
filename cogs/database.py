@@ -47,7 +47,7 @@ async def disconnect():
         await db.commit()
     except AttributeError:
         pass  # There was no need to commit
-    #await db.close()
+    # await db.close()
 
 
 async def new_user(user: discord.User):
@@ -581,15 +581,20 @@ class Database(commands.Cog):
         users = await db.fetch("SELECT * FROM users")
         log(f'Users: {users}', self.bot.debug)
         self.bot.list_of_users = [user['id'] for user in users]
-        log(self.bot.list_of_users, self.bot.debug)
+        log(repr(self.bot.list_of_users), self.bot.debug)
         await disconnect()
         logready(self)
 
     def cog_unload(self):
-        log(f"Closing {self.qualified_name} cog.")
+        log(f"Closing {self.qualified_name} cog.", self.bot.prio)
         try:
             db.terminate()
         except NameError:
+            pass
+        try:
+            self.session.close()
+        except AttributeError:
+            log(f'AttributeError trying to close aiohttp session at {now()}', self.bot.warn)
             pass
 
     @commands.command(description='Prints the list of users to the console.')
@@ -661,6 +666,28 @@ class Database(commands.Cog):
                                   f'and maximum prices must be numbers. Check your formatting and try again.')
         # return await ctx.send('An item with that name is already in the database.')
         await ctx.send(f'Added {item[0]} to the database.')
+
+    @commands.command(aliases=['addlocation'], description=f'Add a new location to the database. \nChannel is a '
+                                                           f'channel mention for this shop, and is_buy is TRUE for'
+                                                           f' purchase costs, FALSE for sell costs. Each value must'
+                                                           f' be a kwarg from: {COMMODITIES}')
+    @commands.check(auth(3))
+    async def newlocation(self, ctx, name: str, channel: discord.TextChannel, is_buy: bool, *, in_values: str):
+        values = in_values.split(' ')
+        kwargs = {}
+        for tic in values:
+            item, value = tic.split('=')
+            kwargs[item] = float(value)
+        log(f"Adding location {name} by request of {ctx.author}: {kwargs}", self.bot.cmd)
+        try:
+            await add_commodity_location(name, channel.id, is_buy, **kwargs)
+        except ValueError:
+            return await ctx.send(f'Incorrect format. (1)')
+        except IndexError:
+            return await ctx.send(f'Incorrect format. (2)')
+        # return await ctx.send('A location with that name is already in the database.')
+        await ctx.send(f'Added {name} to the database.')
+
 
     @commands.command(aliases=['removeitem'], description='Remove an item from the database')
     @commands.check(auth(max(4, AUTH_LOCKDOWN)))
@@ -760,14 +787,14 @@ class Database(commands.Cog):
         if item is None:
             result = await db.fetch("SELECT DISTINCT category from items")
             categories = sorted(list(set(flatten([item[0].split(', ') for item in result]))))
-            log(categories, self.bot.debug)
+            log(repr(categories), self.bot.debug)
             send = f'Here are the categories of items available. You can browse each category (case sensitive) to ' \
                    f'list the items in it, or you can browse all to see every item in the shop.\n '
             send += '=' * 20 + '\n'
             for category in categories:
                 send += f'{category}\n'
             await ctx.send(send)
-            log(categories, self.bot.debug)
+            log(repr(categories), self.bot.debug)
             return
             pass
         elif item == 'all':
