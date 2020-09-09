@@ -5,7 +5,7 @@ from datetime import datetime
 import discord
 from discord.ext import commands
 
-from bot import log, logready, reactions_to_nums, verification_message_id
+from bot import log, logready
 from cogs.database import new_user, update_activity  # , update_n_word
 from functions import poll_ids, now, set_polls, auth
 
@@ -24,7 +24,7 @@ async def do_activity_update(bot, channel: discord.TextChannel, author: discord.
     recently_spoke = time.time() - bot.recent_actives.get(author.id, 0) < bot.ACTIVITY_COOLDOWN
     if added_activity_score > 0 and not recently_spoke:
         bot.recent_actives[author.id] = time.time()
-        await update_activity(channel, author, added_activity_score)
+        await update_activity(author, added_activity_score)
 
 
 # async def do_n_word_update(author: discord.Member, content: str, word_list: [str]):
@@ -94,7 +94,7 @@ class Basics(commands.Cog):
             f' {self.bot.get_user(payload.user_id)} ({payload.emoji}, {payload.user_id}).')
         # =============================Verification Check======================
 
-        if payload.message_id == verification_message_id:
+        if payload.message_id == self.bot.verification_message_id:
             target = self.bot.server.get_member(payload.user_id)
             if self.verified_role not in target.roles:
                 log(await (new_user(target)))
@@ -115,7 +115,7 @@ class Basics(commands.Cog):
                         user_responses = 0
                     if user_responses < poll_ids[payload.message_id]['max']:
                         log(f'New reaction on poll {payload.message_id} by {user}.')
-                        poll_ids[payload.message_id][reactions_to_nums[payload.emoji.name] - 1] += [user.id]
+                        poll_ids[payload.message_id][self.bot.reactions_to_nums[payload.emoji.name] - 1] += [user.id]
                         try:
                             poll_ids[payload.message_id][user.id] += 1
                         except KeyError:
@@ -155,7 +155,7 @@ class Basics(commands.Cog):
             f' {self.bot.get_user(payload.user_id)} ({payload.emohi}, {payload.user_id}).')
         # =============================Verification Check======================
 
-        if payload.message_id == verification_message_id:
+        if payload.message_id == self.bot.verification_message_id:
             target = self.bot.server.get_member(payload.user_id)
             if self.verified_role in target.roles:
                 await target.remove_roles(self.verified_role)
@@ -166,7 +166,7 @@ class Basics(commands.Cog):
             for channel in self.bot.get_all_channels():
                 if channel.id is poll_ids[payload.message_id]["id"]:
                     user = self.bot.get_user(payload.user_id)
-                    poll_ids[payload.message_id][reactions_to_nums[payload.emoji.name] - 1].remove(user.id)
+                    poll_ids[payload.message_id][self.bot.reactions_to_nums[payload.emoji.name] - 1].remove(user.id)
                     poll_ids[payload.message_id][user.id] -= 1
                     log(poll_ids)
                     try:
