@@ -13,8 +13,6 @@ from functions import auth, now, level
 from privatevars import DBUSER, DBPASS
 
 global db
-global debugg
-global warnn
 # These parameters need to be in this scope due to constraints of the library.
 # I set them based on the bot attributes of the same names in init and on_ready.
 # These are just "default default values" so to speak, and are never actually used.
@@ -50,7 +48,7 @@ async def connect():
         if not db.is_closed():
             return
     except NameError:
-        log('Creating DB Object.', debugg)
+        log('Creating DB Object.', "DBUG")
         pass
     db = await conn.connect(
         host='localhost',
@@ -132,14 +130,14 @@ async def update_activity(member: discord.Member, amount: int):
     try:
         activity = (await db.fetchval(f"SELECT activity FROM users WHERE id = $1", uid))
     except asyncpg.exceptions.InternalClientError:
-        log('Asyncpg is being stupid, but I did my best.', warnn)
+        log('Asyncpg is being stupid, but I did my best.', "WARN")
     except asyncpg.exceptions.InterfaceError:
-        log('Asyncpg is being stupid, but I did my best (2).', warnn)
+        log('Asyncpg is being stupid, but I did my best (2).', "WARN")
     if activity is None:
         activity = amount
     else:
         activity += amount
-    log(f'Activity before: {activity - amount}, activity after: {activity}', debugg)
+    log(f'Activity before: {activity - amount}, activity after: {activity}', "DBUG")
     level_before = level(activity - amount)
     level_after = level(activity)
     if level_after > level_before:
@@ -150,7 +148,7 @@ async def update_activity(member: discord.Member, amount: int):
     except TypeError:
         recent_activity = amount
     log(f'Adding {amount} activity score to {member}. New activity score: {activity}. '
-        f'New recent activity score: {recent_activity}', debugg)
+        f'New recent activity score: {recent_activity}', "DBUG")
     await db.execute(f"UPDATE users SET activity = $1 where id = $2", activity, uid)
     await db.execute(f"UPDATE users SET recent_activity = $1 where id = $2", recent_activity, uid)
     await disconnect()
@@ -211,7 +209,7 @@ async def distribute_payouts():
         payout = int(user[5] * (payout_generosity + wealth_factor))
         new_user_balance = int(user[3]) + payout
         # log(f'User {user[1]}: investment: {user[5]}, payout_generosity: {payout_generosity * 1000}, payout:'
-        #       f' {payout}, new bal: {user[3]}', debugg)
+        #       f' {payout}, new bal: {user[3]}', "DBUG"")
         await db.execute(f"UPDATE users SET balance = $1 where id = $2", new_user_balance, user[0])
     await disconnect()
 
@@ -349,15 +347,15 @@ async def add_possession(user: discord.Member, item: str, cost: float = 0, amoun
     has_amount = await db.fetchval(f"SELECT amount FROM possessions WHERE owner = $1 AND name = $2", uid, item)
     # log(f'{user} currently has {has_amount}x {item}.')
     if has_amount is None:
-        # log('has_amount was None.', debugg)
-        # log([i_name, i_category, i_picture, i_min_cost, i_max_cost, i_description, i_faction], debugg)
+        # log('has_amount was None.', "DBUG"")
+        # log([i_name, i_category, i_picture, i_min_cost, i_max_cost, i_description, i_faction], "DBUG"")
         await db.execute(f"INSERT INTO possessions VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
                          unique_key, i_name, uid, amount, i_category, i_picture, cost, i_faction)
     else:
-        # log([i_name, i_category, i_picture, i_min_cost, i_max_cost, i_description, i_faction], debugg)
+        # log([i_name, i_category, i_picture, i_min_cost, i_max_cost, i_description, i_faction], "DBUG"")
         await db.execute(f"UPDATE possessions SET amount = $1 WHERE owner = $2 AND name = $3",
                          amount + has_amount, uid, i_name)
-    # log(f'{user} now has {amount + has_amount}x {item}.', debugg)
+    # log(f'{user} now has {amount + has_amount}x {item}.', "DBUG"")
     await disconnect()
 
 
@@ -505,16 +503,12 @@ class Database(commands.Cog):
         global items_per_top_page
         global refund_portion
         global move_activity_threshold
-        global debugg
-        global warnn
         global AUTH_LOCKDOWN
         starting_balance = bot.STARTING_BALANCE
         wealth_factor = bot.WEALTH_FACTOR
         items_per_top_page = bot.ITEMS_PER_TOP_PAGE
         refund_portion = bot.REFUND_PORTION
         move_activity_threshold = bot.MOVE_ACTIVITY_THRESHOLD
-        debugg = bot.debug
-        warnn = bot.warn
         AUTH_LOCKDOWN = bot.AUTH_LOCKDOWN
 
     # Events

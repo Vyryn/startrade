@@ -152,7 +152,7 @@ class Basics(commands.Cog):
     @commands.Cog.listener()
     async def on_raw_reaction_remove(self, payload):
         log(f'Reaction {payload.emoji.name} removed from message {payload.message_id} by user'
-            f' {self.bot.get_user(payload.user_id)} ({payload.emohi}, {payload.user_id}).')
+            f' {self.bot.get_user(payload.user_id)} ({payload.emoji}, {payload.user_id}).')
         # =============================Verification Check======================
 
         if payload.message_id == self.bot.verification_message_id:
