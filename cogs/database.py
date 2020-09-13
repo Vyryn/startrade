@@ -13,8 +13,6 @@ from functions import auth, now, level
 from privatevars import DBUSER, DBPASS
 
 global db
-global debugg
-global warnn
 # These parameters need to be in this scope due to constraints of the library.
 # I set them based on the bot attributes of the same names in init and on_ready.
 # These are just "default default values" so to speak, and are never actually used.
@@ -32,7 +30,7 @@ async def connect():
         if not db.is_closed():
             return
     except NameError:
-        log('Creating DB Object.', debugg)
+        log('Creating DB Object.', "DBUG")
         pass
     db = await conn.connect(
         host='localhost',
@@ -81,7 +79,7 @@ async def add_invest(member: discord.Member, amount: float):
     balance = check[3]
     if check is None:
         return -1, 0, 0
-    log(f'{invested}, {amount}', debugg)
+    log(f'{invested}, {amount}', "DBUG")
     if float(amount) > float(balance):
         return -2, 0, 0
     await db.execute(f"UPDATE users SET invested = $1 where id = $2", float(invested) + float(amount), uid)
@@ -114,14 +112,14 @@ async def update_activity(member: discord.Member, amount: int):
     try:
         activity = (await db.fetchval(f"SELECT activity FROM users WHERE id = $1", uid))
     except asyncpg.exceptions.InternalClientError:
-        log('Asyncpg is being stupid, but I did my best.', warnn)
+        log('Asyncpg is being stupid, but I did my best.', "WARN")
     except asyncpg.exceptions.InterfaceError:
-        log('Asyncpg is being stupid, but I did my best (2).', warnn)
+        log('Asyncpg is being stupid, but I did my best (2).', "WARN")
     if activity is None:
         activity = amount
     else:
         activity += amount
-    log(f'Activity before: {activity - amount}, activity after: {activity}', debugg)
+    log(f'Activity before: {activity - amount}, activity after: {activity}', "DBUG")
     level_before = level(activity - amount)
     level_after = level(activity)
     if level_after > level_before:
@@ -132,7 +130,7 @@ async def update_activity(member: discord.Member, amount: int):
     except TypeError:
         recent_activity = amount
     log(f'Adding {amount} activity score to {member}. New activity score: {activity}. '
-        f'New recent activity score: {recent_activity}', debugg)
+        f'New recent activity score: {recent_activity}', "DBUG")
     await db.execute(f"UPDATE users SET activity = $1 where id = $2", activity, uid)
     await db.execute(f"UPDATE users SET recent_activity = $1 where id = $2", recent_activity, uid)
     await disconnect()
@@ -167,7 +165,7 @@ async def check_bal(member: discord.Member):
     uid = member.id
     await connect()
     check = await db.fetchrow(f"SELECT * FROM users WHERE id = $1", uid)
-    log(type(check), debugg)
+    log(type(check), "DBUG")
     balance = check[3]
     invested = check[5]
     return balance, invested
@@ -177,7 +175,7 @@ async def check_bal_str(username: str):
     fuzzy_username = f'%{username}%'
     await connect()
     check = await db.fetchrow(f"SELECT * FROM users WHERE name LIKE $1", fuzzy_username)
-    log(check, debugg)
+    log(check, "DBUG")
     balance = check[3]
     invested = check[5]
     username = check[1]
@@ -193,7 +191,7 @@ async def distribute_payouts():
         payout = int(user[5] * (payout_generosity + wealth_factor))
         new_user_balance = int(user[3]) + payout
         # log(f'User {user[1]}: investment: {user[5]}, payout_generosity: {payout_generosity * 1000}, payout:'
-        #       f' {payout}, new bal: {user[3]}', debugg)
+        #       f' {payout}, new bal: {user[3]}', "DBUG")
         await db.execute(f"UPDATE users SET balance = $1 where id = $2", new_user_balance, user[0])
     await disconnect()
 
@@ -264,11 +262,11 @@ async def add_commodity_location(name: str, channel_id: int, is_buy: bool, **kwa
         counter += 1
         query += f'${counter}, '
     query = query.rstrip()[:-1] + ')'
-    log(query, debugg)
+    log(query, "DBUG")
     parameters = [name, channel_id, is_buy]
     for value in kwargs.values():
         parameters.append(value)
-    log(parameters, debugg)
+    log(parameters, "DBUG")
     await db.execute(query, *parameters)
     await disconnect()
 
@@ -291,10 +289,10 @@ async def find_item(item: str):
     await connect()
     result = await db.fetchrow(f"SELECT * FROM items WHERE name = $1", item)
     query = f'%{item}%'
-    log(f'Exact :{result}', debugg)
+    log(f'Exact :{result}', "DBUG")
     if result is None:
         result = await db.fetchrow(f"SELECT * FROM items WHERE name LIKE $1", query)
-        log(f'Fuzzy: {result}', debugg)
+        log(f'Fuzzy: {result}', "DBUG")
     await disconnect()
     return result
 
@@ -331,15 +329,15 @@ async def add_possession(user: discord.Member, item: str, cost: float = 0, amoun
     has_amount = await db.fetchval(f"SELECT amount FROM possessions WHERE owner = $1 AND name = $2", uid, item)
     # log(f'{user} currently has {has_amount}x {item}.')
     if has_amount is None:
-        # log('has_amount was None.', debugg)
-        # log([i_name, i_category, i_picture, i_min_cost, i_max_cost, i_description, i_faction], debugg)
+        # log('has_amount was None.', "DBUG"")
+        # log([i_name, i_category, i_picture, i_min_cost, i_max_cost, i_description, i_faction], "DBUG")
         await db.execute(f"INSERT INTO possessions VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
                          unique_key, i_name, uid, amount, i_category, i_picture, cost, i_faction)
     else:
-        # log([i_name, i_category, i_picture, i_min_cost, i_max_cost, i_description, i_faction], debugg)
+        # log([i_name, i_category, i_picture, i_min_cost, i_max_cost, i_description, i_faction], "DBUG")
         await db.execute(f"UPDATE possessions SET amount = $1 WHERE owner = $2 AND name = $3",
                          amount + has_amount, uid, i_name)
-    # log(f'{user} now has {amount + has_amount}x {item}.', debugg)
+    # log(f'{user} now has {amount + has_amount}x {item}.', "DBUG")
     await disconnect()
 
 
@@ -409,7 +407,7 @@ async def transact_possession(ctx, user: discord.Member, item: str, cost: float 
         cost = int((max_cost + min_cost) / 2 * 100) / 100
     if not (min_cost <= cost <= max_cost):
         cost = max_cost
-        log(f'Cost not in valid range. Using max_cost instead.', debugg)
+        log(f'Cost not in valid range. Using max_cost instead.', "DBUG")
     new_balance = balance - (cost * amount)
     if new_balance < 0:
         await disconnect()
@@ -431,7 +429,7 @@ async def view_items(member: discord.Member):
     await connect()
     items = await db.fetchrow(f"SELECT amount, name FROM possessions WHERE owner = $1", member.id)
     await disconnect()
-    log(items, debugg)
+    log(items, "DBUG")
     return set(items)
 
 
@@ -452,9 +450,9 @@ async def send_formatted_browse(ctx, result, i_type):
     else:
         send = f'Items in category {i_type}:\n```\n'
     count = 0
-    log(result, debugg)
+    log(result, "DBUG")
     items = sorted(result, key=lambda x: x['min_cost'])
-    log(items, debugg)
+    log(items, "DBUG")
     max_len = 35
     for item in items:
         item_price = int((float(item[3]) + float(item[4])) / 2 * 100) / 100
@@ -486,16 +484,12 @@ class Database(commands.Cog):
         global items_per_top_page
         global refund_portion
         global move_activity_threshold
-        global debugg
-        global warnn
         global AUTH_LOCKDOWN
         starting_balance = bot.STARTING_BALANCE
         wealth_factor = bot.WEALTH_FACTOR
         items_per_top_page = bot.ITEMS_PER_TOP_PAGE
         refund_portion = bot.REFUND_PORTION
         move_activity_threshold = bot.MOVE_ACTIVITY_THRESHOLD
-        debugg = bot.debug
-        warnn = bot.warn
         AUTH_LOCKDOWN = bot.AUTH_LOCKDOWN
 
     # Events
