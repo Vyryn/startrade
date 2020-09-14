@@ -24,7 +24,7 @@ class Economy(commands.Cog):
         self.bot = bot
         global payout_frequency
         payout_frequency = self.bot.PAYOUT_FREQUENCY
-        # self.send_payouts.start()
+        self.send_payouts.start()
         log('Started the investment payouts task (1).', self.bot.debug)
 
     def cog_unload(self):
@@ -76,12 +76,19 @@ class Economy(commands.Cog):
         invested, total_invested, new_balance = await add_invest(ctx.author, amount)
         if invested == -1:
             result = 'User not found.'
+            await ctx.send(result)
         elif invested == -2:
-            result = 'You do not have enough cash for that.'
+            result = f'You do not have enough {self.bot.credit_emoji} for that.'
+            await ctx.send(result)
         else:
+            message = f'Investments: {total_invested} {self.bot.credit_emoji} (+ {invested})' \
+                      f'\n Balance: {new_balance} {self.bot.credit_emoji} (- {invested})'
+            embed = discord.Embed(title='Investment Deposited',
+                                  description=message,
+                                  timestamp=datetime.now())
+            await ctx.send(embed=embed)
             result = f"{ctx.author}, you have just invested {invested} for a total of invested of {total_invested}." \
                      f" You now have {new_balance} credits left."
-        await ctx.send(result)
         log(f'{ctx.author} used invest command with result: {result}.', self.bot.cmd)
 
     @commands.command(aliases=['bal', 'cash'], description='Check your balance.')
@@ -96,8 +103,10 @@ class Economy(commands.Cog):
                 balance, invested = await check_bal(user)
             else:
                 balance, invested, user = await check_bal_str(user)
-            message = f"{user.name}'s balance is {int(balance)} {self.bot.credit_emoji}"
-            embed = discord.Embed(title='Balance',
+            message = f"Balance: {int(balance)} {self.bot.credit_emoji}\n" \
+                      f"Invested: {int(invested)} {self.bot.credit_emoji}\n" \
+                      f"Total: {int(balance+invested)} {self.bot.credit_emoji}"
+            embed = discord.Embed(title=f"{user.name}'s Balance",
                                   description=message,
                                   timestamp=datetime.now())
             await ctx.send(embed=embed)
@@ -117,17 +126,21 @@ class Economy(commands.Cog):
         except ValueError:
             return await ctx.send("You need to enter a number.")
         if user.id == ctx.author.id:
-            return await ctx.send("You can't send credits to yourself!")
+            return await ctx.send(f"You can't send {self.bot.credit_emoji} to yourself!")
         if amount < 0:
-            return await ctx.send("You can't send negative amounts of credits.")
+            return await ctx.send(f"You can't send negative amounts of {self.bot.credit_emoji}.")
         elif amount == 0:
             return await ctx.send("You can't send nothing!")
         from_balance, to_balance = await transfer_funds(ctx.author, user, amount)
         if from_balance == -1:
-            await ctx.send(f"You can not send more credits than you have.")
+            await ctx.send(f"You can not send more {self.bot.credit_emoji} than you have.")
         else:
-            await ctx.send(f'Successfully transferred {amount} to {user}. Your new balance is {from_balance}'
-                           f' {self.bot.credit_emoji}, their new balance is {to_balance} {self.bot.credit_emoji}.')
+            to_send = f'{user} received your {amount} {self.bot.credit_emoji}.'
+            embed = discord.Embed(title='Sent!',
+                                  description=to_send,
+                                  timestamp=datetime.now())
+            embed.set_footer(text=f'Your new balance: {from_balance}')
+            await ctx.send(embed=embed)
             log(f'{ctx.author} transferred {amount} to {user}.')
 
     @commands.command(name='buy', description='Buy an item from the browse listings.')
@@ -139,7 +152,16 @@ class Economy(commands.Cog):
         """
         # TODO: Add price determination depending on context
         log(f'{ctx.author} is attempting to purchase {amount} {item}(s).', self.bot.cmd)
-        await transact_possession(ctx, ctx.author, item.title(), amount=amount)
+        if amount < 1:
+            return await ctx.send('You must buy at least 1.')
+        try:
+            try:
+                result = await transact_possession(ctx.author, item.title(), amount=amount, credit=self.bot.credit_emoji)
+            except ValueError:  # Try a second time with user's capitalization in case
+                result = await transact_possession(ctx.author, item, amount=amount, credit=self.bot.credit_emoji)
+            await ctx.send(result)
+        except ValueError as e:
+            await ctx.send(e)
 
     @commands.command(name='sell', description='Sell an item from your possessions for 60% of its purchase value.')
     # @commands.check(auth(1))
@@ -178,7 +200,7 @@ class Economy(commands.Cog):
         message = f"**Top {'balance'.title()} Page {page}/{num_pages}**\n\n"
         count = (page - 1) * self.bot.ITEMS_PER_TOP_PAGE + 1
         for line in lines:
-            message += f'{count}) {line[0]} - {line[1]}\n'
+            message += f'{count}) {line[0]} - {line[1]} {self.bot.credit_emoji}\n'
             count += 1
         embed = discord.Embed(title='',
                               description=message,
@@ -223,8 +245,6 @@ class Economy(commands.Cog):
                               description=message,
                               timestamp=datetime.now())
         await ctx.send(embed=embed)
-        await ctx.send(
-            f'Added {amount} credits to {member} by authority of {ctx.author}. Their new balance is {new_balance}')
 
     @commands.command(description='Take credits from someone. Staff only.')
     @commands.check(auth(2))
@@ -292,20 +312,24 @@ class Economy(commands.Cog):
         await ctx.send(embed=embed)
         log(f'Paycheck of {paycheck_amount} successfully distributed to {ctx.author}. New balance {balance}.')
 
-    @commands.command(aliases=['mine', 'backpack', 'items', 'inventory'], description='See what items you own.')
+    @commands.command(aliases=['mine', 'backpack', 'items', 'inventory', 'inv'], description='See what items you own.')
     #  @commands.check(auth(1))
     async def possessions(self, ctx, member: discord.Member = None):
         if member is None:
             member = ctx.author
         log(f'{ctx.author} checked the inventory of {member}.', self.bot.cmd)
         items = await view_items(member)
-        log(items, self.bot.debug)
-        to_send = f'**You have {sum(item for item, _ in items)} items of {len(items)} different types:**\n'
-        for item in items:
-            to_send += f'{item[0]}x {item[1]}\n'
-        to_send += "\n\n*Don't need an item anymore? you can sell it at any time for 60% of the price you bought it " \
-                   "for with the sell command.*"
-        await ctx.send(to_send)
+        title = f'**{ctx.author.name} has {sum(item for item, _ in items)} items of {len(items)} different types:**\n'
+        to_send = ''
+        for item in sorted(items, key=lambda x: x[1]):
+            if item[0] > 0:
+                to_send += f'{item[0]}x {item[1]}\n'
+        embed = discord.Embed(title=title,
+                              description=to_send,
+                              timestamp=datetime.now())
+        embed.set_footer(text="Don't need an item anymore? You can sell it at any time for 60% of the price"
+                              " you bought it for with the sell command.")
+        await ctx.send(embed=embed)
 
     @commands.command()
     @commands.check(auth(2))
@@ -381,9 +405,11 @@ class Economy(commands.Cog):
     async def send_payouts(self):
         await distribute_payouts()
         log('Investment payouts sent.')
-        channel = self.bot.get_channel(718949686412705862)
+        channel = await self.bot.fetch_channel(718949686412705862)
         if channel is not None:
             await channel.send('Investment payouts sent.')
+        else:
+            log('Investment payout channel not found', 'WARN')
 
 
 def setup(bot):

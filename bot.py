@@ -33,7 +33,7 @@ bot.verified_role_id = 718949160170291203  # The verification role id
 bot.literate_role_id = 728796399692677160  # The certified literate role id
 bot.verification_message_id = 718980234380181534  # The startrade verification message id
 bot.DISBOARD = 302050872383242240  # Disboard uid
-bot.credit_emoji = '<:Credits:423873771204640768>'
+bot.credit_emoji = '<:nano:754828627450789908>'
 # Constants to do with the goolge sheet pulls the bot makes.
 bot.SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
 bot.SHEET_ID = '1p8mtlGzJHeu_ta0ZoowJhBB1t5xM5QRGbRSHCgkyjYg'
@@ -83,6 +83,7 @@ bot.PERMS_INFO = {0: '(No other dev perms)', 1: 'Can use echo and auth check', 2
                   8: 'Trusted for dangerous dev commands', 9: 'Can use eval', 10: 'Created me'}
 # Array to contain ids of each database-registered user to check for inclusion without database query
 bot.list_of_users = []
+bot.server = None
 # Set debug display values
 bot.debug = 'DBUG'
 bot.info = 'INFO'
@@ -95,7 +96,7 @@ bot.prio = 'PRIO'
 bot.rankup = 'RKUP'
 bot.msg = 'MESG'
 
-bot.logging_status = [bot.debug, bot.msg]  # Any logging levels here will be *excluded* from being logged
+bot.logging_status = [bot.msg, bot.debug]  # Any logging levels here will be *excluded* from being logged
 
 
 def botget(arg: str):
@@ -130,9 +131,7 @@ async def on_ready():
 # ================================= Error Handler =================================
 @bot.event
 async def on_command_error(ctx, error):
-    print(type(error))
     error = getattr(error, 'original', error)
-    print(type(error))
     if hasattr(ctx.command, 'on_error'):
         log('An error occurred, but was handled command-locally.', bot.error)
         return

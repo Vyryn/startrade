@@ -97,7 +97,7 @@ async def add_invest(member: discord.Member, amount: float):
     balance = check[3]
     if check is None:
         return -1, 0, 0
-    print(f'{invested}, {amount}')
+    log(f'{invested}, {amount}', 'DBUG')
     if float(amount) > float(balance):
         return -2, 0, 0
     await db.execute(f"UPDATE users SET invested = $1 where id = $2", float(invested) + float(amount), uid)
@@ -112,7 +112,7 @@ async def transfer_funds(from_user: discord.User, to_user: discord.User, amount:
     await connect()
     from_balance = (await db.fetchrow(f"SELECT balance FROM users WHERE id = $1", uid_from))[0]
     to_balance = (await db.fetchrow(f"SELECT balance FROM users WHERE id = $1", uid_to))[0]
-    print(f'Transferring {amount} from {from_user} to {to_user} at {now()}.')
+    log(f'Transferring {amount} from {from_user} to {to_user} at {now()}.', 'INFO')
     to_balance = float(to_balance) + float(amount)
     from_balance = float(from_balance) - float(amount)
     if float(from_balance) < 0:
@@ -183,7 +183,7 @@ async def check_bal(member: discord.Member):
     uid = member.id
     await connect()
     check = await db.fetchrow(f"SELECT * FROM users WHERE id = $1", uid)
-    print(type(check))
+    log(type(check), 'DBUG')
     balance = check[3]
     invested = check[5]
     return balance, invested
@@ -193,7 +193,7 @@ async def check_bal_str(username: str):
     fuzzy_username = f'%{username}%'
     await connect()
     check = await db.fetchrow(f"SELECT * FROM users WHERE name LIKE $1", fuzzy_username)
-    print(check)
+    log(check, 'DBUG')
     balance = check[3]
     invested = check[5]
     username = check[1]
@@ -280,11 +280,11 @@ async def add_commodity_location(name: str, channel_id: int, is_buy: bool, **kwa
         counter += 1
         query += f'${counter}, '
     query = query.rstrip()[:-1] + ')'
-    print(query)
+    log(query, 'DBUG')
     parameters = [name, channel_id, is_buy]
     for value in kwargs.values():
         parameters.append(value)
-    print(parameters)
+    log(parameters, 'DBUG')
     await db.execute(query, *parameters)
     await disconnect()
 
@@ -307,10 +307,10 @@ async def find_item(item: str):
     await connect()
     result = await db.fetchrow(f"SELECT * FROM items WHERE name = $1", item)
     query = f'%{item}%'
-    print(f'Exact :{result}')
+    log(f'Exact :{result}', 'DBUG')
     if result is None:
         result = await db.fetchrow(f"SELECT * FROM items WHERE name LIKE $1", query)
-        print(f'Fuzzy: {result}')
+        log(f'Fuzzy: {result}', 'DBUG')
     await disconnect()
     return result
 
@@ -409,45 +409,46 @@ async def sell_possession(ctx, user: discord.Member, item: str, amount: int = 1)
         f'{ctx.author} has successfully sold {amount}x {item}, their balance is now {new_balance} credits.')
 
 
-async def transact_possession(ctx, user: discord.Member, item: str, cost: float = 0, amount: int = 1):
+async def transact_possession(user: discord.Member, item: str, cost: float = 0, amount: int = 1,
+                              credit: str = 'credits') -> str:
     uid = user.id
     if cost < 0:
-        return await ctx.send("Transaction aborted. Cost can't be negative.")
+        raise ValueError("Cost can't be negative.")
     await connect()
     balance = await db.fetchval(f"SELECT balance FROM users WHERE id = $1", uid)
     max_cost = await db.fetchval(f"SELECT max_cost FROM items WHERE name = $1", item)
     min_cost = await db.fetchval(f"SELECT min_cost FROM items WHERE name = $1", item)
     if max_cost is None:
         await disconnect()
-        return await ctx.send(f"Item not found. Remember, you must use the full item name, names are case sensitive, "
-                              f"and if you buy more than one the amount goes before the item name.")
+        raise ValueError(f"Item not found. Remember, you must use the full item name and if you buy more than one "
+                         f"the amount goes before the item name.")
     if cost == 0:
         cost = int((max_cost + min_cost) / 2 * 100) / 100
     if not (min_cost <= cost <= max_cost):
         cost = max_cost
-        print(f'Cost not in valid range. Using max_cost instead.')
+        log(f'Cost not in valid range. Using max_cost instead.', 'WARN')
     new_balance = balance - (cost * amount)
     if new_balance < 0:
         await disconnect()
-        return await ctx.send(f'Transaction aborted. You do not have sufficient funds. {amount}x {item} costs'
-                              f' {cost * amount} but you only have {balance}. You can use the paycheck command to '
-                              f'earn a small amount of money or earn more money through roleplay.')
-    print(f'Adding {amount}x {item} to {user} for {cost * amount}, their balance is currently {balance} and will'
-          f' be {new_balance} after.')
+        raise ValueError(f'You do not have sufficient funds. {amount}x {item} costs {cost * amount} {credit}'
+                         f' but you only have {balance} {credit}. You can use the paycheck command to '
+                         f'earn a small amount of money or earn more money through roleplay.')
+    log(f'Adding {amount}x {item} to {user} for {cost * amount}, their balance is currently {balance} and will'
+        f' be {new_balance} after.', 'INFO')
     await add_possession(user, item, cost, amount)
     await connect()  # Because add_possession automatically disconnects
     await db.execute(f"UPDATE users SET balance = $1 where id = $2", new_balance, uid)
     await disconnect()
     plural = 's' if amount != 1 else ''
-    await ctx.send(f"{user} has successfully purchased {amount} {item}{plural} for {cost * amount} credits.")
+    return f"{user} has successfully purchased {amount} {item}{plural} for {cost * amount} {credit}."
     pass
 
 
 async def view_items(member: discord.Member):
     await connect()
-    items = await db.fetchrow(f"SELECT amount, name FROM possessions WHERE owner = $1", member.id)
+    items = await db.fetch(f"SELECT amount, name FROM possessions WHERE owner = $1", member.id)
     await disconnect()
-    print(items)
+    log(items, 'DBUG')
     return set(items)
 
 
@@ -468,9 +469,9 @@ async def send_formatted_browse(ctx, result, i_type):
     else:
         send = f'Items in category {i_type}:\n```\n'
     count = 0
-    print(result)
+    log(result, 'DBUG')
     items = sorted(result, key=lambda x: x['min_cost'])
-    print(items)
+    log(items, 'DBUG')
     max_len = 35
     for item in items:
         item_price = int((float(item[3]) + float(item[4])) / 2 * 100) / 100
@@ -478,8 +479,9 @@ async def send_formatted_browse(ctx, result, i_type):
             send += f'{item[0]}{(max_len - len(item[0])) * " "} ( ~ {item_price} credits)\n'
             count += 1
         else:
+            send += '```'
             await ctx.send(send)
-            send = f'{item[0]}{(max_len - len(item[0])) * " "} ( ~ {item_price} credits\n'
+            send = f'```{item[0]}{(max_len - len(item[0])) * " "} ( ~ {item_price} credits\n'
             count = 1
     send += '```'
     await ctx.send(send)
