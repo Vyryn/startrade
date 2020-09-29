@@ -275,7 +275,11 @@ class Economy(commands.Cog):
                                   description=message,
                                   timestamp=datetime.now())
             return await ctx.send(embed=embed)
-        last_paycheck = await check_last_paycheck(ctx.author)
+        try:
+            last_paycheck = await check_last_paycheck(ctx.author)
+        except TypeError:  # Message is user's first ever message on the server and we need to register them first. Wait for registration.
+            await asyncio.sleep(1)
+            last_paycheck = await check_last_paycheck(ctx.author)
         if time.time() - last_paycheck < self.bot.PAYCHECK_INTERVAL:
             seconds_remaining = int(last_paycheck + self.bot.PAYCHECK_INTERVAL - time.time() + 1)
             minutes_remaining = seconds_remaining // 60

@@ -10,7 +10,10 @@ from discord.ext import commands
 from functions import get_prefix, global_prefix, get_ignored_channels, set_ignored_channels, confirmed_ids, auth, now
 from privatevars import TOKEN
 
-bot = commands.Bot(command_prefix=get_prefix, case_insensitive=True)
+intents = discord.Intents.all()
+intents.typing = False
+
+bot = commands.Bot(command_prefix=get_prefix, case_insensitive=True, intents=intents)
 # ========================== Easily Configurable Values ========================
 # The id of the bot creator
 owner_id = 125449182663278592
