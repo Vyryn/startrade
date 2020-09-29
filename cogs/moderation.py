@@ -26,9 +26,76 @@ class Moderation(commands.Cog):
         logready(self)
 
     @commands.Cog.listener()
-    async def on_reaction_add(self, reaction, user):
+    async def on_raw_reaction_add(self, payload):
         # TODO: Check for verified and add has character role as necessary
-        pass
+        # ===================================== The automatic staff-hirer ========================================
+        if payload.channel_id != 718896231706787940:  # Only consider messages in #staff-candidates
+            return
+        user = self.bot.server.get_member(payload.user_id)
+        u_roles = [role.name for role in user.roles]
+        if ('Administrator/Developer' not in u_roles and 'GM Instructor' not in u_roles) or str(payload.emoji) != '✅':
+            return
+            # Only interested if the reaction is a green checkmark and user has staff management authority
+        message = await self.bot.get_channel(payload.channel_id).fetch_message(payload.message_id)
+        try:
+            for field in message.embeds[0].fields:
+                if field.name == 'Username':
+                    username = field.value
+                elif field.name == 'Position':
+                    rolename = field.value
+        except IndexError:
+            # Message doesn't have embeds.
+            return await message.channel.send("Failure attempting to add role: Application improperly formatted.")
+        if username is None or rolename is None:
+            return await message.channel.send("The username or position fields weren't found in the embed;"
+                                              "add the role manually.")
+        elif rolename != 'Game Master' and 'Administrator/Developer' not in u_roles:
+            # Only admin/dev can promote staff, but GM Instructors can promote Game Masters
+            return await message.channel.send("GM Instructors can only promote Game Masters.")
+        for member in self.bot.server.members:  # Transform username string into a member to add roles to
+            if str(member) == username:
+                to_hire = member
+                break
+        else:  # If got to the end of the loop with no user found, they aren't on server
+            return await message.channel.send("Couldn't find member in server. They probably misspelled"
+                                              " their discriminator; add the role manually.")
+        for role in self.bot.server.roles:
+            if role.name == rolename:
+                to_position = role
+                break
+        else:  # If got to the end of the loop with no role found, role names were probably changed recently
+            return await message.channel.send("Couldn't find role on server. Check that role names are still"
+                                              " up to date on the form and add the role manually.")
+        if role in to_hire.roles:
+            return await message.channel.send(f"{to_hire} is already a {to_position}.")
+        await message.channel.send(f"Hired {to_hire.mention} as a new {to_position}. Congratulations!")
+        await to_hire.add_roles(to_position)
+        if to_position.name != 'Game Master':  # Also add staff role
+            for role in self.bot.server.roles:
+                if role.name == "Staff":
+                    await member.add_roles(role)
+                    break
+        announcements = self.bot.server.get_channel(718897329981096069)
+        await announcements.send(
+            f"**Please congratulate {self.bot.server.name}'s newest {rolename}, {to_hire.mention}!**")
+        staff_lounge = self.bot.server.get_channel(718896175452913755)
+        await staff_lounge.send(f"Hello {to_hire.mention}. This is where the real work gets done ;)")
+
+
+    @commands.Cog.listener()
+    async def on_message(self, message):
+        # ==============================Add checkmark for staff apps======================================
+        if message.channel.id == 718896231706787940\
+                and message.author.bot\
+                and message.author.id != message.guild.me.id:  # Messages in #staff-candidates by webhooks
+            try:
+                for field in message.embeds[0].fields:
+                    if field.name == 'Position':
+                        await message.add_reaction('✅')
+            except IndexError:
+                # message has no embeds
+                pass
+        return
 
     # Commands
     @commands.command(aliases=['clear', 'del'], description='Delete a number of messages')
