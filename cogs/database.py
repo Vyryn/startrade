@@ -340,7 +340,10 @@ def flatten(flatten_list):  # Just a one layer flatten
 async def add_possession(user: discord.Member, item: str, cost: float = 0, amount: float = 1):
     uid = user.id
     await connect()
-    unique_key = await db.fetchval(f"SELECT MAX(id) from possessions") + 1
+    try:
+        unique_key = await db.fetchval(f"SELECT MAX(id) from possessions") + 1
+    except TypeError:
+        unique_key = 1
     full_item = await db.fetchrow(f"SELECT * FROM items WHERE name = $1", item)
     # Check if player already owns some of that item
     i_name, i_category, i_picture, i_min_cost, i_max_cost, i_description, i_faction = full_item
