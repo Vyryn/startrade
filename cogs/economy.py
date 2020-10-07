@@ -45,16 +45,17 @@ class Economy(commands.Cog):
     async def on_message(self, message):
         if message.author.id == self.bot.DISBOARD and len(message.embeds) > 0:  # From disboard and has an embed
             embed_content = message.embeds[0].to_dict()['description']
-            if 'Bump done' in embed_content:
-                bumper_id = int(embed_content[2:20])
-                bumper = await self.bot.fetch_user(bumper_id)
-                balance = await add_funds(bumper, self.bot.BUMP_PAYMENT)
-                message = f"Thank you for bumping {self.bot.server.name} on Disboard, {bumper.mention}." \
-                          f" I've added {self.bot.BUMP_PAYMENT}" \
-                          f" {self.bot.credit_emoji} to your balance. Your new balance is {balance}."
-                log(f'{bumper} bumpbed the server on Disboard. Gave them {self.bot.BUMP_PAYMENT}, '
-                    f'new balance {balance}.')
-                await message.channel.send(message)
+            if 'Bump done' not in embed_content:
+                return
+            bumper_id = int(embed_content[2:20])
+            bumper = await self.bot.fetch_user(bumper_id)
+            balance = await add_funds(bumper, self.bot.BUMP_PAYMENT)
+            to_send = f"Thank you for bumping {self.bot.server.name} on Disboard, {bumper.mention}." \
+                      f" I've added {self.bot.BUMP_PAYMENT}" \
+                      f" {self.bot.credit_emoji} to your balance. Your new balance is {balance}."
+            log(f'{bumper} bumped the server on Disboard. Gave them {self.bot.BUMP_PAYMENT}, '
+                f'new balance {balance}.')
+            await message.channel.send(to_send)
 
     # Commands
 
