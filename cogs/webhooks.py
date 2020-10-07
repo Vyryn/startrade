@@ -67,15 +67,15 @@ class Webhooks(commands.Cog):
         {IMAGES.keys()}"""
         await ctx.message.delete()
         if name is None:
-            name = self.bot.name
+            name = self.bot.server.me.name
         else:
             name = name.replace('_', ' ').title()
         avatar = IMAGES.get(name, None)
         try:
             hook = (await ctx.channel.webhooks())[0]
         except IndexError:
-            hook = await TextChannel.create_webhook(ctx.channel, name=self.bot.name,
-                                                    reason=f'{self.bot.name} NPC creation for #{ctx.channel.name}.')
+            hook = await TextChannel.create_webhook(ctx.channel, name=name,
+                                                    reason=f'{name} NPC creation for #{ctx.channel.name}.')
         embed = Embed(description=content)
         await hook.send(content='', username=name, embed=embed, avatar_url=avatar)
         log(f'{ctx.author} used a webhook named {name} to send {content} in channel {ctx.channel}.')

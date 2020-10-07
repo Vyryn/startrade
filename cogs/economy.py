@@ -54,12 +54,12 @@ class Economy(commands.Cog):
                           f" {self.bot.credit_emoji} to your balance. Your new balance is {balance}."
                 log(f'{bumper} bumpbed the server on Disboard. Gave them {self.bot.BUMP_PAYMENT}, '
                     f'new balance {balance}.')
-                # await message.channel.send(message)
+                await message.channel.send(message)
 
     # Commands
 
     @commands.command(description='Invest some money into your business.')
-    @commands.check(auth(1))
+    #@commands.check(auth(1))
     async def invest(self, ctx, transact):
         """
             Invest some money into your business in order to occasionally receive dividends in proportion
