@@ -1,3 +1,4 @@
+import asyncio
 import time
 import random
 from datetime import datetime
@@ -17,6 +18,13 @@ global payout_frequency
 # These are just "default default values" so to speak, and are never actually used.
 payout_frequency = 60 * 60
 
+
+async def remind_bump(channel: discord.TextChannel, increments=120*60, message='The server can be bumped again.'
+                                                                               ' Who will claim the reward first?'):
+    message = f':alarm_clock: **Reminder**: \n' + message
+    await asyncio.sleep(increments)
+    await channel.send(message)
+    log(f'Bump reminder sent: {message}')
 
 class Economy(commands.Cog):
 
@@ -55,6 +63,7 @@ class Economy(commands.Cog):
                       f" {self.bot.credit_emoji} to your balance. Your new balance is {balance}."
             log(f'{bumper} bumped the server on Disboard. Gave them {self.bot.BUMP_PAYMENT}, '
                 f'new balance {balance}.')
+            self.bot.loop.create_task(remind_bump(message.channel))
             await message.channel.send(to_send)
 
     # Commands

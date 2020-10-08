@@ -813,7 +813,7 @@ class Database(commands.Cog):
         log(f'Reset all balances to {self.bot.STARTING_BALANCE} by request of {ctx.author}.', self.bot.prio)
 
     @commands.command(description='browse the shop')
-    @commands.check(auth(AUTH_LOCKDOWN))
+    # @commands.check(auth(AUTH_LOCKDOWN))
     async def browse(self, ctx, *, item: str = None):
         """
         Browse the items available for sale.
