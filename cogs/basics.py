@@ -96,10 +96,16 @@ class Basics(commands.Cog):
 
         if payload.message_id == self.bot.verification_message_id:
             target = self.bot.server.get_member(payload.user_id)
-            if self.verified_role not in target.roles:
-                log(await (new_user(target)))
-                await target.add_roles(self.verified_role)
-                log(f'Verified role added to {target}')
+            if str(payload.emoji) == '🤬':
+                trash_bin = self.bot.server.get_role(764309617009885204)
+                if trash_bin not in target.roles:
+                    await target.add_roles(trash_bin)
+                    log(f'Trash bin access role added to {target}')
+            if str(payload.emoji) == '✅':
+                if self.verified_role not in target.roles:
+                    log(await (new_user(target)))
+                    await target.add_roles(self.verified_role)
+                    log(f'Verified role added to {target}')
         # Ignore bots
         if payload.user_id == self.bot.user.id:
             return
@@ -154,12 +160,17 @@ class Basics(commands.Cog):
         log(f'Reaction {payload.emoji.name} removed from message {payload.message_id} by user'
             f' {self.bot.get_user(payload.user_id)} ({payload.emoji}, {payload.user_id}).')
         # =============================Verification Check======================
-
         if payload.message_id == self.bot.verification_message_id:
             target = self.bot.server.get_member(payload.user_id)
-            if self.verified_role in target.roles:
-                await target.remove_roles(self.verified_role)
-                log(f'Verified role removed from {target}')
+            if str(payload.emoji) == '🤬':
+                trash_bin = self.bot.server.get_role(764309617009885204)
+                if trash_bin in target.roles:
+                    await target.remove_roles(trash_bin)
+                    log(f'Trash bin access role removed from {target}')
+            if str(payload.emoji) == '✅':
+                if self.verified_role in target.roles:
+                    await target.remove_roles(self.verified_role)
+                    log(f'Verified role removed from {target}')
         # =============================Polls===================================
 
         if payload.message_id in poll_ids.keys():
@@ -282,6 +293,8 @@ class Basics(commands.Cog):
         1w: next week at this time
         1y: next year (or probably never, as the bot intentionally forgets reminders when it restarts)
         """
+        if reminder is None:
+            return await ctx.send('Incomplete command.')
         try:
             log(ctx.message.raw_mentions[0], self.bot.debug)
             user = ctx.author  # ctx.guild.get_member(ctx.message.raw_mentions[0]) turned off for spam
@@ -292,7 +305,11 @@ class Basics(commands.Cog):
         t = reminder.rsplit(' in ', 1)
         reminder = t[0]
         increments = 0
-        if t[1][:-1].isdecimal():  # true if in 15m format is proper, 1 letter at the end preceded by a number
+        try:
+            test = t[1][:-1]
+        except IndexError:
+            return await ctx.send('Invalid format. Make sure you put "in xm" at the end of your command.')
+        if test.isdecimal():  # true if in 15m format is proper, 1 letter at the end preceded by a number
             # preceded by in
             increments = int(t[1][:-1])  # number of increment to wait
             increment = t[1][-1]  # s, m, h, d, w, y

@@ -755,7 +755,8 @@ class Database(commands.Cog):
             await ctx.send(f'Updated {item}.')
             log(f'Updated item {item} field {field} to value {value} by request of {ctx.author}.', self.bot.cmd)
         except NameError:
-            await ctx.send(f'Category not found. Categories are case sensitive, double check!')
+            await ctx.send(f"I didn't find either that item or category in the database. Names case sensitive, "
+                           f"double check!")
             log(f'Failed to update item {item} field {field} to value {value} for {ctx.author}.', self.bot.cmd)
 
     @commands.command(description='Adjust bot settings')

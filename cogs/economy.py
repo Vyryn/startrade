@@ -19,12 +19,13 @@ global payout_frequency
 payout_frequency = 60 * 60
 
 
-async def remind_bump(channel: discord.TextChannel, increments=120*60, message='The server can be bumped again.'
-                                                                               ' Who will claim the reward first?'):
+async def remind_bump(channel: discord.TextChannel, increments=120 * 60, message='The server can be bumped again.'
+                                                                                 ' Who will claim the reward first?'):
     message = f':alarm_clock: **Reminder**: \n' + message
     await asyncio.sleep(increments)
     await channel.send(message)
     log(f'Bump reminder sent: {message}')
+
 
 class Economy(commands.Cog):
 
@@ -69,7 +70,7 @@ class Economy(commands.Cog):
     # Commands
 
     @commands.command(description='Invest some money into your business.')
-    #@commands.check(auth(1))
+    # @commands.check(auth(1))
     async def invest(self, ctx, transact):
         """
             Invest some money into your business in order to occasionally receive dividends in proportion
@@ -115,7 +116,7 @@ class Economy(commands.Cog):
                 balance, invested, user = await check_bal_str(user)
             message = f"Balance: {int(balance)} {self.bot.credit_emoji}\n" \
                       f"Invested: {int(invested)} {self.bot.credit_emoji}\n" \
-                      f"Total: {int(balance+invested)} {self.bot.credit_emoji}"
+                      f"Total: {int(balance + invested)} {self.bot.credit_emoji}"
             embed = discord.Embed(title=f"{user.name}'s Balance",
                                   description=message,
                                   timestamp=datetime.now())
@@ -166,7 +167,8 @@ class Economy(commands.Cog):
             return await ctx.send('You must buy at least 1.')
         try:
             try:
-                result = await transact_possession(ctx.author, item.title(), amount=amount, credit=self.bot.credit_emoji)
+                result = await transact_possession(ctx.author, item.title(), amount=amount,
+                                                   credit=self.bot.credit_emoji)
             except ValueError:  # Try a second time with user's capitalization in case
                 result = await transact_possession(ctx.author, item, amount=amount, credit=self.bot.credit_emoji)
             await ctx.send(result)
@@ -329,7 +331,7 @@ class Economy(commands.Cog):
             member = ctx.author
         log(f'{ctx.author} checked the inventory of {member}.', self.bot.cmd)
         items = await view_items(member)
-        title = f'**{ctx.author.name} has {sum(item for item, _ in items)} items of {len(items)} different types:**\n'
+        title = f'**{member.name} has {sum(item for item, _ in items)} items of {len(items)} different types:**\n'
         to_send = ''
         for item in sorted(items, key=lambda x: x[1]):
             if item[0] > 0:
