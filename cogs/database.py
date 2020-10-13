@@ -1,6 +1,8 @@
 import asyncio
 import random
 import time
+import typing
+
 import aiohttp
 from io import BytesIO
 
@@ -268,6 +270,37 @@ async def add_item(name: str, category: str, picture: str, min_cost: float, max_
     await db.execute(f"INSERT INTO items VALUES ($1, $2, $3, $4, $5, $6, $7)",
                      name, category, picture, min_cost, max_cost, description, faction)
     await disconnect()
+
+
+async def add_custom_item(name: str, user: discord.User, amount: int = 1, description: str = "", picture: str = ""):
+    uid = user.id
+    await connect()
+    try:
+        unique_key = await db.fetchval(f"SELECT MAX(id) from custom_items") + 1
+    except TypeError:
+        unique_key = 1
+    # Check if player already owns some of that item
+    has_amount = await db.fetchval(f"SELECT amount FROM custom_items WHERE owner = $1 AND name = $2", uid, name)
+    # log(f'{user} currently has {has_amount}x {item}.')
+    if has_amount is None:
+        # log('has_amount was None.', "DBUG"")
+        await db.execute(f"INSERT INTO custom_items VALUES ($1, $2, $3, $4, $5, $6)",
+                         unique_key, name, uid, amount, description, picture)
+    else:
+        await db.execute(f"UPDATE custom_items SET amount = $1 WHERE owner = $2 AND name = $3",
+                         amount + has_amount, uid, name)
+    # log(f'{user} now has {amount + has_amount}x {item}.', "DBUG"")
+    await disconnect()
+
+
+async def get_custom_items(user: discord.User) -> [(str, str)]:
+    """
+    Returns a list of name, desc tuples for each custom item owned by the specified user
+    """
+    uid = user.id
+    await connect()
+    results = await db.fetch(f"SELECT * FROM custom_items WHERE owner = $1", uid)
+    return [(result['name'], result['amount']) for result in results]
 
 
 async def add_commodity_location(name: str, channel_id: int, is_buy: bool, **kwargs):
@@ -605,6 +638,16 @@ class Database(commands.Cog):
                              "cost DOUBLE PRECISION, "
                              "faction VARCHAR (127))"
                              )
+        if 'custom_items' not in tables:
+            log('Custom items table not found. Creating a new one...')
+            await db.execute("CREATE TABLE custom_items("
+                             "id INT NOT NULL PRIMARY KEY, "
+                             "name VARCHAR (127), "
+                             "owner BIGINT REFERENCES users(id), "
+                             "amount INT, "
+                             "description VARCHAR(2048), "
+                             "picture VARCHAR (127))"
+                             )
         # await disconnect()
         # await connect()
         if 'commodities_locations' not in tables:
@@ -825,6 +868,12 @@ class Database(commands.Cog):
         await ctx.send(f"Successfully reset everyone's balance to {self.bot.STARTING_BALANCE}")
         log(f'Reset all balances to {self.bot.STARTING_BALANCE} by request of {ctx.author}.', self.bot.cmd)
         log(f'Reset all balances to {self.bot.STARTING_BALANCE} by request of {ctx.author}.', self.bot.prio)
+
+    @commands.command(description="Add a custom item to a user's inventory")
+    @commands.check(auth(2))
+    async def rpitem(self, ctx, user: discord.Member, name: str, amount: typing.Optional[int] = 1, description: str = "", picture: str = ""):
+        await add_custom_item(name, user, amount, description, picture)
+        await ctx.send(f"Gave {user} {amount}x {name}s.")
 
     @commands.command(description='browse the shop')
     # @commands.check(auth(AUTH_LOCKDOWN))

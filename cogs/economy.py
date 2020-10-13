@@ -9,7 +9,7 @@ from discord.ext import commands, tasks
 from bot import log, logready
 from cogs.database import add_invest, check_bal, transfer_funds, add_funds, distribute_payouts, check_last_paycheck, \
     set_last_paycheck_now, get_top, check_bal_str, transact_possession, add_possession, view_items, sell_possession, \
-    items_per_top_page
+    items_per_top_page, get_custom_items
 from functions import auth
 
 global payout_frequency
@@ -336,6 +336,11 @@ class Economy(commands.Cog):
         for item in sorted(items, key=lambda x: x[1]):
             if item[0] > 0:
                 to_send += f'{item[0]}x {item[1]}\n'
+        custom_items = await get_custom_items(member)
+        if len(custom_items) > 0:
+            for item in sorted(custom_items, key=lambda x: x[0]):
+                if item[1] > 0:
+                    to_send += f'{item[1]}x {item[0]}\n'
         embed = discord.Embed(title=title,
                               description=to_send,
                               timestamp=datetime.now())
