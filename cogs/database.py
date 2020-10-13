@@ -233,8 +233,7 @@ async def set_last_paycheck_now(user: discord.User):
 
 async def get_top(cat: str, page: int, user: discord.Member):
     await connect()
-    offset = items_per_top_page * (1 - page)
-    offset *= -1
+    offset = items_per_top_page * (page - 1)
     ind = 3
     if cat not in ['balance', 'invested', 'activity', 'n']:
         raise NameError(f'Category {cat} not found.')
@@ -247,11 +246,10 @@ async def get_top(cat: str, page: int, user: discord.Member):
             cat = 'n_word'
             ind = 10
     num_users = await db.fetchval(f"SELECT COUNT(id) FROM users WHERE {cat} IS NOT NULL")
-    if num_users < page * items_per_top_page:
+    if num_users < (page - 1) * items_per_top_page:
         offset = 0
-    result = await db.fetch(
-        f"""SELECT * FROM users WHERE {cat} IS NOT NULL ORDER BY {cat} DESC LIMIT {items_per_top_page} OFFSET $1""",
-        offset)
+    result = await db.fetch(f"""SELECT * FROM users WHERE {cat} IS NOT NULL ORDER BY 
+                            {cat} DESC, name LIMIT {items_per_top_page} OFFSET $1""", offset)
     tops = []
     num_pages = num_users // items_per_top_page + 1
     for line in result:
@@ -325,7 +323,22 @@ async def find_items_in_cat(item: str):
 
 async def remove_item(item: str):
     await connect()
-    await db.execute(f"DELETE FROM items WHERE name = $1", item)
+    result = await db.fetch(f"SELECT * FROM items WHERE name LIKE $1", item)
+    print(result)
+    if len(result) > 2:
+        await disconnect()
+        return 'Too many matching items found.'
+    matching_possessions = await db.fetch(f"SELECT * FROM possessions WHERE name like $1", item)
+    for possession in matching_possessions:
+        cost = possession['cost'] * possession['amount']
+        owner = possession['owner']
+        temp_result = await db.fetchrow(f"SELECT balance FROM users WHERE id = $1", owner)
+        balance = float(temp_result[0])
+        log(f"Adding {cost} credits to {owner} for refund of {possession['name']}.")
+        balance += cost
+        await db.execute(f"UPDATE users SET balance = $1 where id = $2", balance, owner)
+    await db.execute(f"DELETE FROM possessions WHERE name LIKE $1", item)
+    await db.execute(f"DELETE FROM items WHERE name LIKE $1", item)
     await disconnect()
 
 
@@ -742,7 +755,7 @@ class Database(commands.Cog):
             return await ctx.send('Delete cancelled.')
         log(f"Removing item {item} by request of {ctx.author}.", self.bot.cmd)
         await remove_item(item)
-        await ctx.send(f'Successfully removed {item} from the database.')
+        await ctx.send(f'Successfully removed {item} from the database and refunded any owners 100%.')
 
     @commands.command(aliases=['updateitem'], description='Edit a value of an item in the database.')
     @commands.check(auth(max(4, AUTH_LOCKDOWN)))
