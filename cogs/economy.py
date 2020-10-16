@@ -340,7 +340,7 @@ class Economy(commands.Cog):
         if len(custom_items) > 0:
             for item in sorted(custom_items, key=lambda x: x[0]):
                 if item[1] > 0:
-                    to_send += f'{item[1]}x {item[0]}\n'
+                    to_send += f'{item[1]}x {item[0]} (⭐)\n'
         embed = discord.Embed(title=title,
                               description=to_send,
                               timestamp=datetime.now())

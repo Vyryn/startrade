@@ -51,3 +51,17 @@ https://discord.gg/vcCyNFt
 - A 'viral' Certified Literate role: May be assigned by anyone with the role and indicates a high quality of roleplay. There is an automatically assigned currency reward for achieving this, and appropriate logging.
 - Bot management commands: List users, direct database query, evaluate code snippet, delete single message by id, add an item to a user, add money to a user, distribute investment payouts on demand in addition to automatically, edit a bot message, delete multiple messages, kick ban or unban a member, or remove all the pins in a channel. 
 - Load, unload and reload modules to change functionality without going offline
+
+#Deployment:
+Please note, this bot was created for Startrade specific use without broader deployment in mind. You are welcome to use or adapt the code for your own purposes (As long as you follow the license, which includes making freely available a copy of your complete associated source code) but its offered as is and I may introduce breaking changes without notice; this is an in-dev project.
+
+- Create a bot in the discord dev portal
+- Install postgresql. Create a db user with read/write access for the bot to use
+- Clone repo, obviously
+- install requirements.txt
+- Authorize google sheets api on your account and create a token.pickle file in your repo
+- Create a file called 'privatevars.py' in the base directory and populate it with:
+TOKEN = 'your token from dev portal'
+DBUSER = 
+DBPASS = 'your username and password from postgre
+- Create a database named 'startrade' in postgresql. Its hardcoded to use this name but you can change it in database.py or refactor the name out if you like
