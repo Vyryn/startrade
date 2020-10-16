@@ -24,7 +24,8 @@ async def remind_bump(channel: discord.TextChannel, increments=120 * 60, message
     message = f':alarm_clock: **Reminder**: \n' + message
     await asyncio.sleep(increments)
     await channel.send(message)
-    log(f'Bump reminder sent: {message}')
+    message = message.replace('\n', '  ')
+    log(f"Bump reminder sent: {message}")
 
 
 class Economy(commands.Cog):

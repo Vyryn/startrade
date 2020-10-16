@@ -123,12 +123,12 @@ def save_aipkeys():
 
 
 # Checks if a user has the requested authorization level or not, is a coroutine for async operation
-def auth(level):
+def auth(auth_level):
     async def user_auth_check(ctx, *args):
         for uid in bot_commanders.keys():
-            if int(uid) == ctx.author.id and bot_commanders.get(uid, DEFAULT_AUTH) >= level:
+            if int(uid) == ctx.author.id and bot_commanders.get(uid, DEFAULT_AUTH) >= auth_level:
                 return True
-        print('User not found to be auth\'d')
+        log(f'{ctx.author} not found to be auth\'d at level {auth_level} for {ctx.command} at {now()}', 'AUTH')
         return False
 
     return user_auth_check

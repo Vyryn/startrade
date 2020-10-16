@@ -210,7 +210,7 @@ class Basics(commands.Cog):
             embed.set_author(icon_url=message.author.avatar_url, name=message.author)
             embed.set_footer(text=f'Author: {message.author.id} | Message ID: {message.id}')
             await self.bot.log_channel.send(embed=embed)
-            log(f'Message {message} deleted in {message.channel}', self.bot.info)
+            log(f'Message "{message.content}" deleted in {message.channel}', self.bot.info)
 
     # Edited message handler
     @commands.Cog.listener()
