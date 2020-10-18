@@ -56,7 +56,7 @@ class Dev(commands.Cog):
         log(f'Echo command used by {ctx.author} with message {message}.', self.bot.cmd)
 
     # Have the bot send a dm to someone with your message
-    @commands.command(name='sendmsg', aliases=['dm', 'tell', 'message'], pass_context=True,
+    @commands.command(name='sendmsg', aliases=['dm', 'tell', 'message'], hidden=True,
                       description='DM someone from the bot.')
     @commands.check(auth(2))
     async def send(self, ctx, user: discord.User, *, message: str = None):
@@ -143,7 +143,7 @@ class Dev(commands.Cog):
         log(f'Auth All command used by {ctx.author}.', self.bot.cmd)
 
     # Unload a cog
-    @commands.command(description='Unload a cog')
+    @commands.command(description='Unload a cog', hidden=True)
     @commands.check(auth(4))
     async def unload(self, ctx, extension: str):
         """
@@ -177,7 +177,7 @@ class Dev(commands.Cog):
         log(f'Reload command used by {ctx.author} on cog {extension}.', self.bot.cmd)
 
     # Update bot status
-    @commands.command(description='Change what the bot is playing')
+    @commands.command(description='Change what the bot is playing', hidden=True)
     @commands.check(auth(5))
     async def status(self, ctx, *, message: str = ''):
         """
@@ -191,7 +191,7 @@ class Dev(commands.Cog):
         await ctx.message.delete(delay=self.deltime)  # delete the command
         log(f'Status command used by {ctx.author} to set bot status to {message}.', self.bot.cmd)
 
-    @commands.command(name='eval', description='Evaluates input.')
+    @commands.command(name='eval', description='Evaluates input.', hidden=True)
     @commands.check(auth(9))
     async def eval_fn(self, ctx, *, cmd: str):
         """
@@ -230,7 +230,7 @@ class Dev(commands.Cog):
             await ctx.send(f'Result: {result}')
         log(f'Evaluation of {cmd} for {ctx.author} gave the following result: {result}.', self.bot.cmd)
 
-    @commands.command(description='Delete a single message by ID')
+    @commands.command(description='Delete a single message by ID', hidden=True)
     @commands.check(auth(6))
     async def delete(self, ctx, message_id: int):
         """
@@ -242,7 +242,7 @@ class Dev(commands.Cog):
         await ctx.message.delete(delay=self.deltime)  # delete the command
         log(f'Deleted message {message_id} in channel {ctx.channel} for user {ctx.author}.', self.bot.cmd)
 
-    @commands.command(description='Invoke a command as another user')
+    @commands.command(description='Invoke a command as another user', hidden=True)
     @commands.check(auth(8))
     async def sudo(self, ctx, channel: typing.Optional[discord.TextChannel], user: discord.User, command: str):
         """Invoke a command as another user, in another channel."""
@@ -253,6 +253,7 @@ class Dev(commands.Cog):
         message.content = ctx.prefix + command
         ctx = await self.bot.get_context(message, cls=type(ctx))
         await self.bot.invoke(ctx)
+
 
 def setup(bot):
     bot.add_cog(Dev(bot))
