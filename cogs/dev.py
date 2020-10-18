@@ -1,4 +1,6 @@
+import copy
 import time
+import typing
 
 import discord
 import json
@@ -240,6 +242,17 @@ class Dev(commands.Cog):
         await ctx.message.delete(delay=self.deltime)  # delete the command
         log(f'Deleted message {message_id} in channel {ctx.channel} for user {ctx.author}.', self.bot.cmd)
 
+    @commands.command(description='Invoke a command as another user')
+    @commands.check(auth(8))
+    async def sudo(self, ctx, channel: typing.Optional[discord.TextChannel], user: discord.User, command: str):
+        """Invoke a command as another user, in another channel."""
+        message = copy.copy(ctx.message)
+        channel = channel or ctx.channel
+        message.channel = channel
+        message.author = channel.guild.get_member(user.id) or user
+        message.content = ctx.prefix + command
+        ctx = await self.bot.get_context(message, cls=type(ctx))
+        await self.bot.invoke(ctx)
 
 def setup(bot):
     bot.add_cog(Dev(bot))

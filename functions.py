@@ -128,7 +128,6 @@ def auth(auth_level):
         for uid in bot_commanders.keys():
             if int(uid) == ctx.author.id and bot_commanders.get(uid, DEFAULT_AUTH) >= auth_level:
                 return True
-        log(f'{ctx.author} not found to be auth\'d at level {auth_level} for {ctx.command} at {now()}', 'AUTH')
         return False
 
     return user_auth_check
@@ -181,12 +180,16 @@ def today():
 # Log a message.
 def log(message, mm):
     print(message)
-    if mm.guild is not None:
-        guild = mm.guild.name
-        channel = mm.channel.name
-    else:
-        guild = 'DMs'
-        channel = mm.channel.recipient
+    try:
+        if mm.guild is not None:
+            guild = mm.guild.name
+            channel = mm.channel.name
+        else:
+            guild = 'DMs'
+            channel = mm.channel.recipient
+    except AttributeError:
+        guild = 'no_guild'
+        channel = 'no_channel'
     # logmsg = 'MSG@{}:  {}:{}'.format(now(), message['guild']['name'],message['channel']['name'])
     try:
         with open(f'./logs/{guild}/{channel}_{today()}_log.log', 'a+', encoding='utf-8') as f:
