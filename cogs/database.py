@@ -519,12 +519,12 @@ async def send_formatted_browse(ctx, result, i_type):
         send = f'Items in category {i_type}:\n```\n'
     count = 0
     log(result, 'DBUG')
-    items = sorted(result, key=lambda x: x['min_cost'])
+    items = sorted(result, key=lambda x: int((float(x[3]) + float(x[4])) / 2 * 100) / 100)
     log(items, 'DBUG')
-    max_len = 35
+    max_len = 43
     for item in items:
         item_price = int((float(item[3]) + float(item[4])) / 2 * 100) / 100
-        if count < 30:
+        if count < 25:
             send += f'{item[0]}{(max_len - len(item[0])) * " "} ( ~ {item_price} credits)\n'
             count += 1
         else:
