@@ -28,6 +28,13 @@ async def remind_bump(channel: discord.TextChannel, increments=120 * 60, message
     log(f"Bump reminder sent: {message}")
 
 
+def verify_human(author, phrase):
+    def in_check(message):
+        return message.author == author and phrase in message.content
+
+    return in_check
+
+
 class Economy(commands.Cog):
 
     def __init__(self, bot):
@@ -186,7 +193,10 @@ class Economy(commands.Cog):
         log(f'{ctx.author} is attempting to sell {amount} {item}(s).', self.bot.cmd)
         if amount < 1:
             return await ctx.send('Invalid sell amount.')
-        await sell_possession(ctx, ctx.author, item.title(), amount)
+        try:
+            await sell_possession(ctx, ctx.author, item.title(), amount)
+        except TypeError:
+            await ctx.send(f"You don't have any {item}s to sell.")
 
     @commands.command(description='Add an item to a users possessions without the need to buy it.')
     @commands.check(auth(2))
@@ -304,6 +314,7 @@ class Economy(commands.Cog):
                                   description=message,
                                   timestamp=datetime.now())
             return await ctx.send(embed=embed)
+
         last_paycheck = await check_last_paycheck(ctx.author)
         if time.time() - last_paycheck < self.bot.PAYCHECK_INTERVAL:
             seconds_remaining = int(last_paycheck + self.bot.PAYCHECK_INTERVAL - time.time() + 1)
@@ -311,7 +322,16 @@ class Economy(commands.Cog):
             seconds_remaining = seconds_remaining % 60
             return await ctx.send(f"You aren't ready for a paycheck yet. Try again in {minutes_remaining} minutes"
                                   f" and {seconds_remaining} seconds.")
-
+        if time.time() - last_paycheck < self.bot.PAYCHECK_INTERVAL * 1 + random.random() and random.random() < 0.3:
+            # Recent since last paycheck. May be botting, intercept 30% of the time for bot check.
+            verification_num = random.randrange(10000, 99999)
+            await ctx.send(f'{ctx.author}, please repeat `{verification_num}` back to me.')
+            # TODO Come back
+            try:
+                confirmation = await self.bot.wait_for('message', check=verify_human(ctx.author, verification_num),
+                                                       timeout=30)
+            except asyncio.TimeoutError:
+                log(f'{ctx.author} failed captcha and may be botting.', 'ALRT')
         if self.bot.PAYCHECK_AMOUNT_MAX == self.bot.PAYCHECK_AMOUNT_MIN:
             paycheck_amount = self.bot.PAYCHECK_AMOUNT_MAX
         else:

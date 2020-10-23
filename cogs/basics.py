@@ -106,6 +106,19 @@ class Basics(commands.Cog):
                     log(await (new_user(target)))
                     await target.add_roles(self.verified_role)
                     log(f'Verified role added to {target}')
+            if str(payload.emoji) == '🎮':
+                ping_for_rp = self.bot.server.get_role(769046658721251381)
+                if ping_for_rp not in target.roles:
+                    await target.add_roles(ping_for_rp)
+                    log(f'Ping for RP Role added to {target}')
+        # ============================= Character Approval ======================
+        if payload.channel_id == 720387609330974780 and str(payload.emoji) == '<:check:729197314127691856>':
+            user = self.bot.server.get_member(payload.user_id)
+            if user.permissions_in(self.bot.server.get_channel(payload.channel_id)).manage_messages:
+                target = await self.bot.server.get_channel(payload.channel_id).fetch_message(payload.message_id)
+                await target.add_roles(718949441457094717)
+                await user.send(f'Added Has Character role to {target}.')
+                log(f'{user} approved a character of {target} at {now()}', 'CMMD')
         # Ignore bots
         if payload.user_id == self.bot.user.id:
             return
@@ -151,8 +164,7 @@ class Basics(commands.Cog):
                                                                             delete_after=self.deltime)
                         await (await self.bot.get_channel(payload.channel_id).fetch_message(
                             payload.message_id)).remove_reaction(payload.emoji,
-                                                                 self.bot.get_guild(payload.guild_id).get_member(
-                                                                     payload.user_id))
+                            self.bot.get_guild(payload.guild_id).get_member(payload.user_id))
 
     # Reaction removal handler
     @commands.Cog.listener()
@@ -171,6 +183,11 @@ class Basics(commands.Cog):
                 if self.verified_role in target.roles:
                     await target.remove_roles(self.verified_role)
                     log(f'Verified role removed from {target}')
+            if str(payload.emoji) == '🎮':
+                ping_for_rp = self.bot.server.get_role(769046658721251381)
+                if ping_for_rp in target.roles:
+                    await target.remove_roles(ping_for_rp)
+                    log(f'Ping for RP Role removed from {target}')
         # =============================Polls===================================
 
         if payload.message_id in poll_ids.keys():
