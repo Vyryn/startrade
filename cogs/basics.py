@@ -116,9 +116,9 @@ class Basics(commands.Cog):
             user = self.bot.server.get_member(payload.user_id)
             if user.permissions_in(self.bot.server.get_channel(payload.channel_id)).manage_messages:
                 target = await self.bot.server.get_channel(payload.channel_id).fetch_message(payload.message_id)
-                await target.add_roles(718949441457094717)
-                await user.send(f'Added Has Character role to {target}.')
-                log(f'{user} approved a character of {target} at {now()}', 'CMMD')
+                await target.author.add_roles(self.bot.server.get_role(718949441457094717))
+                await user.send(f'Added Has Character role to {target.author}.')
+                log(f'{user} approved a character of {target.author} at {now()}', 'CMMD')
         # Ignore bots
         if payload.user_id == self.bot.user.id:
             return
