@@ -322,13 +322,13 @@ class Economy(commands.Cog):
             seconds_remaining = seconds_remaining % 60
             return await ctx.send(f"You aren't ready for a paycheck yet. Try again in {minutes_remaining} minutes"
                                   f" and {seconds_remaining} seconds.")
-        if time.time() - last_paycheck < self.bot.PAYCHECK_INTERVAL * 1 + random.random() and random.random() < 0.3:
+        if time.time() - last_paycheck < self.bot.PAYCHECK_INTERVAL * (1 + random.random()) and random.random() < 0.3:
             # Recent since last paycheck. May be botting, intercept 30% of the time for bot check.
             verification_num = random.randrange(10000, 99999)
             await ctx.send(f'{ctx.author}, please repeat `{verification_num}` back to me.')
             # TODO Come back
             try:
-                confirmation = await self.bot.wait_for('message', check=verify_human(ctx.author, verification_num),
+                confirmation = await self.bot.wait_for('message', check=verify_human(ctx.author, str(verification_num)),
                                                        timeout=30)
             except asyncio.TimeoutError:
                 log(f'{ctx.author} failed captcha and may be botting.', 'ALRT')

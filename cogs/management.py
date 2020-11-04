@@ -1,4 +1,7 @@
 import json
+import typing
+
+import discord
 from discord.ext import commands
 from functions import auth, now
 from bot import log, logready
@@ -70,10 +73,11 @@ class Management(commands.Cog):
     @commands.check(auth(3))
     @commands.guild_only()
     @commands.command(description='Edit a bot message')
-    async def edit(self, ctx, m_id, *, new):
-        channel = ctx.channel
+    async def edit(self, ctx, m_id, channel: typing.Optional[discord.TextChannel] = None, *, new):
+        channel = channel or ctx.channel
         message = await channel.fetch_message(m_id)
         await message.edit(content=new)
+        await ctx.message.add_reaction('✅')
 
 
 def setup(bot):

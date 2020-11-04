@@ -41,6 +41,8 @@ class Moderation(commands.Cog):
             for field in message.embeds[0].fields:
                 if field.name == 'Username':
                     username = field.value
+                    if username[0] == '@':
+                        username = username[1:]
                 elif field.name == 'Position':
                     rolename = field.value
         except IndexError:
@@ -74,12 +76,12 @@ class Moderation(commands.Cog):
             for role in self.bot.server.roles:
                 if role.name == "Staff":
                     await member.add_roles(role)
+                    staff_lounge = self.bot.server.get_channel(718896175452913755)
+                    await staff_lounge.send(f"Hello {to_hire.mention}. This is where the real work gets done ;)")
                     break
         announcements = self.bot.server.get_channel(718897329981096069)
         await announcements.send(
             f"**Please congratulate {self.bot.server.name}'s newest {rolename}, {to_hire.mention}!**")
-        staff_lounge = self.bot.server.get_channel(718896175452913755)
-        await staff_lounge.send(f"Hello {to_hire.mention}. This is where the real work gets done ;)")
 
 
     @commands.Cog.listener()

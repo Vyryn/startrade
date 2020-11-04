@@ -149,10 +149,10 @@ async def on_command_error(ctx, error):
         return log(f'Error, MissingRequiredArgument in command {ctx.command}: {error.args[0]}', bot.debug)
     elif isinstance(error, commands.MissingPermissions):
         await ctx.send(f'{ctx.author}, {error}', delete_after=5)
-        return log(f'{ctx.author} tried to use {ctx.command} without sufficient permissions.', bot.info)
+        return log(f'{ctx.author} tried to use {ctx.command} without sufficient permissions.')
     elif isinstance(error, commands.CheckFailure):
         await ctx.send(f'{ctx.author}, you are not authorized to perform this command.')
-        return log(f'{ctx.author} tried to use {ctx.command} without sufficient auth level.', bot.info)
+        return log(f'{ctx.author} tried to use {ctx.command} without sufficient auth level.')
     elif isinstance(error, discord.ext.commands.errors.BadArgument):
         await ctx.send("Improper command. Check help [command] to help you formulate this command correctly.",
                        delete_after=deltime)
@@ -163,7 +163,10 @@ async def on_command_error(ctx, error):
     elif isinstance(error, asyncio.TimeoutError):
         await ctx.send(f"{ctx.author}, you took too long. Please re-run the command to continue when you're ready.",
                        delete_after=5)
-        return log(f'{ctx.author} tried to use {ctx.command} but got a TimeoutError.', bot.info)
+        return log(f'{ctx.author} tried to use {ctx.command} but got a TimeoutError.')
+    elif isinstance(error, discord.ext.commands.errors.ExpectedClosingQuoteError):
+        await ctx.send(f"{ctx.author}, invalid command. Make sure quotes are matched.")
+        return log(f'{ctx.author} tried to use {ctx.command} but got an ExpectedClosingQuoteError.')
     elif isinstance(error, discord.ext.commands.errors.CommandOnCooldown):
         await ctx.send(f"{ctx.author.name}, {error}.")
     elif isinstance(error, OSError):

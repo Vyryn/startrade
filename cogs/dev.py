@@ -198,7 +198,7 @@ class Dev(commands.Cog):
         Evaluates input.
         This command requires Auth 9 for obvious reasons.
         """
-        log(f'Evaluating {cmd} for {ctx.author}.', self.bot.cmd)
+        log(f'Evaluating\n{cmd}\nfor {ctx.author}.', self.bot.cmd)
         starttime = time.time_ns()
         fn_name = "_eval_expr"
         cmd = cmd.strip("` ")

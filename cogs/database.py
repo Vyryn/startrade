@@ -24,6 +24,7 @@ items_per_top_page = 10
 refund_portion = 0.6
 move_activity_threshold = 100
 AUTH_LOCKDOWN = 1
+ACTIVITY_FACTOR = 1
 
 COMMODITIES = ['hydrogen', 'deuterium', 'tritium', 'helium', 'nitrogen', 'phosphorous', 'iodine', 'lithium',
                'magnesium', 'aluminum', 'silicon', 'titanium', 'vanadium', 'chromium',
@@ -508,8 +509,14 @@ async def update_location(member: discord.Member, channel: discord.TextChannel):
     recent_activity = await db.fetchval(f"SELECT recent_activity FROM users WHERE id = $1", member.id)
     if recent_activity < move_activity_threshold:
         raise ValueError
-    await db.execute(f"UPDATE users SET recent_activity = 0 where id = $1", member.id)
+    await pay_recent_activity(member)
     await db.execute(f"UPDATE users SET location = $1 where id = $2", new_location, member.id)
+
+async def pay_recent_activity(member):
+    await connect()
+    recent_activity = await db.fetchval(f"SELECT recent_activity FROM users WHERE id = $1", member.id)
+    await add_funds(member, recent_activity * ACTIVITY_FACTOR)
+    await db.execute(f"UPDATE users SET recent_activity = 0 where id = $1", member.id)
 
 
 async def send_formatted_browse(ctx, result, i_type):
