@@ -1,3 +1,4 @@
+import typing
 from random import randrange
 import random
 from collections import Counter
@@ -7,18 +8,33 @@ from cogs.database import update_location
 from functions import auth
 from bot import log, logready
 
+bonuses = {'vet': 10,
+           'ace': 15,
+           'hon': 20,
+           'vetace': 25,
+           'vethon': 30,
+           'evading': 30}
 
-def hit_determine(distance: float, effective_range: float, ship_length: float, bonus: float = 0):
+
+def hit_determine(distance: float, effective_range: float, ship_length: float, bonus: float = 0, missile=False):
     hit_chance = 1
-    luck = float(randrange(1, 100)) + bonus
-    if distance > effective_range:
-        hit_chance = - (0.1111 * (distance / effective_range - 1) ** 2) + 1
-    elif distance < effective_range * 0.3:
-        hit_chance = -100 * ((distance / effective_range) - 0.32) ** 4 + 1
+    if distance < 1:
+        distance = 1
+    r = distance / effective_range
+    if r > 1:
+        hit_chance = 2 - r
+    elif r < 1 and not missile:
+        hit_chance = r
     if hit_chance < 0:
         hit_chance = 0
-    intermediate_step = (101.0 * ship_length / distance) ** 2
-    result = hit_chance * (intermediate_step + luck / 10)
+    length_modifier = ship_length / distance * 100
+    if length_modifier < 0:
+        length_modifier = 0
+    elif length_modifier > 10:
+        length_modifier = 10
+    hit_chance *= 100
+    result = hit_chance + (bonus / 10) + length_modifier
+    # round
     hit_chance = int(hit_chance * 100) / 100
     result = int(result * 1000) / 1000
     roll = randrange(1, 100)
@@ -26,8 +42,73 @@ def hit_determine(distance: float, effective_range: float, ship_length: float, b
         hit = True
     else:
         hit = False
+    # print([hit, bonus, length_modifier, hit_chance, result, roll])
     # http://prntscr.com/tgo2e3
-    return hit, luck, hit_chance, result, roll
+    return hit, bonus, hit_chance, result, roll
+
+
+def damage_determine(hull: float, shields: float, weap_damage_shields: float, weap_damage_hull: float,
+                     pierce: float) -> (float, float):
+    """Does damage with the provided weapon stats to the target hull and shields in absolute values *not* %s."""
+    potential_shield_dmg = weap_damage_shields * (1 - pierce)
+    hull_dmg = weap_damage_hull * pierce
+    # print(f'DMG: {hull_dmg},  {potential_shield_dmg}')
+    hull -= hull_dmg
+    if shields > potential_shield_dmg:
+        shields -= potential_shield_dmg
+    else:  # If shields overkill
+        undealt_shield_dmg = potential_shield_dmg - shields
+        shields = 0
+        # Need to convert this portion of damage to the hull-doing rate instead of the shields-doing rate
+        extra_hull_dmg = undealt_shield_dmg / weap_damage_shields * weap_damage_hull
+        hull -= extra_hull_dmg
+    new_hull = max(hull, 0)
+    new_shields = max(shields, 0)
+    # print([hull, shields, new_hull, new_shields])
+    return new_hull, new_shields
+
+
+def calc_dmg(i_hull: float, i_shield: float, n_weaps: int, dist: float, bonus: int, ship_info: dict,
+             weap_info: dict) -> (float, float):
+    """Determines whether a weapon hits and if so calculates damage. Returns the new hull and shields."""
+    # Look up values
+    ship_length = ship_info['len']
+    max_hull = ship_info['hull']
+    max_shield = ship_info['shield']
+    effective_range = weap_info['range'] * 1000
+    dist *= 1000
+    weap_damage_shields = weap_info['shield_dmg']
+    weap_damage_hull = weap_info['hull_dmg']
+    weap_rate = int(weap_info['rate'])
+    pierce = weap_info['pierce']
+    missile = 'missile' in weap_info['note'].lower()
+    # Values need to be in absolutes for damage_determine
+    hull = perc_to_val(i_hull, max_hull)
+    shield = perc_to_val(i_shield, max_shield)
+    num_hits = 0
+    # For each weapon, determine if it hits. If so, subtract the damage dealt by it.
+    for i in range(n_weaps):
+        for j in range(weap_rate):
+            weap_hits = hit_determine(dist, effective_range, ship_length, bonus, missile=missile)[0]
+            # print([dist, effective_range, ship_length, bonus, hull, shield, weap_hits])
+            if weap_hits:
+                num_hits += 1
+                (hull, shield) = damage_determine(hull, shield, weap_damage_shields, weap_damage_hull, pierce)
+
+    hit_perc = val_to_perc(num_hits, n_weaps * weap_rate)
+    num_shots = n_weaps * weap_rate
+
+    return val_to_perc(hull, max_hull), val_to_perc(shield, max_shield), hit_perc, num_shots
+
+
+def val_to_perc(value, max_):
+    """Converts a value as a portion of max to a percentage"""
+    return round(value / max_ * 100)
+
+
+def perc_to_val(perc, max_):
+    """Converts a percentage of max to a value"""
+    return perc / 100.0 * max_
 
 
 class Mechanics(commands.Cog):
@@ -178,11 +259,38 @@ class Mechanics(commands.Cog):
             f' ship_length: {ship_length}, num_guns: {num_guns}, attacker_upgrade: {attacker_upgrade}]. Their result'
             f' was: {hits} out of {num_guns} hit their target.')
 
+    @commands.command()
+    async def calcdamage(self, ctx, hull: typing.Optional[int] = 100, shields: typing.Optional[int] = 100,
+                         name: str = '', dist: int = 10, n_weaps: int = 1, weap: str = 'TC', *, params=''):
+        """
+        Calculates damage.
+        $calcdamage  (target hull) (target shields) "[target ship name]" [distance in km] [number of weapons] [weapon
+        type] (-ace/-vet/-hon/-evading)
+        """
+        name = name.lower()
+        weap = weap.lower()
+        ship_info = self.bot.values_ships.get(name, [])
+        weap_info = self.bot.values_weapons.get(weap, [])
+        if not ship_info:
+            return await ctx.send("Incomplete command. I didn't find that ship.")
+        if not weap_info:
+            return await ctx.send("Incomplete command. I didn't find that weapon.")
+        # Apply evasion bonus for -ace, -evading etc
+        evade_bonus = 0
+        params = params.lower()
+        for upgrade in bonuses:
+            if upgrade[1:] in params:
+                evade_bonus += bonuses[upgrade]
+        new_hull, new_shields, hit_perc, num_shots = calc_dmg(hull, shields, n_weaps, dist, evade_bonus, ship_info,
+                                                              weap_info)
+        return await ctx.send(f'[{new_hull}] [{new_shields}] {name.title()}.\n({hit_perc}% of {num_shots} total shots '
+                              f'hit)')
+
     @commands.command(description='Calculate points from shield (sbd), hull (ru), speed (mglt), length(m)'
                                   ' and armament (pts)')
     async def points(self, ctx, shield, hull, mglt, length, armament):
         """Calculate points from shield (sbd), hull (ru), speed (mglt), length(m) and armament (pts)"""
-        await ctx.send(((shield + hull)/3) + (mglt*length/100) + armament)
+        await ctx.send(((shield + hull) / 3) + (mglt * length / 100) + armament)
         log(f'{ctx.author} used the points command.')
 
 

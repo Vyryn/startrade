@@ -40,8 +40,9 @@ bot.DISBOARD = 302050872383242240  # Disboard uid
 bot.credit_emoji = '<:Credits:423873771204640768>'
 # Constants to do with the goolge sheet pulls the bot makes.
 bot.SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
-bot.SHEET_ID = '1p8mtlGzJHeu_ta0ZoowJhBB1t5xM5QRGbRSHCgkyjYg'
-bot.RANGE = 'Sheet1!A1:EL'
+bot.SHEET_ID = '1ZU6pTfdIGkQ9zzOH6lW0zkEQuF7-xFsyxgwSgGz4WcM'
+bot.RANGE_SHIPS = 'AllShips!A1:T1500'
+bot.RANGE_WEAPONS = 'Weapons!A1:J150'
 # Don't log or do any other on_message action in the following guilds
 bot.ignored_guilds = [336642139381301249]  # (this one is d.py)
 bot.ACTIVITY_COOLDOWN = 7  # Minimum number of seconds after last activity to have a message count as activity
@@ -271,6 +272,7 @@ bot.load_extension(f'cogs.logging')
 bot.load_extension(f'cogs.dev')
 bot.load_extension(f'cogs.management')
 bot.load_extension(f'cogs.database')
+bot.load_extension(f'cogs.googleapi')
 bot.load_extension(f'cogs.basics')
 bot.load_extension(f'cogs.moderation')
 bot.load_extension(f'cogs.mechanics')

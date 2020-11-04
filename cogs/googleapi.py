@@ -7,6 +7,11 @@ from discord.ext import commands
 from bot import log, logready
 
 
+def clean(s: str) -> float:
+    """Cleans a google cell containing a float into a float"""
+    return float(s.replace(',', '').replace('$', ''))
+
+
 class Googleapi(commands.Cog):
 
     def __init__(self, bot):
@@ -31,40 +36,56 @@ class Googleapi(commands.Cog):
         service = build('sheets', 'v4', credentials=creds)
         # Load in buy and sell prices from google sheets using sheets api
         sheet = service.spreadsheets()
-        result = sheet.values().get(spreadsheetId=self.bot.SHEET_ID, range=self.bot.RANGE).execute()
-        values = result.get('values', [])
-        bot.commodities_sell_prices = []
-        bot.commodities_buy_prices = []
-        if not values:
+        result_ships = sheet.values().get(spreadsheetId=self.bot.SHEET_ID, range=self.bot.RANGE_SHIPS).execute()
+        result_weapons = sheet.values().get(spreadsheetId=self.bot.SHEET_ID, range=self.bot.RANGE_WEAPONS).execute()
+        values_ships = result_ships.get('values', [])
+        values_weapons = result_weapons.get('values', [])
+        if not values_ships or not values_weapons:
             log('No data found.', self.bot.warn)
             return
-        reference_row = values[1]
-        log(reference_row, self.bot.debug)
-        row_count = -3  # Start at -3 because this simplifies indexing below; we don't want the first two rows.
-        for row in values:
-            row_count += 1
-            if row_count >= 0:
-                bot.commodities_buy_prices.append((int(row[2]), row[0], {}))
-                bot.commodities_sell_prices.append((int(row[2]), row[0], {}))
-                counter = 4
-                row = row[4:]
-                for entry in row:
-                    if entry == '':
-                        pass
-                    else:
-                        reference_val = reference_row[counter]
-                        if counter % 2:  # Odd, buy price
-                            bot.commodities_buy_prices[row_count][2][reference_val] = \
-                                float(entry.replace(',', '').replace('$', ''))
-                        else:  # Even, sell price
-                            bot.commodities_sell_prices[row_count][2][reference_val] = \
-                                float(entry.replace(',', '').replace('$', ''))
-                            # even, therefore sell price
-                    counter += 1
-            # print(row)
-            # print([row[2], row[0], row[3:]])
-        log(f'Commodities Buy Prices: {bot.commodities_buy_prices}')
-        log(f'Commodities Sell Prices: {bot.commodities_sell_prices}')
+        bot.values_ships = {}
+        bot.values_weapons = {}
+        values_weapons = values_weapons[1:]
+        values_ships = values_ships[1:]
+        for line in values_weapons:
+            if '' in line[:7]:
+                continue
+            try:
+                int(line[9][0])
+            except TypeError:
+                continue
+            except IndexError:
+                continue
+            acronym = line[1]
+            bot.values_weapons[acronym.lower()] = {'points_per': clean(line[2]),
+                                                   'hull_dmg': clean(line[3]),
+                                                   'shield_dmg': clean(line[4]),
+                                                   'pierce': clean(line[5]),
+                                                   'rate': clean(line[6]),
+                                                   'range': clean(line[7]),
+                                                   'note': line[8],
+                                                   'name': line[0]
+                                                   }
+        for line in values_ships:
+            if 'Incomplete' in line or 'Enter Missing Values' in line:
+                continue
+            bot.values_ships[line[0].lower()] = {'price': clean(line[1]),
+                                                 'points': clean(line[2]),
+                                                 'len': clean(line[13]),
+                                                 'shield': clean(line[8]),
+                                                 'hull': clean(line[9]),
+                                                 'speed': clean(line[10]),
+                                                 'fac': line[11],
+                                                 'class': line[16],
+                                                 'arm': line[3],
+                                                 'armp': clean(line[4]),
+                                                 'spec': line[5],
+                                                 'specp': clean(line[6]),
+                                                 'lar': clean(line[7]),
+                                                 'source': line[12]
+                                                 }
+        log(f'Loaded {len(bot.values_ships.keys())} ready ships: {list(bot.values_ships.keys())}')
+        log(f'Loaded {len(bot.values_weapons.keys())} weapons: {list(bot.values_weapons.keys())}')
 
     # Events
     @commands.Cog.listener()

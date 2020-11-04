@@ -292,17 +292,20 @@ class Basics(commands.Cog):
         t = reminder.rsplit(' in ', 1)
         reminder = t[0]
         increments = 0
-        if t[1][:-1].isdecimal():  # true if in 15m format is proper, 1 letter at the end preceded by a number
-            # preceded by in
-            increments = int(t[1][:-1])  # number of increment to wait
-            increment = t[1][-1]  # s, m, h, d, w, y
-            increments *= self.bot.time_options.get(increment, 1)
-            log(f'{ctx.author} created a reminder to {user} for {increments} seconds from now; {t}')
-            self.bot.loop.create_task(remind_routine(increments, user, ctx.author, reminder))
-            await ctx.send(f"Got it. I'll send the reminder in {increments} seconds.", delete_after=self.deltime)
-        else:
-            await ctx.send('Please enter a valid time interval. You can use s, m, h, d, w, y as your interval time '
-                           'prefix.', delete_after=self.deltime)
+        try:
+            if t[1][:-1].isdecimal():  # true if in 15m format is proper, 1 letter at the end preceded by a number
+                # preceded by in
+                increments = int(t[1][:-1])  # number of increment to wait
+                increment = t[1][-1]  # s, m, h, d, w, y
+                increments *= self.bot.time_options.get(increment, 1)
+                log(f'{ctx.author} created a reminder to {user} for {increments} seconds from now; {t}')
+                self.bot.loop.create_task(remind_routine(increments, user, ctx.author, reminder))
+                await ctx.send(f"Got it. I'll send the reminder in {increments} seconds.", delete_after=self.deltime)
+            else:
+                await ctx.send('Please enter a valid time interval. You can use s, m, h, d, w, y as your interval time '
+                               'prefix.', delete_after=self.deltime)
+        except IndexError:
+            return await ctx.send('Incorrect usage. Try "remind do xyz in 1h"')
         await ctx.message.delete(delay=self.deltime)  # delete the command
         log(f'Remind command used by {ctx.author} with reminder {reminder} to user {user} for '
             f'time {increments}.', self.bot.cmd)
