@@ -27,13 +27,13 @@ class Moderation(commands.Cog):
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload):
-        # TODO: Check for verified and add has character role as necessary
         # ===================================== The automatic staff-hirer ========================================
         if payload.channel_id != 718896231706787940:  # Only consider messages in #staff-candidates
             return
         user = self.bot.server.get_member(payload.user_id)
         u_roles = [role.name for role in user.roles]
-        if ('Administrator/Developer' not in u_roles and 'GM Instructor' not in u_roles) or str(payload.emoji) != '✅':
+        if ('Administrator/Bot Developer' not in u_roles and 'GM Instructor' not in u_roles) or str(payload.emoji) != \
+                '✅':
             return
             # Only interested if the reaction is a green checkmark and user has staff management authority
         message = await self.bot.get_channel(payload.channel_id).fetch_message(payload.message_id)
@@ -83,12 +83,11 @@ class Moderation(commands.Cog):
         await announcements.send(
             f"**Please congratulate {self.bot.server.name}'s newest {rolename}, {to_hire.mention}!**")
 
-
     @commands.Cog.listener()
     async def on_message(self, message):
         # ==============================Add checkmark for staff apps======================================
-        if message.channel.id == 718896231706787940\
-                and message.author.bot\
+        if message.channel.id == 718896231706787940 \
+                and message.author.bot \
                 and message.author.id != message.guild.me.id:  # Messages in #staff-candidates by webhooks
             try:
                 for field in message.embeds[0].fields:
