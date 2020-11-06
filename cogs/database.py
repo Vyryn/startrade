@@ -512,6 +512,7 @@ async def update_location(member: discord.Member, channel: discord.TextChannel):
     await pay_recent_activity(member)
     await db.execute(f"UPDATE users SET location = $1 where id = $2", new_location, member.id)
 
+
 async def pay_recent_activity(member):
     await connect()
     recent_activity = await db.fetchval(f"SELECT recent_activity FROM users WHERE id = $1", member.id)
@@ -741,7 +742,7 @@ class Database(commands.Cog):
         log(f'{ctx.author} added new user {user} to the database.', self.bot.cmd)
 
     @commands.command(aliases=['additem'], description='add a new item to the database')
-    @commands.check(auth(max(3, AUTH_LOCKDOWN)))
+    @commands.check(auth(max(2, AUTH_LOCKDOWN)))
     async def newitem(self, ctx, *, content):
         """
         Add a new item to the database. Each property must be on a new line.
@@ -808,7 +809,7 @@ class Database(commands.Cog):
         await ctx.send(f'Successfully removed {item} from the database and refunded any owners 100%.')
 
     @commands.command(aliases=['updateitem'], description='Edit a value of an item in the database.')
-    @commands.check(auth(max(4, AUTH_LOCKDOWN)))
+    @commands.check(auth(max(3, AUTH_LOCKDOWN)))
     async def edititem(self, ctx, item: str, field: str, value: str):
         """Edit a value of an item in the database.
         """
@@ -878,7 +879,8 @@ class Database(commands.Cog):
 
     @commands.command(description="Add a custom item to a user's inventory")
     @commands.check(auth(2))
-    async def rpitem(self, ctx, user: discord.Member, name: str, amount: typing.Optional[int] = 1, description: str = "", picture: str = ""):
+    async def rpitem(self, ctx, user: discord.Member, name: str, amount: typing.Optional[int] = 1,
+                     description: str = "", picture: str = ""):
         await add_custom_item(name, user, amount, description, picture)
         await ctx.send(f"Gave {user} {amount}x {name}s.")
 

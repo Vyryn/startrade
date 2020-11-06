@@ -66,7 +66,10 @@ class Economy(commands.Cog):
                 return
             bumper_id = int(embed_content[2:20])
             bumper = await self.bot.fetch_user(bumper_id)
-            balance = await add_funds(bumper, self.bot.BUMP_PAYMENT)
+            bump_amount = self.bot.BUMP_PAYMENT
+            if bumper_id == 642254966668656649:
+                bump_amount = self.bot.BUMP_PAYMENT / 2
+            balance = await add_funds(bumper, bump_amount)
             to_send = f"Thank you for bumping {self.bot.server.name} on Disboard, {bumper.mention}." \
                       f" I've added {self.bot.BUMP_PAYMENT}" \
                       f" {self.bot.credit_emoji} to your balance. Your new balance is {balance}."

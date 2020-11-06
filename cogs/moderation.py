@@ -51,7 +51,7 @@ class Moderation(commands.Cog):
         if username is None or rolename is None:
             return await message.channel.send("The username or position fields weren't found in the embed;"
                                               "add the role manually.")
-        elif rolename != 'Game Master' and 'Administrator/Developer' not in u_roles:
+        elif rolename != 'Game Master' and 'Administrator/Bot Developer' not in u_roles:
             # Only admin/dev can promote staff, but GM Instructors can promote Game Masters
             return await message.channel.send("GM Instructors can only promote Game Masters.")
         for member in self.bot.server.members:  # Transform username string into a member to add roles to
