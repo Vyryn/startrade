@@ -67,8 +67,15 @@ class Economy(commands.Cog):
             bumper_id = int(embed_content[2:20])
             bumper = await self.bot.fetch_user(bumper_id)
             bump_amount = self.bot.BUMP_PAYMENT
+            for role in bumper.roles:
+                if role.id == self.bot.has_character_role_id:  # Has Character
+                    break
+            else:
+                bump_amount = self.bot.BUMP_PAYMENT / 2
+
             if bumper_id == 642254966668656649:
                 bump_amount = self.bot.BUMP_PAYMENT / 2
+
             balance = await add_funds(bumper, bump_amount)
             to_send = f"Thank you for bumping {self.bot.server.name} on Disboard, {bumper.mention}." \
                       f" I've added {self.bot.BUMP_PAYMENT}" \
@@ -325,8 +332,8 @@ class Economy(commands.Cog):
             seconds_remaining = seconds_remaining % 60
             return await ctx.send(f"You aren't ready for a paycheck yet. Try again in {minutes_remaining} minutes"
                                   f" and {seconds_remaining} seconds.")
-        if time.time() - last_paycheck < self.bot.PAYCHECK_INTERVAL * (1 + random.random()) and random.random() < 0.3:
-            # Recent since last paycheck. May be botting, intercept 30% of the time for bot check.
+        if time.time() - last_paycheck < self.bot.PAYCHECK_INTERVAL * (1 + random.random()) and random.random() < 0.4:
+            # Recent since last paycheck. May be botting, intercept 40% of the time for bot check.
             verification_num = random.randrange(10000, 99999)
             await ctx.send(f'{ctx.author}, please repeat `{verification_num}` back to me.')
             # TODO Come back
@@ -339,6 +346,13 @@ class Economy(commands.Cog):
             paycheck_amount = self.bot.PAYCHECK_AMOUNT_MAX
         else:
             paycheck_amount = random.randrange(self.bot.PAYCHECK_AMOUNT_MIN, self.bot.PAYCHECK_AMOUNT_MAX)
+
+        for role in ctx.author.roles:
+            if role.id == self.bot.has_character_role_id:  # Has Character
+                break
+        else:
+            paycheck_amount = 1
+
         balance = await add_funds(ctx.author, paycheck_amount)
         message = f'{ctx.author.name} has been paid {paycheck_amount} {self.bot.credit_emoji} [{int(balance)}]'
         await set_last_paycheck_now(ctx.author)

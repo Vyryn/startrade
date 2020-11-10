@@ -79,7 +79,7 @@ class Moderation(commands.Cog):
                     staff_lounge = self.bot.server.get_channel(718896175452913755)
                     await staff_lounge.send(f"Hello {to_hire.mention}. This is where the real work gets done ;)")
                     break
-        announcements = self.bot.server.get_channel(718897329981096069)
+        announcements = self.bot.announce_channel
         await announcements.send(
             f"**Please congratulate {self.bot.server.name}'s newest {rolename}, {to_hire.mention}!**")
 
@@ -205,6 +205,8 @@ class Moderation(commands.Cog):
                                   f'{ctx.author.mention} bestowed the Certified Literate role upon {member.mention}.'
                                   f' ${self.bot.GRANT_AMOUNT} granted.',
                                   event_name='**Certified Literate**')
+        await send_to_log_channel(self.bot.announce_channel, ctx, f'Congratulations {ctx.author.mention} on achieving '
+                                                                  f'Certified Literate status!')
         await member.add_roles(self.literate)
         log(f'{ctx.author} granted {member} the Certified Literate role.', self.bot.cmd)
 

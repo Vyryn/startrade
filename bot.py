@@ -32,7 +32,9 @@ bot.STARTING_BALANCE = 30_000  # New user starting balance
 bot.PAYOUT_FREQUENCY = 60 * 60  # How frequently to send out investments, in seconds
 bot.GRANT_AMOUNT = 1000  # Certified Literate payout amount
 bot.log_channel_id = 725817803273404618  # The channel set up for logging message edits and the like.
+bot.announce_channel_id = 718897329981096069  # The channel set up for announcing events like staff promotions
 bot.verified_role_id = 718949160170291203  # The verification role id
+bot.has_character_role_id = 718949441457094717  # The Has Character role id
 bot.literate_role_id = 728796399692677160  # The certified literate role id
 bot.verification_message_id = 718980234380181534  # The startrade verification message id
 bot.DISBOARD = 302050872383242240  # Disboard uid
@@ -124,6 +126,7 @@ def logready(item):
 async def on_ready():
     bot.server = bot.get_guild(bot.serverid)
     bot.log_channel = bot.get_channel(bot.log_channel_id)
+    bot.announce_channel = bot.get_channel(bot.announce_channel_id)
     # Pick a random current status on startup
     await bot.change_presence(status=discord.Status.online, activity=discord.Game(random.choice(statuses)))
     await asyncio.sleep(2)
