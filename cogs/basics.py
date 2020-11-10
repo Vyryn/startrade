@@ -46,7 +46,7 @@ async def send_to_log_channel(log_channel, ctx, content: str, event_name: str = 
     author = ctx.author
     m_id = ctx.message.id
     embed = discord.Embed(title='',
-                          description=f'**{event_name}**\n' + content,
+                          description=f'{event_name}\n' + content,
                           timestamp=datetime.now())
     embed.set_footer(text=f'Author: {author} | Message ID: {m_id}')
     await log_channel.send(embed=embed)

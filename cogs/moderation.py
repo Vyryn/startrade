@@ -21,7 +21,7 @@ class Moderation(commands.Cog):
     # Events
     @commands.Cog.listener()
     async def on_ready(self):
-        # self.literate = self.bot.server.get_role(bot.literate_role_id)  # Certified Literate role
+        self.literate = self.bot.server.get_role(self.bot.literate_role_id)  # Certified Literate role
         self.confirmed_ids = self.bot.confirmed_ids
         logready(self)
 
@@ -205,8 +205,9 @@ class Moderation(commands.Cog):
                                   f'{ctx.author.mention} bestowed the Certified Literate role upon {member.mention}.'
                                   f' ${self.bot.GRANT_AMOUNT} granted.',
                                   event_name='**Certified Literate**')
-        await send_to_log_channel(self.bot.announce_channel, ctx, f'Congratulations {ctx.author.mention} on achieving '
-                                                                  f'Certified Literate status!')
+        await send_to_log_channel(self.bot.announce_channel, ctx, f'Congratulations {member.mention} on achieving '
+                                                                  f'Certified Literate status!',
+                                  event_name='**Certified Literate**')
         await member.add_roles(self.literate)
         log(f'{ctx.author} granted {member} the Certified Literate role.', self.bot.cmd)
 
