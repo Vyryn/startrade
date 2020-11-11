@@ -208,6 +208,19 @@ class Economy(commands.Cog):
         except TypeError:
             await ctx.send(f"You don't have any {item}s to sell.")
 
+    @commands.command(name='use', description='Consume an item in your inventory. This will destroy it.')
+    # @commands.check(auth(1))
+    async def useitem(self, ctx, amount: typing.Optional[int] = 1, *, item: str):
+        """Consume an item. Irreversible, and can be used on any item."""
+        log(f'{ctx.author} used {amount}x {item}.')
+        if amount < 1:
+            return await ctx.send('Invalid use amount.')
+        try:
+            await add_possession(ctx.author, item, cost=0, amount=(-1 * amount))
+            await ctx.send(f"Consumed {amount}x {item}(s).")
+        except TypeError:
+            await ctx.send(f"You don't have any {item}s to use.")
+
     @commands.command(description='Add an item to a users possessions without the need to buy it.')
     @commands.check(auth(2))
     async def cheat_item(self, ctx, user: discord.Member, amount: typing.Optional[int] = 1,
