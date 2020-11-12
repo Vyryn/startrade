@@ -65,7 +65,7 @@ class Economy(commands.Cog):
             if 'Bump done' not in embed_content:
                 return
             bumper_id = int(embed_content[2:20])
-            bumper = await self.bot.fetch_user(bumper_id)
+            bumper = await self.bot.server.get_member(bumper_id)
             bump_amount = self.bot.BUMP_PAYMENT
             for role in bumper.roles:
                 if role.id == self.bot.has_character_role_id:  # Has Character
