@@ -22,9 +22,9 @@ deltime = 10
 # The id of the primary guild the bot is operating in
 bot.serverid = 718893913976340561
 bot.settings_modifiers = [125449182663278592]  # allow settings to be modified by Vyryn
-bot.BUMP_PAYMENT = 200  # Payment for disboard bumps
+bot.BUMP_PAYMENT = 180  # Payment for disboard bumps
 bot.PAYCHECK_AMOUNT_MIN = 20  # Minimum paycheck payout
-bot.PAYCHECK_AMOUNT_MAX = 30  # Maximum paycheck payout
+bot.PAYCHECK_AMOUNT_MAX = 28  # Maximum paycheck payout
 bot.PAYCHECK_INTERVAL = 600  # Time between paychecks, in seconds
 bot.REFUND_PORTION = 0.6  # Portion of buy price to refund when selling an item
 bot.WEALTH_FACTOR = 0.0005  # Currently set to 0.05-0.1% payout per hour

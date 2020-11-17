@@ -9,6 +9,18 @@ from bot import log, logready
 from cogs.database import new_user, update_activity  # , update_n_word
 from functions import poll_ids, now, set_polls, auth
 
+reaction_roles_names = {
+    '🎶': 'dj',
+    '🎮': 'ping for rp',
+    '🤬': 'trash bin access'
+}
+
+
+def name_to_role(guild, role: str):
+    for role_ in guild.roles:
+        if role_.name.lower() == role:
+            return role_
+
 
 async def do_activity_update(bot, channel: discord.TextChannel, author: discord.Member, content: str):
     # if not message.author.bot:
@@ -61,6 +73,7 @@ class Basics(commands.Cog):
         self.log_channel = None
         self.deltime = None
         self.bot.recent_actives = dict()
+        self.reaction_roles = dict()
         # This was specially requested by the client.
         # self.word_list = [i.casefold() for i in []]
 
@@ -71,6 +84,12 @@ class Basics(commands.Cog):
         self.verified_role = self.bot.server.get_role(self.bot.verified_role_id)
         self.log_channel = self.bot.log_channel
         self.deltime = self.bot.deltime
+        # Initialize lookup roles from lookup role names
+        for emoji, name in reaction_roles_names.items():
+            try:
+                self.reaction_roles[emoji] = name_to_role(self.bot.server, name)
+            except AttributeError:
+                log(f"Role {name} is not configured correctly; was not found in server.", self.bot.warn)
         logready(self)
 
     # =============================Message handler=========================
@@ -96,21 +115,17 @@ class Basics(commands.Cog):
 
         if payload.message_id == self.bot.verification_message_id:
             target = self.bot.server.get_member(payload.user_id)
-            if str(payload.emoji) == '🤬':
-                trash_bin = self.bot.server.get_role(764309617009885204)
-                if trash_bin not in target.roles:
-                    await target.add_roles(trash_bin)
-                    log(f'Trash bin access role added to {target}')
             if str(payload.emoji) == '✅':
                 if self.verified_role not in target.roles:
                     log(await (new_user(target)))
                     await target.add_roles(self.verified_role)
                     log(f'Verified role added to {target}')
-            if str(payload.emoji) == '🎮':
-                ping_for_rp = self.bot.server.get_role(769046658721251381)
-                if ping_for_rp not in target.roles:
-                    await target.add_roles(ping_for_rp)
-                    log(f'Ping for RP Role added to {target}')
+        # =============================Standard Self-roles======================
+            for emoji, role in self.reaction_roles.items():
+                if str(payload.emoji) == emoji:
+                    await target.add_roles(role)
+                    log(f'{role} added to {target} via self-react.')
+
         # ============================= Character Approval ======================
         if payload.channel_id == 720387609330974780 and str(payload.emoji) == '<:check:729197314127691856>':
             user = self.bot.server.get_member(payload.user_id)
@@ -164,7 +179,8 @@ class Basics(commands.Cog):
                                                                             delete_after=self.deltime)
                         await (await self.bot.get_channel(payload.channel_id).fetch_message(
                             payload.message_id)).remove_reaction(payload.emoji,
-                            self.bot.get_guild(payload.guild_id).get_member(payload.user_id))
+                                                                 self.bot.get_guild(payload.guild_id).get_member(
+                                                                     payload.user_id))
 
     # Reaction removal handler
     @commands.Cog.listener()
@@ -174,20 +190,15 @@ class Basics(commands.Cog):
         # =============================Verification Check======================
         if payload.message_id == self.bot.verification_message_id:
             target = self.bot.server.get_member(payload.user_id)
-            if str(payload.emoji) == '🤬':
-                trash_bin = self.bot.server.get_role(764309617009885204)
-                if trash_bin in target.roles:
-                    await target.remove_roles(trash_bin)
-                    log(f'Trash bin access role removed from {target}')
             if str(payload.emoji) == '✅':
                 if self.verified_role in target.roles:
                     await target.remove_roles(self.verified_role)
                     log(f'Verified role removed from {target}')
-            if str(payload.emoji) == '🎮':
-                ping_for_rp = self.bot.server.get_role(769046658721251381)
-                if ping_for_rp in target.roles:
-                    await target.remove_roles(ping_for_rp)
-                    log(f'Ping for RP Role removed from {target}')
+            # =============================Standard Self-roles======================
+            for emoji, role in self.reaction_roles.items():
+                if str(payload.emoji) == emoji:
+                    await target.remove_roles(role)
+                    log(f'{role} removed from {target} via self-react.')
         # =============================Polls===================================
 
         if payload.message_id in poll_ids.keys():

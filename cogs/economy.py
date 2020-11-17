@@ -65,12 +65,13 @@ class Economy(commands.Cog):
             if 'Bump done' not in embed_content:
                 return
             bumper_id = int(embed_content[2:20])
-            bumper = await self.bot.server.get_member(bumper_id)
+            bumper = self.bot.server.get_member(bumper_id)
             bump_amount = self.bot.BUMP_PAYMENT
+            flag = False
             for role in bumper.roles:
                 if role.id == self.bot.has_character_role_id:  # Has Character
-                    break
-            else:
+                    flag = True
+            if not flag:
                 bump_amount = self.bot.BUMP_PAYMENT / 2
 
             if bumper_id == 642254966668656649:
@@ -349,12 +350,12 @@ class Economy(commands.Cog):
             # Recent since last paycheck. May be botting, intercept 40% of the time for bot check.
             verification_num = random.randrange(10000, 99999)
             await ctx.send(f'{ctx.author}, please repeat `{verification_num}` back to me.')
-            # TODO Come back
             try:
                 confirmation = await self.bot.wait_for('message', check=verify_human(ctx.author, str(verification_num)),
                                                        timeout=30)
             except asyncio.TimeoutError:
                 log(f'{ctx.author} failed captcha and may be botting.', 'ALRT')
+                return
         if self.bot.PAYCHECK_AMOUNT_MAX == self.bot.PAYCHECK_AMOUNT_MIN:
             paycheck_amount = self.bot.PAYCHECK_AMOUNT_MAX
         else:
