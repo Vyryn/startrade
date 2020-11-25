@@ -62,7 +62,7 @@ class Economy(commands.Cog):
     async def on_message(self, message):
         if message.author.id == self.bot.DISBOARD and len(message.embeds) > 0:  # From disboard and has an embed
             embed_content = message.embeds[0].to_dict()['description']
-            if 'Bump done' not in embed_content:
+            if 'Bump done' not in embed_content and 'Patlatma tamamlandı' not in embed_content:
                 return
             bumper_id = int(embed_content[2:20])
             bumper = self.bot.server.get_member(bumper_id)
@@ -118,7 +118,7 @@ class Economy(commands.Cog):
                                   timestamp=datetime.now())
             await ctx.send(embed=embed)
             result = f"{ctx.author}, you have just invested {invested} for a total of invested of {total_invested}." \
-                     f" You now have {new_balance} credits left."
+                     f" You now have {new_balance} {self.bot.credit_emoji} left."
         log(f'{ctx.author} used invest command with result: {result}.', self.bot.cmd)
 
     @commands.command(aliases=['bal', 'cash'], description='Check your balance.')
@@ -145,10 +145,10 @@ class Economy(commands.Cog):
             await ctx.send("User not found.")
             log(f"{ctx.author} attempted to check {user}'s balance, but it was not found.", self.bot.cmd)
 
-    @commands.command(aliases=['send'], description='Send someone else credits.')
+    @commands.command(aliases=['send'], description=f'Send someone else money.')
     async def pay(self, ctx, user: discord.User, transfer):
         """
-        Send someone else some credits.
+        Send someone else some money.
         """
         log(f'{ctx.author} attempted to transfer {transfer} to {user}.', self.bot.cmd)
         try:
@@ -276,16 +276,17 @@ class Economy(commands.Cog):
         embed.set_footer(text=f'Your rank: {rank}')
         await ctx.send(embed=embed)
 
-    @commands.command(description='Give someone credits from nowhere. Staff only.')
+    @commands.command(description='Give someone money from nowhere. Staff only.')
     @commands.check(auth(2))
     async def credadd(self, ctx, member: discord.Member, amount: int):
         """
-        Staff override to give people credits. Can also take credits away with negative amount.
+        Staff override to give people money. Can also take money away with negative amount.
         Requires Commander role
         """
         log(f'{ctx.author} used credadd command with amount {amount} and member {member}.', self.bot.cmd)
         new_balance = await add_funds(member, amount)
-        log(f'Added {amount} credits to {member} by authority of {ctx.author}. Their new balance is {new_balance}')
+        log(f'Added {amount} {self.bot.credit_emoji} to {member} by authority of {ctx.author}. Their new balance is'
+            f' {new_balance}')
         message = f"Added {int(amount)} {self.bot.credit_emoji} to {member.name}'s account by request of " \
                   f"{ctx.author.name}."
         embed = discord.Embed(title='Money',
@@ -293,16 +294,16 @@ class Economy(commands.Cog):
                               timestamp=datetime.now())
         await ctx.send(embed=embed)
 
-    @commands.command(description='Take credits from someone. Staff only.')
+    @commands.command(description='Take money from someone. Staff only.')
     @commands.check(auth(2))
     async def credremove(self, ctx, member: discord.Member, amount: int):
         """
-        Staff override to give people credits. Can also take credits away with negative amount.
+        Staff override to take money away from someone.
         Requires Auth 2
         """
         log(f'{ctx.author} used credremove command with amount {amount} and member {member}.', self.bot.cmd)
         new_balance = await add_funds(member, -1 * amount)
-        log(f'Removed {amount} credits from {member} by authority of {ctx.author}. Their new balance is {new_balance}')
+        log(f'Removed {amount} money from {member} by authority of {ctx.author}. Their new balance is {new_balance}')
         message = f"Removed {int(amount)} {self.bot.credit_emoji} from {member.name}'s account by request" \
                   f" of {ctx.author.name}."
         embed = discord.Embed(title='Money',
@@ -323,10 +324,10 @@ class Economy(commands.Cog):
         channel = self.bot.log_channel
         await channel.send(f'Bonus investment payouts sent by {ctx.author}, enjoy!')
 
-    @commands.command(description='Get some free credits!')
+    @commands.command(description='Get some free money!')
     async def paycheck(self, ctx, *, params=''):
         """
-        Get some free credits.
+        Get some free money.
         """
         log(f'{ctx.author} used the paycheck command.', self.bot.cmd)
         # Debug blurb
