@@ -9,7 +9,13 @@ from bot import log, logready
 
 def clean(s: str) -> float:
     """Cleans a google cell containing a float into a float"""
-    return float(s.replace(',', '').replace('$', ''))
+    try:
+        return float(s.replace(',', '').replace('$', ''))
+    except ValueError as e:
+        if s == '':
+            return 0
+        log(f'ValueError with "{s}"', 'WARN')
+        raise e
 
 
 class Googleapi(commands.Cog):

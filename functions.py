@@ -128,7 +128,7 @@ def auth(level):
         for uid in bot_commanders.keys():
             if int(uid) == ctx.author.id and bot_commanders.get(uid, DEFAULT_AUTH) >= level:
                 return True
-        print('User not found to be auth\'d')
+        # ('User not found to be auth\'d')
         return False
 
     return user_auth_check
