@@ -10,17 +10,26 @@ from cogs.database import new_user, update_activity, update_n_word
 from functions import poll_ids, now, set_polls, auth
 
 
-async def do_activity_update(bot, channel: discord.TextChannel, author: discord.Member, content: str):
+def get_activity_worth(msg: str) -> int:
+    """Calcluates the activity points due for a given message"""
     # if not message.author.bot:
-    words = content.split(' ')
-    valid_words = []
-    for word in words:
-        case_word = word.casefold()
-        if len(case_word) > 2 and case_word not in valid_words:
-            valid_words.append(case_word)
-    # valid_words = [word for word in words if len(word) > 2]
+    if len(msg) < 3:
+        return 0  # No activity score for teeny messages.
+    if msg[0] == '(':
+        return 0  # No activity score for ooc comments.
+    words = msg.split(' ')
+    valid_words = list(set([word.casefold() for word in words if len(word) > 3]))
     new_words = len(valid_words)
-    added_activity_score = max(new_words - 2, 0)
+    return max(new_words - 2, 0)
+
+
+async def do_activity_update(bot, channel: discord.TextChannel, author: discord.Member, content: str):
+    if author.bot:
+        return
+    if channel.id not in bot.activity_channels:
+        return  # No activity score for messages not in rp channels.
+    added_activity_score = get_activity_worth(content)
+
     recently_spoke = time.time() - bot.recent_actives.get(author.id, 0) < bot.ACTIVITY_COOLDOWN
     if added_activity_score > 0 and not recently_spoke:
         bot.recent_actives[author.id] = time.time()

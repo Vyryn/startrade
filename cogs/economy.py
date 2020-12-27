@@ -25,7 +25,7 @@ class Economy(commands.Cog):
         self.bot = bot
         global payout_frequency
         payout_frequency = self.bot.PAYOUT_FREQUENCY
-        # self.send_payouts.start()
+        self.send_payouts.start()
         log('Started the investment payouts task (1).', self.bot.debug)
 
     def cog_unload(self):
@@ -217,7 +217,7 @@ class Economy(commands.Cog):
         log(f'{ctx.author} used credadd command with amount {amount} and member {member}.', self.bot.cmd)
         commander = ctx.guild.get_role(456506763139612695)
         if commander not in ctx.author.roles:
-            return await ctx.send("You are not authoried to use this command.")
+            return await ctx.send("You are not authorized to use this command.")
         new_balance = await add_funds(member, amount)
         log(f'Added {amount} credits to {member} by authority of {ctx.author}. Their new balance is {new_balance}')
         message = f"Added {int(amount)} {self.bot.credit_emoji} to {member.name}'s account by request of " \
@@ -252,11 +252,11 @@ class Economy(commands.Cog):
     @commands.check(auth(2))
     async def payout(self, ctx):
         """
-        Staff command to distribute investment payout money.
+        Staff command to distribute activity and investment payout money.
         Requires Auth 2
         """
         log(f'{ctx.author} used the payout command.', self.bot.cmd)
-        await distribute_payouts()
+        await distribute_payouts(self.bot)
         log(f'Bonus investment payouts successfully distributed by {ctx.author}.')
         channel = self.bot.log_channel
         await channel.send(f'Bonus investment payouts sent by {ctx.author}, enjoy!')
@@ -285,8 +285,16 @@ class Economy(commands.Cog):
             seconds_remaining = int(last_paycheck + self.bot.PAYCHECK_INTERVAL - time.time() + 1)
             minutes_remaining = seconds_remaining // 60
             seconds_remaining = seconds_remaining % 60
-            return await ctx.send(f"You aren't ready for a paycheck yet. Try again in {minutes_remaining} minutes"
-                                  f" and {seconds_remaining} seconds.")
+            hours_remaining = minutes_remaining // 60
+            minutes_remaining = minutes_remaining % 60
+            if minutes_remaining < 1:
+                return await ctx.send(f"You aren't ready for a paycheck yet. Try again in {seconds_remaining} seconds.")
+            elif hours_remaining < 1:
+                return await ctx.send(f"You aren't ready for a paycheck yet. Try again in {minutes_remaining}:"
+                                      f"{seconds_remaining} minutes.")
+            else:
+                return await ctx.send(f"You aren't ready for a paycheck yet. Try again in {hours_remaining}:"
+                                      f"{minutes_remaining}:{seconds_remaining} hours.")
 
         if self.bot.PAYCHECK_AMOUNT_MAX == self.bot.PAYCHECK_AMOUNT_MIN:
             paycheck_amount = self.bot.PAYCHECK_AMOUNT_MAX
@@ -386,13 +394,10 @@ class Economy(commands.Cog):
                 return
             count += 1
 
-    @tasks.loop(seconds=payout_frequency)
+    @tasks.loop(seconds=60*60)
     async def send_payouts(self):
-        await distribute_payouts()
-        log('Investment payouts sent.')
-        channel = self.bot.get_channel(718949686412705862)
-        if channel is not None:
-            await channel.send('Investment payouts sent.')
+        await distribute_payouts(self.bot)
+        log('Payouts sent.')
 
 
 def setup(bot):

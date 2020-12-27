@@ -17,12 +17,14 @@ global db
 # I set them based on the bot attributes of the same names in init and on_ready.
 # These are just "default default values" so to speak, and are never actually used.
 starting_balance = 50000000
-wealth_factor = 0.0005
+wealth_factor = 0
 items_per_top_page = 10
 refund_portion = 0.9
 move_activity_threshold = 100
+actweight = 10000
 AUTH_LOCKDOWN = 1
 COMMODITIES = {}
+
 
 async def connect():
     global db
@@ -183,16 +185,32 @@ async def check_bal_str(username: str):
     return balance, invested, username
 
 
-async def distribute_payouts():
+async def distribute_payouts(bot=None):
     await connect()
+    channel = None
+    if bot is not None:
+        channel = bot.get_channel(731726249868656720)
+        if channel is not None:
+            await channel.send('Payouts distributed.')
     users = await db.fetch("SELECT * FROM users")
     for user in users:
+        # If wealth factor is zero, this bit doesn't give anything.
         payout_generosity = random.random() * wealth_factor  # Normalizes it to give between wf and 2* wf per hour
-        payout = int(user[5] * (payout_generosity + wealth_factor))
-        new_user_balance = int(user[3]) + payout
-        # log(f'User {user[1]}: investment: {user[5]}, payout_generosity: {payout_generosity * 1000}, payout:'
-        #       f' {payout}, new bal: {user[3]}', "DBUG")
-        await db.execute(f"UPDATE users SET balance = $1 where id = $2", new_user_balance, user[0])
+        investment_payout = int(user[5] * (payout_generosity + wealth_factor))
+        # Distribute activity payouts too
+        activity_payout = 0
+        if user[6] is not None:
+            activity_payout = int(user[6]) * actweight
+        new_user_balance = int(user[3]) + investment_payout + activity_payout
+        if new_user_balance > user[3]:
+            log(f'User {user[1]}: activity: {user[6]}, activity_payout: {activity_payout}, investment: {user[5]}, '
+                f'investment_payout:'
+                f' {investment_payout}, old bal: {user[3]}, new bal: {new_user_balance}', "INFO")
+        if channel is not None and new_user_balance > user[3] + 20 * actweight:
+            await channel.send(f'{user[1]}: +{new_user_balance - user[3]} credits for activity in the past hour.')
+
+        await db.execute(f"UPDATE users SET balance = $1, recent_activity = $2 where id = $3", new_user_balance, 0,
+                         user[0])
     await disconnect()
 
 
@@ -415,7 +433,7 @@ async def transact_possession(ctx, user: discord.Member, item: str, cost: float 
                               f' {cost * amount} but you only have {balance}. You can use the paycheck command to '
                               f'earn a small amount of money or earn more money through roleplay.')
     log(f'Adding {amount}x {item} to {user} for {cost * amount}, their balance is currently {balance} and will'
-          f' be {new_balance} after.')
+        f' be {new_balance} after.')
     await add_possession(user, item, cost, amount)
     await connect()  # Because add_possession automatically disconnects
     await db.execute(f"UPDATE users SET balance = $1 where id = $2", new_balance, uid)
@@ -474,23 +492,29 @@ def check_author(author):
     return in_check
 
 
+def copy_bot_vars_to_local(bot):
+    global starting_balance
+    global wealth_factor
+    global items_per_top_page
+    global refund_portion
+    global move_activity_threshold
+    global AUTH_LOCKDOWN
+    global actweight
+    starting_balance = bot.STARTING_BALANCE
+    wealth_factor = bot.WEALTH_FACTOR
+    items_per_top_page = bot.ITEMS_PER_TOP_PAGE
+    refund_portion = bot.REFUND_PORTION
+    move_activity_threshold = bot.MOVE_ACTIVITY_THRESHOLD
+    AUTH_LOCKDOWN = bot.AUTH_LOCKDOWN
+    actweight = bot.ACTIVITY_WEIGHT
+
+
 class Database(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
         self.session = None
-        global starting_balance
-        global wealth_factor
-        global items_per_top_page
-        global refund_portion
-        global move_activity_threshold
-        global AUTH_LOCKDOWN
-        starting_balance = bot.STARTING_BALANCE
-        wealth_factor = bot.WEALTH_FACTOR
-        items_per_top_page = bot.ITEMS_PER_TOP_PAGE
-        refund_portion = bot.REFUND_PORTION
-        move_activity_threshold = bot.MOVE_ACTIVITY_THRESHOLD
-        AUTH_LOCKDOWN = bot.AUTH_LOCKDOWN
+        copy_bot_vars_to_local(bot)
 
     # Events
     @commands.Cog.listener()
@@ -512,9 +536,11 @@ class Database(commands.Cog):
                              "id BIGINT NOT NULL PRIMARY KEY, "
                              "cooldown INT,"
                              "amount DOUBLE PRECISION,"
-                             "starting DOUBLE PRECISION)")
-            await db.execute("INSERT INTO settings VALUES($1, $2, $3, $4)",
-                             1, self.bot.PAYCHECK_INTERVAL, self.bot.PAYCHECK_AMOUNT_MAX, self.bot.STARTING_BALANCE)
+                             "starting DOUBLE PRECISION,"
+                             "actweight DOUBLE PRECISION)")
+            await db.execute("INSERT INTO settings VALUES($1, $2, $3, $4, $5)",
+                             1, self.bot.PAYCHECK_INTERVAL, self.bot.PAYCHECK_AMOUNT_MAX, self.bot.STARTING_BALANCE,
+                             self.bot.ACTIVITY_WEIGHT)
             log('Saved default settings to database.')
             # await disconnect()
             # await connect()
@@ -525,6 +551,8 @@ class Database(commands.Cog):
             self.bot.PAYCHECK_AMOUNT_MAX = settings[2]
             self.bot.PAYCHECK_AMOUNT_MIN = settings[2]
             self.bot.STARTING_BALANCE = settings[3]
+            self.bot.ACTIVITY_WEIGHT = settings[4]
+            copy_bot_vars_to_local(self.bot)
             log(f'Loaded settings from database: {settings}', self.bot.debug)
         if 'users' not in tables:
             log('Users table not found. Creating a new one...')
@@ -682,7 +710,6 @@ class Database(commands.Cog):
         # return await ctx.send('A location with that name is already in the database.')
         await ctx.send(f'Added {name} to the database.')
 
-
     @commands.command(aliases=['removeitem'], description='Remove an item from the database')
     @commands.check(auth(max(4, AUTH_LOCKDOWN)))
     async def deleteitem(self, ctx, *, item: str):
@@ -716,17 +743,17 @@ class Database(commands.Cog):
             log(f'Failed to update item {item} field {field} to value {value} for {ctx.author}.', self.bot.cmd)
 
     @commands.command(description='Adjust bot settings')
-    @commands.check(auth(5))
     async def settings(self, ctx, setting: str, value: str):
         """Adjust bot settings.
-        Setting must be one of: 'cooldown', 'amount', 'starting'
+        Setting must be one of: 'cooldown', 'amount', 'starting', 'actweight'
         Cooldown: the number of seconds between paychecks
         Amount: the amount of credits per paycheck
         Starting: the amount of credits a brand new player starts with
+        Actweight: The number of credits to pay out per internal bot "activity point"
         """
         if ctx.author.id not in self.bot.settings_modifiers:
             return await ctx.send(f"You do not have permission to run this command.")
-        config_opts = ['cooldown', 'amount', 'starting']
+        config_opts = ['cooldown', 'amount', 'starting', 'actweight']
         if setting not in config_opts:
             return await ctx.send(f"Sorry, that isn't a configurable setting. Try one of {config_opts}.")
         if setting == 'cooldown':
@@ -739,21 +766,25 @@ class Database(commands.Cog):
         elif setting == 'starting':
             value = round(float(value), 2)
             self.bot.STARTING_BALANCE = value
+        elif setting == 'actweight':
+            value = round(float(value), 2)
+            self.bot.ACTIVITY_WEIGHT = value
         await connect()
         await db.execute(f"UPDATE settings SET {setting} = $1 WHERE id = 1", value)
         await disconnect()
         await ctx.send(f'Okay, {setting} set to {value}.')
         log(f'Updated {setting} to {value} for {ctx.author}.', self.bot.cmd)
 
-    @commands.command(description='Set all balances to the configured starting balance.')
+    @commands.command(description='Reset the economy entirely.')
     async def wipe_the_whole_fucking_economy_like_seriously(self, ctx):
-        """Set everyone's balance to the configured starting balance. Several safeguards are in place."""
+        """Set everyone's balance to the configured starting balance and activity to 0. Several safeguards are in
+        place."""
         if ctx.author.id not in self.bot.settings_modifiers:
             return await ctx.send(f"You do not have permission to run this command.")
         confirmation_phrase = "I understand I am wiping the whole economy"
-        await ctx.send(f"This will reset **everyone's** balance to {self.bot.STARTING_BALANCE}. "
+        await ctx.send(f"This will reset **everyone's** balance to {self.bot.STARTING_BALANCE} and activity to 0. "
                        f"This is not reversible. If you are sure, type "
-                       f"`{confirmation_phrase}`. To be safe, it must match exactly. You have 30 seconds,"
+                       f"`{confirmation_phrase}`\nTo be safe, it must match exactly. You have 30 seconds,"
                        f" or this command will cancel without running.")
         try:
             confirmation = await self.bot.wait_for('message', check=check_author(ctx.author), timeout=30)
@@ -762,7 +793,8 @@ class Database(commands.Cog):
         if confirmation.content != confirmation_phrase:
             return await ctx.send(f"Cancelled operation: Phrase did not match `{confirmation_phrase}`.")
         await connect()
-        await db.execute(f"UPDATE users SET balance = $1", self.bot.STARTING_BALANCE)
+        await db.execute(f"UPDATE users SET balance = $1, activity = 0, last_pay = 0, invested = 0,"
+                         f" recent_activity= 0", self.bot.STARTING_BALANCE)
         await disconnect()
         await ctx.send(f"Successfully reset everyone's balance to {self.bot.STARTING_BALANCE}")
         log(f'Reset all balances to {self.bot.STARTING_BALANCE} by request of {ctx.author}.', self.bot.cmd)
