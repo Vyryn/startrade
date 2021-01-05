@@ -766,6 +766,13 @@ class Database(commands.Cog):
         except IndexError:
             return await ctx.send(f'Incorrect format. Remember each item must be on its own line, and the minimum '
                                   f'and maximum prices must be numbers. Check your formatting and try again.')
+        except asyncpg.exceptions.StringDataRightTruncationError:
+            return await ctx.send(f'One of your values is too long. Here are the max lengths of each value in '
+                                  f'characters:\n'
+                                  f'Name 127\n'
+                                  f'Category 127\n'
+                                  f'Picture 255\n'
+                                  f'Description 300\n')
         # return await ctx.send('An item with that name is already in the database.')
         await ctx.send(f'Added {item[0]} to the database.')
 
