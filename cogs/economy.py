@@ -226,8 +226,6 @@ class Economy(commands.Cog):
                               description=message,
                               timestamp=datetime.now())
         await ctx.send(embed=embed)
-        await ctx.send(
-            f'Added {amount} credits to {member} by authority of {ctx.author}. Their new balance is {new_balance}')
 
     @commands.command(description='Take credits from someone. Staff only.')
     async def credremove(self, ctx, member: discord.Member, amount: int):

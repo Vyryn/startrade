@@ -1,4 +1,7 @@
+import asyncio
+import copy
 import time
+import typing
 
 import discord
 import json
@@ -239,6 +242,61 @@ class Dev(commands.Cog):
         await (await ctx.channel.fetch_message(message_id)).delete()
         await ctx.message.delete(delay=self.deltime)  # delete the command
         log(f'Deleted message {message_id} in channel {ctx.channel} for user {ctx.author}.', self.bot.cmd)
+
+    @commands.command()
+    @commands.check(auth(3))
+    async def tofile(self, ctx, *, text=None):
+        """
+        Puts your text into a file that it uploads.
+        :param ctx:
+        :param text:
+        :return:
+        """
+        with open('temp_file.txt', 'w+', encoding='utf-8') as f:
+            f.write(text)
+        await ctx.send("Here's your file.", file=discord.File('temp_file.txt'))
+
+    @commands.command(description='Invoke a command as another user', hidden=True)
+    @commands.check(auth(8))
+    async def sudo(self, ctx, channel: typing.Optional[discord.TextChannel], user: discord.User, *, command: str):
+        """Invoke a command as another user, in another channel."""
+        message = copy.copy(ctx.message)
+        channel = channel or ctx.channel
+        message.channel = channel
+        message.author = channel.guild.get_member(user.id) or user
+        message.content = ctx.prefix + command
+        ctx = await self.bot.get_context(message, cls=type(ctx))
+        await self.bot.invoke(ctx)
+
+    @commands.command()
+    @commands.check(auth(5))
+    async def shoo(self, ctx, user: discord.User, name: str = 'Vyryn'):
+        await ctx.message.delete()
+        await user.send(f"{name} is busy and his temper is short right now. He is already aware of whatever you just "
+                        f"bothered him about, likely because 20+ people have already informed him of it in the same "
+                        f"somewhat annoying way you did. He's either been troubleshooting it since he was made aware,"
+                        f" or he can't fix it. In fact, whatever brought this issue to your attention probably "
+                        f"told you to contact someone else entirely if you were paying attention. Oh, and it's most "
+                        f"likely 4am for him.\n\n\n\nSo, in summary, this is {name} telling you politely and kindly to"
+                        f" please leave him alone. I'm the messenger here because if he'd told you this personally, "
+                        f"it would be nowhere near as polite or patient. Please don't ping him, and if you're feeling"
+                        f" nice maybe send him a thank you or tell him to stop and go to sleep.")
+
+    @commands.command()
+    @commands.check(auth(5))
+    async def shooo(self, ctx, user: discord.User):
+        await ctx.message.delete()
+        await ctx.send(f"{user.mention}, leave him alone! He already told you what the matter is, and asked you to "
+                       f"leave him alone, and you didn't listen.", delete_after=20)
+        for i in range(3):
+            await asyncio.sleep(2)
+            await user.send(f"Vyryn told you to leave him alone.")
+            await asyncio.sleep(4)
+            await user.send(f'It is a very good idea for you to do so.')
+            await asyncio.sleep(10)
+            await user.send('Seriously.')
+            await asyncio.sleep(20)
+            await ctx.send(f"{user.mention} ***Seriously, lay off.***", delete_after=20)
 
 
 def setup(bot):

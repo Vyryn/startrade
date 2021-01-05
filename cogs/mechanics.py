@@ -21,9 +21,9 @@ def hit_determine(distance: float, effective_range: float, ship_length: float, b
     if distance < 1:
         distance = 1
     r = distance / effective_range
-    if r > 1:
+    if distance > effective_range:
         hit_chance = 2 - r
-    elif r < 1 and not missile:
+    elif distance < effective_range and not missile:
         hit_chance = r
     if hit_chance < 0:
         hit_chance = 0
@@ -60,7 +60,7 @@ def damage_determine(hull: float, shields: float, weap_damage_shields: float, we
         undealt_shield_dmg = potential_shield_dmg - shields
         shields = 0
         # Need to convert this portion of damage to the hull-doing rate instead of the shields-doing rate
-        extra_hull_dmg = undealt_shield_dmg / weap_damage_shields * weap_damage_hull
+        extra_hull_dmg = undealt_shield_dmg / (weap_damage_shields+0.00001) * weap_damage_hull
         hull -= extra_hull_dmg
     new_hull = max(hull, 0)
     new_shields = max(shields, 0)

@@ -1,6 +1,8 @@
 import asyncio
 import random
 import time
+from decimal import Decimal
+
 import aiohttp
 from io import BytesIO
 
@@ -207,7 +209,14 @@ async def distribute_payouts(bot=None):
                 f'investment_payout:'
                 f' {investment_payout}, old bal: {user[3]}, new bal: {new_user_balance}', "INFO")
         if channel is not None and new_user_balance > user[3] + 20 * actweight:
-            await channel.send(f'{user[1]}: +{new_user_balance - user[3]} credits for activity in the past hour.')
+            delta = new_user_balance - user[3]
+            disp_delta = str(int(delta))
+            digits = len(str(delta))
+            if digits > 6:
+                disp_delta = f'{disp_delta[:-6]}.{disp_delta[-6:-4]}m'
+            elif digits > 3:
+                disp_delta = f'{disp_delta[:-3]}.{disp_delta[-3:-1]}k'
+            await channel.send(f'{user[1]}: +{disp_delta} credits for activity in the past hour.')
 
         await db.execute(f"UPDATE users SET balance = $1, recent_activity = $2 where id = $3", new_user_balance, 0,
                          user[0])
