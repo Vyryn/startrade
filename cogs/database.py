@@ -227,7 +227,10 @@ async def check_last_paycheck(user: discord.User):
     uid = user.id
     await connect()
     check = await db.fetchrow(f"SELECT * FROM users WHERE id = $1", uid)
-    last_paycheck = check[4]
+    try:
+        last_paycheck = check[4]
+    except IndexError:
+        return 0
     return last_paycheck
 
 

@@ -1,5 +1,7 @@
 import json
 import traceback
+from json import JSONDecodeError
+
 import aiohttp
 import discord
 import os
@@ -125,6 +127,7 @@ bot.activity_channels = [551189075646742579, 554390029976207378, 410451747547381
                          407497995790057473]
 # Array to contain ids of each database-registered user to check for inclusion without database query
 bot.list_of_users = []
+OWNER_ID = owner_id
 # Set debug display values
 bot.debug = 'DBUG'
 bot.info = 'INFO'
@@ -157,6 +160,49 @@ def logready(item):
         log(f'{item} is ready.')
 
 
+# ==================== Helper Utils ==============
+async def quiet_send(ctx, message, delete_after=None) -> None:
+    """Send a message. Should sending fail, log the error at the debug level but otherwise fail silently."""
+    try:
+        if delete_after:
+            await ctx.send(message, delete_after=delete_after)
+        else:
+            await ctx.send(message)
+    except discord.Forbidden:
+        log(f'Insufficient permissions to send {message}', bot.debug)
+    except discord.HTTPException:
+        log(f'Failed to send {message} due to a discord HTTPException.', bot.debug)
+    except discord.InvalidArgument:
+        log(f'Failed to send {message} because files list is of the wrong size, reference is not a Message or '
+            f'MessageReference, or both file and files parameters are specified.', bot.debug)
+
+
+async def quiet_x(ctx) -> None:
+    """React to a message with an :x: reaction. Should reaction, fail, log the error at the debug level but
+    otherwise fail silently."""
+    if not ctx.message:
+        log(f'Failed to react to {ctx} because it has no message parameter.', bot.debug)
+    try:
+        await ctx.message.add_reaction('❌')
+    except discord.Forbidden:
+        log(f'Insufficient permissions to react to {ctx.message} with an x.', bot.debug)
+    except discord.NotFound:
+        log(f'Did not find {ctx.message} to react to with an x.')
+    except discord.HTTPException:
+        log(f'Failed to react to {ctx.message} with an x due to a discord HTTPException', bot.debug)
+    except discord.InvalidArgument:
+        log(f'Failed to react to {ctx.message} because the X reaction is not recognized by discord.')
+
+
+async def quiet_fail(ctx, message: str) -> None:
+    """React with an x and send the user an explanatory failure message. Should anything fail, log at the debug level
+     but otherwise fail silently. Delete own response after 30 seconds."""
+    resp = f'{ctx.author.name}, {message}'
+    await quiet_x(ctx)
+    await quiet_send(ctx, resp, delete_after=30)
+
+
+
 # Events
 @bot.event
 async def on_ready():
@@ -171,70 +217,140 @@ async def on_ready():
 
 # ================================= Error Handler =================================
 @bot.event
-async def on_command_error(ctx, error):
-    print(type(error))
-    error = getattr(error, 'original', error)
-    print(type(error))
+async def on_command_error(ctx, error) -> None:
+    """
+    General bot error handler. The main thing here is if something goes very wrong, dm the bot owner the full
+    error directly.
+    :param ctx: Invoking context
+    :param error: The error
+    """
+    # Ignore local command error handlers
     if hasattr(ctx.command, 'on_error'):
-        log('An error occurred, but was handled command-locally.', bot.error)
         return
+
+    # Strip CommandInvokeError and ignore errors that require no reaction whatsoever.
+    error = getattr(error, 'original', error)
+    ignored = (commands.CommandNotFound, commands.DisabledCommand, commands.NotOwner)
+    if isinstance(error, ignored):
+        return
+    bad_quotes = (commands.UnexpectedQuoteError, commands.InvalidEndOfQuotedStringError,
+                  commands.ExpectedClosingQuoteError, commands.ArgumentParsingError)
+    # Log anything not totally ignored
+    log(f'{ctx.author} triggered {error} in command {ctx.command}: {error.args[0]} ({error.args})', bot.debug)
+    # Several common errors that do require handling
+    # Wrong place or no perms errors:
     if isinstance(error, commands.NoPrivateMessage):
-        await ctx.send(f'The {ctx.command} command can not be used in private messages.', delete_after=5)
-        return log(f'Error, NoPrivateMessage in command {ctx.command}: {error.args}', bot.info)
-    elif isinstance(error, commands.CommandNotFound):
-        log(f'Error, {ctx.author} triggered CommandNotFound in command {ctx.command}: {error.args[0]}', bot.debug)
-        return
-    elif isinstance(error, commands.MissingRequiredArgument):
-        await ctx.send("Incomplete command.", delete_after=5)
-        return log(f'Error, MissingRequiredArgument in command {ctx.command}: {error.args[0]}', bot.debug)
-    elif isinstance(error, commands.MissingPermissions):
-        await ctx.send(f'{ctx.author}, {error}', delete_after=5)
-        return log(f'{ctx.author} tried to use {ctx.command} without sufficient permissions.', bot.info)
-    elif isinstance(error, commands.CheckFailure):
-        await ctx.send(f'{ctx.author}, you are not authorized to perform this command.')
-        return log(f'{ctx.author} tried to use {ctx.command} without sufficient auth level.', bot.info)
-    elif isinstance(error, discord.ext.commands.errors.BadArgument):
-        await ctx.send("Improper command. Check help [command] to help you formulate this command correctly.",
-                       delete_after=deltime)
-        return log(f'BadArgument error in {ctx.command} for {ctx.author}', bot.info)
-    elif isinstance(error, json.JSONDecodeError):
-        await ctx.send(f'{ctx.author}, that api appears to be down at the moment.')
-        return log(f'{ctx.author} tried to use {ctx.command} but got a JSONDecodeError.', bot.error)
-    elif isinstance(error, asyncio.TimeoutError):
-        await ctx.send(f"{ctx.author}, you took too long. Please re-run the command to continue when you're ready.",
-                       delete_after=5)
-        return log(f'{ctx.author} tried to use {ctx.command} but got a TimeoutError.', bot.info)
+        return await quiet_fail(ctx, f'the {ctx.command} command can not be used in private messages.')
+    elif isinstance(error, commands.PrivateMessageOnly):
+        return await quiet_fail(ctx, f'{ctx.command} command can only be used in private messages.')
+    elif isinstance(error, commands.BotMissingPermissions) or isinstance(error, commands.BotMissingRole) or \
+            isinstance(error, commands.BotMissingAnyRole):
+        return await quiet_fail(ctx, f'{error}')
+    elif isinstance(error, commands.MissingRole) or isinstance(error, commands.MissingAnyRole) or \
+            isinstance(error, commands.MissingPermissions):
+        return await quiet_fail(ctx, f'{error}')
+    elif isinstance(error, commands.NSFWChannelRequired):
+        return await quiet_fail(ctx, f'the {ctx.command} command must be used in an NSFW-marked channel.')
     elif isinstance(error, discord.ext.commands.errors.CommandOnCooldown):
-        await ctx.send(f"{ctx.author.name}, {error}.")
-    elif isinstance(error, OSError):
-        log(f'OSError in command {ctx.command}, restart recommended: {error.__traceback__}', bot.critical)
-    elif isinstance(error, discord.ext.commands.errors.CommandInvokeError):
-        log(f"CommandInvokeError contained a CommandInvokeError. This shouldn't be possible. "
-            f"Submit a github issue with the following info:"
-            f" Command: {ctx.command}, Author: {ctx.author}, Error: {error.__traceback__}")
+        return await quiet_fail(ctx, f'you are on cooldown for that command. Try again in a little'
+                                     f' while.')
+    elif isinstance(error, commands.MaxConcurrencyReached):
+        return await quiet_fail(ctx, f'too many instances of this command are being run at the moment.')
+    elif isinstance(error, commands.CheckFailure):
+        return await quiet_fail(ctx, f'you are not authorized to perform this command.')
+    # User misformulated command errors
+    elif isinstance(error, commands.BadBoolArgument):
+        return await quiet_fail(ctx, 'boolean arguments must be "yes"/"no", "y"/"n", "true"/"false", "t"/"f", '
+                                     '"1"/"0", "enable"/"disable" or "on"/"off".')
+    elif isinstance(error, commands.PartialEmojiConversionFailure):
+        return await quiet_fail(ctx, 'that is not an emoji.')
+    elif isinstance(error, commands.EmojiNotFound):
+        return await quiet_fail(ctx, "I didn't find that emoji.")
+    elif isinstance(error, commands.BadInviteArgument):
+        return await quiet_fail(ctx, 'that invite is invalid or expired.')
+    elif isinstance(error, commands.RoleNotFound):
+        return await quiet_fail(ctx, "I didn't find that role.")
+    elif isinstance(error, commands.BadColourArgument):
+        return await quiet_fail(ctx, "that's not a valid color")
+    elif isinstance(error, commands.ChannelNotReadable):
+        return await quiet_fail(ctx, "I don't have permission to read messages in that channel.")
+    elif isinstance(error, commands.ChannelNotFound):
+        return await quiet_fail(ctx, "I didn't find that channel.")
+    elif isinstance(error, commands.MemberNotFound):
+        return await quiet_fail(ctx, "I didn't find that member.")
+    elif isinstance(error, commands.UserNotFound):
+        return await quiet_fail(ctx, "I didn't find that user.")
+    elif isinstance(error, commands.UserNotFound):
+        return await quiet_fail(ctx, "I didn't find that message.")
+    elif isinstance(error, commands.MissingRequiredArgument):
+        await ctx.send_help(ctx.command, delete_after=30)
+        return await quiet_fail(ctx, f'incomplete command.')
+    elif isinstance(error, commands.TooManyArguments):
+        await ctx.send_help(ctx.command, delete_after=30)
+        return await quiet_fail(ctx, f'too many values passed to this command.')
+    elif isinstance(error, bad_quotes):  # User messed up quotes
+        return await quiet_fail(ctx, f'quotation marks do not balance. Make sure you close every quote you open.')
+    elif isinstance(error, commands.ConversionError):
+        return await quiet_fail(ctx, f"I couldn't convert a parameter to the correct format. Check help {ctx.command}"
+                                     f" to help you formulate this command correctly.")
+    elif isinstance(error, commands.BadArgument) or isinstance(error, commands.BadUnionArgument) or \
+            isinstance(error, commands.UserInputError):
+        return await quiet_fail(ctx, f'improper command. Check help {ctx.command} to help you '
+                                     f'formulate this command correctly.')
+    # Extension and command registration errors
+    elif isinstance(error, commands.ExtensionAlreadyLoaded):
+        return await quiet_fail(ctx, f'that extension is already loaded.')
+    elif isinstance(error, commands.ExtensionNotLoaded):
+        return await quiet_fail(ctx, f'that extension is not loaded.')
+    elif isinstance(error, commands.NoEntryPointError):
+        return await quiet_fail(ctx, f'that extension does not have a setup function.')
+    elif isinstance(error, commands.ExtensionNotFound):
+        return await quiet_fail(ctx, f'I see no such extension.')
+    elif isinstance(error, commands.ExtensionFailed):
+        return await quiet_fail(ctx, f'that exception refused to load.')
+    elif isinstance(error, commands.ExtensionError):
+        return await quiet_fail(ctx, f'uncaught ExtensionError.')
+    elif isinstance(error, commands.CommandRegistrationError):
+        return await quiet_fail(ctx, f'failed to register a duplicate command name: {error}')
+    elif isinstance(error, discord.ClientException):
+        return await quiet_fail(ctx, f'hmm, something went wrong. Try that command again.')
+    # Other
+    elif isinstance(error, discord.HTTPException):
+        return await quiet_fail(ctx, f'the result was longer than I expected. Discord only supports 2000 '
+                                     f'characters.')
+    elif isinstance(error, JSONDecodeError):
+        return await quiet_fail(ctx, f'the api for {ctx.command} appears to be down at the moment.'
+                                     f' Try again later.')
+    elif isinstance(error, asyncio.TimeoutError):
+        return await quiet_fail(ctx, f"you took too long. Please re-run the command to continue when "
+                                     f"you're ready.")
     else:
-        # get data from exception
-        etype = type(error)
+        # Get data from exception and format
+        e_type = type(error)
         trace = error.__traceback__
-        # 'traceback' is the stdlib module, `import traceback`.
-        lines = traceback.format_exception(etype, error, trace)
-        # format_exception returns a list with line breaks embedded in the lines, so let's just stitch the elements
-        # together
+        lines = traceback.format_exception(e_type, error, trace)
         traceback_text = '```py\n'
         traceback_text += ''.join(lines)
         traceback_text += '\n```'
+        # If something goes wrong with sending the dev these errors it's a bit of a yikes so take some special
+        # care here.
         try:
             await ctx.send(
-                f"Hmm, something went wrong with {ctx.command}. "
-                f"I have let the developer know, and they will take a look.")
-            await bot.get_user(owner_id).send(
-                f'Hey Vyryn, there was an error in the command {ctx.command}: {error}.\n '
-                f'It was used by {ctx.author} in {ctx.guild}, {ctx.channel}.')
-            await bot.get_user(owner_id).send(traceback_text)
-        except:
-            log(f"Something terrible occured and I was unable to send the error log for debugging.", bot.critical)
-        log(f'Error triggered: {error} in command {ctx.command}, {lines}',
-            bot.critical)
+                f"Hmm, something went wrong with {ctx.command}. I have let the developer know, and they will "
+                f"take a look.")
+            owner = bot.get_user(OWNER_ID)
+            await owner.send(
+                f'Hey {owner}, there was an error in the command {ctx.command}: {error}.\n It was used by '
+                f'{ctx.author} in {ctx.guild}, {ctx.channel}.')
+            try:
+                await bot.get_user(OWNER_ID).send(traceback_text)
+            except discord.errors.HTTPException:
+                await bot.get_user(OWNER_ID).send(traceback_text[0:1995] + '\n```')
+                await bot.get_user(OWNER_ID).send('```py\n' + traceback_text[1995:3994])
+        except discord.errors.Forbidden:
+            await ctx.message.add_reaction('❌')
+            log(f"{ctx.command} invoked in a channel I do not have write perms in.", bot.info)
+        log(f'Error triggered in command {ctx.command}: {error}, {lines}', bot.critical)
         return
 
 

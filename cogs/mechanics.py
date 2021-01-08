@@ -1,3 +1,4 @@
+import math
 import typing
 from random import randrange
 import random
@@ -6,7 +7,7 @@ import discord
 from discord.ext import commands
 from cogs.database import update_location
 from functions import auth
-from bot import log, logready
+from bot import log, logready, quiet_fail
 
 bonuses = {'vet': 10,
            'ace': 15,
@@ -17,23 +18,27 @@ bonuses = {'vet': 10,
 
 
 def hit_determine(distance: float, effective_range: float, ship_length: float, bonus: float = 0, missile=False):
-    hit_chance = 1
     if distance < 1:
-        distance = 1
-    r = distance / effective_range
-    if distance > effective_range:
-        hit_chance = 2 - r
-    elif distance < effective_range and not missile:
-        hit_chance = r
-    if hit_chance < 0:
-        hit_chance = 0
-    length_modifier = ship_length / distance * 100
-    if length_modifier < 0:
-        length_modifier = 0
+        if effective_range >= distance:
+            return True, bonus, 100, 100, 50
+        else:
+            distance = 1
+    length_modifier = math.log(distance / (ship_length * 2)) - 1.4
+    # length_modifier = ship_length / distance * 100
+    if length_modifier < 1:
+        length_modifier = 1
     elif length_modifier > 10:
         length_modifier = 10
+    hit_chance = 1 / length_modifier
+    r = distance / effective_range
+    if distance > effective_range:
+        hit_chance = hit_chance / r ** 3
+    elif distance < effective_range and not missile:
+        hit_chance = hit_chance * r
+    if hit_chance < 0:
+        hit_chance = 0
     hit_chance *= 100
-    result = hit_chance + (bonus / 10) + length_modifier
+    result = hit_chance + (bonus / 10)  # + length_modifier
     # round
     hit_chance = int(hit_chance * 100) / 100
     result = int(result * 1000) / 1000
@@ -60,7 +65,7 @@ def damage_determine(hull: float, shields: float, weap_damage_shields: float, we
         undealt_shield_dmg = potential_shield_dmg - shields
         shields = 0
         # Need to convert this portion of damage to the hull-doing rate instead of the shields-doing rate
-        extra_hull_dmg = undealt_shield_dmg / (weap_damage_shields+0.00001) * weap_damage_hull
+        extra_hull_dmg = undealt_shield_dmg / (weap_damage_shields + 0.00001) * weap_damage_hull
         hull -= extra_hull_dmg
     new_hull = max(hull, 0)
     new_shields = max(shields, 0)
@@ -103,6 +108,8 @@ def calc_dmg(i_hull: float, i_shield: float, n_weaps: int, dist: float, bonus: i
 
 def val_to_perc(value, max_):
     """Converts a value as a portion of max to a percentage"""
+    if max_ <= 0:
+        return 0
     return round(value / max_ * 100)
 
 
@@ -267,6 +274,9 @@ class Mechanics(commands.Cog):
         $calcdamage  (target hull) (target shields) "[target ship name]" [distance in km] [number of weapons] [weapon
         type] (-ace/-vet/-hon/-evading)
         """
+        if ctx.channel.id not in [408689619597524993, 411777145002524673, 731726249868656720] and \
+                ctx.author.id != 125449182663278592:
+            return await quiet_fail(ctx, 'this command has been disabled here by order of VHA.')
         name = name.lower()
         weap = weap.lower()
         ship_info = self.bot.values_ships.get(name, [])
@@ -292,6 +302,32 @@ class Mechanics(commands.Cog):
         """Calculate points from shield (sbd), hull (ru), speed (mglt), length(m) and armament (pts)"""
         await ctx.send(((shield + hull) / 3) + (mglt * length / 100) + armament)
         log(f'{ctx.author} used the points command.')
+
+    @commands.command(description='Calculate time to get from starting distance to target distance')
+    async def timespeed(self, ctx, mglt: float, current: float = None, target: float = None):
+        """Display how many turns until you're at the target distance.
+        MGLT is the MGLT your're approaching at (subtract the two ship speeds if one ship is running away from another)
+        Current is the current distance between the ships.
+        Target is the target distance between the ships.
+        If you don't put a target, this will instead display the distance gained per turn.
+        If you only specify a MGLT, it will simply convert to km/turn
+        """
+        if mglt < 1:
+            return await quiet_fail(ctx, 'speed must be at least 1 MGLT.')
+        elif current is not None and current < 0:
+            return await quiet_fail(ctx, "you can't be a negative distance away.")
+
+        rate = round(mglt * 0.432)
+        if current is None:
+            return await ctx.send(f'{mglt} MGLT = {rate} km/turn.')
+        if target is not None:
+            turns = math.ceil(math.fabs(current - target) / rate)
+            return await ctx.send(f'Closing at a rate of {rate} km/turn, it will take {turns} turns to reach '
+                                  f'{target}km.')
+        else:
+            return await ctx.send(f'Closing at a rate of {rate} km/turn, next turn distance will be '
+                                  f'{round(current - rate)}km if headed toward the target or {round(current + rate)}km '
+                                  f'if headed away.')
 
 
 def setup(bot):
