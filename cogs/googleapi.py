@@ -73,7 +73,7 @@ class Googleapi(commands.Cog):
                                                    'name': line[0]
                                                    }
         for line in values_ships:
-            if 'Incomplete' in line or 'Enter Missing Values' in line:
+            if 'Incomplete' in line or 'Enter Missing Values' in line or 'Enter Length' in line:
                 continue
             bot.values_ships[line[0].lower()] = {'price': clean(line[1]),
                                                  'points': clean(line[2]),
