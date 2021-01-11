@@ -87,14 +87,21 @@ class Basics(commands.Cog):
     async def on_message(self, message):
         if message.guild is not self.bot.server:
             return
+        if message.author.bot:
+            return
         # =========================NEW USER==========================
-        if not message.author.bot and message.author.id not in self.bot.list_of_users:
+        if message.author.id not in self.bot.list_of_users:
             await new_user(message.author)
             self.bot.list_of_users += [message.author.id]
         # =========================ACTIVITY==========================
         await do_activity_update(self.bot, message.channel, message.author, message.content)
         # ========================N-Word=============================
         await do_n_word_update(message.author, message.content, self.word_list)
+        # ===============No chit-chat in bs channel =================
+        if message.channel.id in [408254707388383232, 731726249868656720]:
+            if len(message.content) > 0 and message.content[0] != '$':
+                await message.delete()
+                await message.channel.send(f'{message.author.mention}, shush in here, you!', delete_after=2)
 
     # ==============================Reaction handler======================================
     @commands.Cog.listener()
