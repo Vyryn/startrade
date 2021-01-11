@@ -17,7 +17,8 @@ bonuses = {'vet': 10,
            'evading': 30}
 
 
-def hit_determine(distance: float, effective_range: float, ship_length: float, bonus: float = 0, missile=False):
+def hit_determine(distance: float, effective_range: float, ship_length: float, bonus: float = 0, missile=False,
+                  prow=False):
     if distance < 1:
         if effective_range >= distance:
             return True, bonus, 100, 100, 50
@@ -35,6 +36,8 @@ def hit_determine(distance: float, effective_range: float, ship_length: float, b
         hit_chance = hit_chance / r ** 3
     elif distance < effective_range and not missile:
         hit_chance = hit_chance * r
+    if distance <= effective_range and prow:
+        return True, bonus, 100, 100, 50
     if hit_chance < 0:
         hit_chance = 0
     hit_chance *= 100
@@ -65,7 +68,8 @@ def damage_determine(hull: float, shields: float, weap_damage_shields: float, we
         undealt_shield_dmg = potential_shield_dmg - shields
         shields = 0
         # Need to convert this portion of damage to the hull-doing rate instead of the shields-doing rate
-        extra_hull_dmg = undealt_shield_dmg / (weap_damage_shields + 0.00001) * weap_damage_hull
+        portion_shield_overkill = undealt_shield_dmg / (potential_shield_dmg + 0.00001)
+        extra_hull_dmg = portion_shield_overkill * weap_damage_hull
         hull -= extra_hull_dmg
     new_hull = max(hull, 0)
     new_shields = max(shields, 0)
@@ -87,6 +91,7 @@ def calc_dmg(i_hull: float, i_shield: float, n_weaps: int, dist: float, bonus: i
     weap_rate = int(weap_info['rate'])
     pierce = weap_info['pierce']
     missile = 'missile' in weap_info['note'].lower()
+    prow = 'prow' in weap_info['note'].lower()
     # Values need to be in absolutes for damage_determine
     hull = perc_to_val(i_hull, max_hull)
     shield = perc_to_val(i_shield, max_shield)
@@ -94,7 +99,7 @@ def calc_dmg(i_hull: float, i_shield: float, n_weaps: int, dist: float, bonus: i
     # For each weapon, determine if it hits. If so, subtract the damage dealt by it.
     for i in range(n_weaps):
         for j in range(weap_rate):
-            weap_hits = hit_determine(dist, effective_range, ship_length, bonus, missile=missile)[0]
+            weap_hits = hit_determine(dist, effective_range, ship_length, bonus, missile=missile, prow=prow)[0]
             # print([dist, effective_range, ship_length, bonus, hull, shield, weap_hits])
             if weap_hits:
                 num_hits += 1
