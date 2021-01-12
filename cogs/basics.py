@@ -298,6 +298,8 @@ class Basics(commands.Cog):
         1w: next week at this time
         1y: next year (or probably never, as the bot intentionally forgets reminders when it restarts)
         """
+        if reminder is None:
+            return await ctx.send('Incorrect usage. Try "remind do xyz in 1h"')
         try:
             log(ctx.message.raw_mentions[0], self.bot.debug)
             user = ctx.author  # ctx.guild.get_member(ctx.message.raw_mentions[0]) turned off for spam
