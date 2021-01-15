@@ -41,7 +41,7 @@ def hit_determine(distance: float, effective_range: float, ship_length: float, b
     if hit_chance < 0:
         hit_chance = 0
     hit_chance *= 100
-    result = hit_chance + (bonus / 10)  # + length_modifier
+    result = max(0.0, hit_chance - (bonus / 7.5))  # + length_modifier
     # round
     hit_chance = int(hit_chance * 100) / 100
     result = int(result * 1000) / 1000
