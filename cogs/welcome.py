@@ -1,13 +1,6 @@
-import math
-import typing
-from random import randrange
-import random
-from collections import Counter
 import discord
 from discord.ext import commands
-from cogs.database import update_location
-from functions import auth
-from bot import log, logready, quiet_fail
+from bot import logready
 
 welcome_msg = 'Hello. This is a test.'
 
