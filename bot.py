@@ -283,10 +283,10 @@ async def on_command_error(ctx, error) -> None:
     elif isinstance(error, commands.UserNotFound):
         return await quiet_fail(ctx, "I didn't find that message.")
     elif isinstance(error, commands.MissingRequiredArgument):
-        await ctx.send_help(ctx.command, delete_after=30)
+        await ctx.send_help(ctx.command)
         return await quiet_fail(ctx, f'incomplete command.')
     elif isinstance(error, commands.TooManyArguments):
-        await ctx.send_help(ctx.command, delete_after=30)
+        await ctx.send_help(ctx.command)
         return await quiet_fail(ctx, f'too many values passed to this command.')
     elif isinstance(error, bad_quotes):  # User messed up quotes
         return await quiet_fail(ctx, f'quotation marks do not balance. Make sure you close every quote you open.')
@@ -424,6 +424,7 @@ async def restart():
 bot.load_extension(f'cogs.logging')
 bot.load_extension(f'cogs.dev')
 bot.load_extension(f'cogs.management')
+bot.load_extension('cogs.welcome')
 bot.load_extension(f'cogs.database')
 bot.load_extension(f'cogs.googleapi')
 bot.load_extension(f'cogs.basics')

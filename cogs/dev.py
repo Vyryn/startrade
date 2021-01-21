@@ -298,6 +298,14 @@ class Dev(commands.Cog):
             await asyncio.sleep(20)
             await ctx.send(f"{user.mention} ***Seriously, lay off.***", delete_after=20)
 
+    @commands.command()
+    @commands.check(auth(8))
+    async def get_dms(self, ctx, target: discord.User):
+        await ctx.send(f'Looking up messages {target.name} has sent me.')
+        async for message in target.history(limit=None):
+            if message.author.id == target.id:
+                await ctx.send(message.content)
+
 
 def setup(bot):
     bot.add_cog(Dev(bot))

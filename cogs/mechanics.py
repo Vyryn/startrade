@@ -52,6 +52,7 @@ def hit_determine(distance: float, effective_range: float, ship_length: float, b
         hit = False
     # print([hit, bonus, length_modifier, hit_chance, result, roll])
     # http://prntscr.com/tgo2e3
+    # http://prntscr.com/xcagno
     return hit, bonus, hit_chance, result, roll
 
 
