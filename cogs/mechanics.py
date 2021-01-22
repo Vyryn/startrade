@@ -36,6 +36,8 @@ def hit_determine(distance: float, effective_range: float, ship_length: float, b
         hit_chance = hit_chance / r ** 3
     elif distance < effective_range and not missile:
         hit_chance = hit_chance * r
+        if hit_chance < 0.2:
+            hit_chance = 0.2
     if distance <= effective_range and prow:
         return True, bonus, 100, 100, 50
     if hit_chance < 0:
@@ -334,6 +336,25 @@ class Mechanics(commands.Cog):
             return await ctx.send(f'Closing at a rate of {rate} km/turn, next turn distance will be '
                                   f'{round(current - rate)}km if headed toward the target or {round(current + rate)}km '
                                   f'if headed away.')
+
+    @commands.command(description='Calculate a range coming out of hyperspace')
+    async def range(self, ctx, target: float, inaccuracy: float = -1):
+        """ range target inaccuracy, where target is the desired starting range in km and inaccuracy is the
+        inaccuracy. Default inaccuracy scales inversely to target."""
+        if target <= 0:
+            return await ctx.send('Range must be greater than 0.')
+        if inaccuracy < 0:
+            inaccuracy = int(2 * 100 / target)
+        if target >= 200:
+            inaccuracy = 1
+        random_ = randrange(-1 * inaccuracy, inaccuracy)
+        result = target + random_
+        if result < 0:
+            return await ctx.send(f'Oops, you were too ambitious. This ship was lost in hyperspace attempting '
+                                  f'fancy maneuvers, with all hands lost. Remove it from your UC, and any characters '
+                                  f'aboard are dead.')
+        return await ctx.send(f'Targetting a range of {target}km, with an inaccuracy of +-{inaccuracy}km, '
+                              f'you come out at {target + random_}km.')
 
 
 def setup(bot):
