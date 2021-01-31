@@ -130,6 +130,12 @@ class Economy(commands.Cog):
             await ctx.send(f'Successfully transferred {amount} to {user}. Your new balance is {from_balance}'
                            f' {self.bot.credit_emoji}, their new balance is {to_balance} {self.bot.credit_emoji}.')
             log(f'{ctx.author} transferred {amount} to {user}.')
+        if 21999990 <= amount <= 27500010:
+            ch = self.bot.server.get_channel(408254707388383232)
+            role = self.bot.server.get_role(415232085888991253)
+            await ch.send(f'**Alert** {role.mention}, {ctx.author.mention} ({ctx.author.id}) sent a transfer of '
+                          f'{amount} to {user.mention} ({user.id}). It was flagged for being in the suspicious range, '
+                          f'check if this is an alt or similar.')
 
     @commands.command(name='buy', description='Buy an item from the browse listings.')
     @commands.check(auth(1))
