@@ -2,7 +2,10 @@ import discord
 from discord.ext import commands
 from bot import logready
 
-welcome_msg = 'Hello. This is a test.'
+welcome_msg = "Welcome to the Galactic Faction War. In addition to the ping you've received in " \
+              "<#801688443641790554>, we'd like to inform you that the server can be rough. If " \
+              "you feel harassed by another member, tell them to stop. If they continue, contact" \
+              " a member of staff via pinging or a DM."
 
 
 class Welcome(commands.Cog):
