@@ -12,9 +12,8 @@ from bot import log, logready, quiet_fail
 bonuses = {'vet': 10,
            'ace': 15,
            'hon': 20,
-           'vetace': 25,
-           'vethon': 30,
-           'evading': 30}
+           'evad': 20,
+           'jam': 20}
 
 
 def hit_determine(distance: float, effective_range: float, ship_length: float, bonus: float = 0, missile=False,
@@ -56,6 +55,17 @@ def hit_determine(distance: float, effective_range: float, ship_length: float, b
     # http://prntscr.com/tgo2e3
     # http://prntscr.com/xcagno
     return hit, bonus, hit_chance, result, roll
+
+
+def not_in_invalid_channels():
+    async def inner(ctx, *args):
+        if ctx.author.id == 125449182663278592:
+            return True
+        if ctx.channel.id not in [408689619597524993, 411777145002524673, 731726249868656720]:
+            return False
+        return True
+
+    return inner
 
 
 def damage_determine(hull: float, shields: float, weap_damage_shields: float, weap_damage_hull: float,
@@ -275,6 +285,7 @@ class Mechanics(commands.Cog):
             f' was: {hits} out of {num_guns} hit their target.')
 
     @commands.command()
+    @commands.check(not_in_invalid_channels())
     async def calcdamage(self, ctx, hull: typing.Optional[int] = 100, shields: typing.Optional[int] = 100,
                          name: str = '', dist: int = 10, n_weaps: int = 1, weap: str = 'TC', *, params=''):
         """
@@ -282,9 +293,6 @@ class Mechanics(commands.Cog):
         $calcdamage  (target hull) (target shields) "[target ship name]" [distance in km] [number of weapons] [weapon
         type] (-ace/-vet/-hon/-evading)
         """
-        if ctx.channel.id not in [408689619597524993, 411777145002524673, 731726249868656720] and \
-                ctx.author.id != 125449182663278592:
-            return await quiet_fail(ctx, 'this command has been disabled here by order of VHA.')
         name = name.lower()
         weap = weap.lower()
         ship_info = self.bot.values_ships.get(name, [])
@@ -297,12 +305,21 @@ class Mechanics(commands.Cog):
         evade_bonus = 0
         params = params.lower()
         for upgrade in bonuses:
-            if upgrade[1:] in params:
+            if upgrade in params:
                 evade_bonus += bonuses[upgrade]
-        new_hull, new_shields, hit_perc, num_shots = calc_dmg(hull, shields, n_weaps, dist, evade_bonus, ship_info,
-                                                              weap_info)
-        return await ctx.send(f'[{new_hull}] [{new_shields}] {name.title()}.\n({hit_perc}% of {num_shots} total shots '
-                              f'hit)')
+        # Single ship, quick result
+        if '-x' not in params:
+            new_hull, new_shields, hit_perc, num_shots = calc_dmg(hull, shields, n_weaps, dist, evade_bonus,
+                                                                  ship_info, weap_info)
+            return await ctx.send(f'[{new_hull}] [{new_shields}] {name.title()}.\n({hit_perc}% of {num_shots}'
+                                  f' total shots hit)')
+        # Number of ships specified as -x30 or similar
+        repeats = int(params.split('-x')[1].split(' ')[0])
+        ships = dict()
+        for i in range(repeats):
+            ships[i] = (hull, shields)
+        new_ships, hit_perc, num_shots = calc_dmg_multi(ships, n_weaps, dist, evade_bonus, ship_info, weap_info)
+
 
     @commands.command(description='Calculate points from shield (sbd), hull (ru), speed (mglt), length(m)'
                                   ' and armament (pts)')
