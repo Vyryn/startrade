@@ -31,7 +31,9 @@ def hit_determine(distance: float, effective_range: float, ship_length: float, b
         length_modifier = 10
     hit_chance = 1 / length_modifier
     r = distance / effective_range
-    if distance > effective_range:
+    if distance > 2 * effective_range:
+        hit_chance = 0
+    elif distance > effective_range:
         hit_chance = hit_chance / r ** 3
     elif distance < effective_range and not missile:
         hit_chance = hit_chance * r
@@ -94,17 +96,18 @@ def calc_dmg(i_hull: float, i_shield: float, n_weaps: int, dist: float, bonus: i
              weap_info: dict) -> (float, float):
     """Determines whether a weapon hits and if so calculates damage. Returns the new hull and shields."""
     # Look up values
-    ship_length = ship_info['len']
-    max_hull = ship_info['hull']
-    max_shield = ship_info['shield']
-    effective_range = weap_info['range'] * 1000
-    dist *= 1000
     weap_damage_shields = weap_info['shield_dmg']
     weap_damage_hull = weap_info['hull_dmg']
     weap_rate = int(weap_info['rate'])
     pierce = weap_info['pierce']
     missile = 'missile' in weap_info['note'].lower()
     prow = 'prow' in weap_info['note'].lower()
+
+    ship_length = ship_info['len']
+    max_hull = ship_info['hull']
+    max_shield = ship_info['shield']
+    effective_range = weap_info['range'] * 1000
+    dist *= 1000
     # Values need to be in absolutes for damage_determine
     hull = perc_to_val(i_hull, max_hull)
     shield = perc_to_val(i_shield, max_shield)
@@ -124,7 +127,33 @@ def calc_dmg(i_hull: float, i_shield: float, n_weaps: int, dist: float, bonus: i
     return val_to_perc(hull, max_hull), val_to_perc(shield, max_shield), hit_perc, num_shots
 
 
-def val_to_perc(value, max_):
+def calc_dmg_multi(ships: [(float, float, dict)], n_weaps: int, dist: float, bonus: int, weap_info: dict) \
+        -> (Counter[(float, float)], int, int):
+    """Randomly scatters damage between a bunch of different ships of the same type. Returns a list of hull and
+    shields and amounts."""
+    weap_damage_shields = weap_info['shield_dmg']
+    weap_damage_hull = weap_info['hull_dmg']
+    weap_rate = int(weap_info['rate'])
+    pierce = weap_info['pierce']
+    missile = 'missile' in weap_info['note'].lower()
+    prow = 'prow' in weap_info['note'].lower()
+    total_hits = 0
+    total_shots = 0
+
+    for i in range(n_weaps):
+        selected_ship = random.randrange(len(ships))
+        i_hull, i_shield, ship_info = ships[selected_ship]
+        new_hull, new_shields, hit_perc, num_shots = calc_dmg(i_hull, i_shield, 1, dist, bonus, ship_info, weap_info)
+        ships[selected_ship] = (i_hull, i_shield, ship_info)
+        total_hits += round(hit_perc * num_shots)
+        total_shots += num_shots
+
+    final_hit_perc = val_to_perc(total_hits, total_shots)
+    new_ships = Counter([(hull, shields) for hull, shields, _ in ships])
+    return new_ships, final_hit_perc, total_shots
+
+
+def val_to_perc(value, max_) -> int:
     """Converts a value as a portion of max to a percentage"""
     if max_ <= 0:
         return 0
@@ -317,9 +346,15 @@ class Mechanics(commands.Cog):
         repeats = int(params.split('-x')[1].split(' ')[0])
         ships = dict()
         for i in range(repeats):
-            ships[i] = (hull, shields)
-        new_ships, hit_perc, num_shots = calc_dmg_multi(ships, n_weaps, dist, evade_bonus, ship_info, weap_info)
-
+            ships[i] = (hull, shields, ship_info)
+        new_ships, hit_perc, num_shots = calc_dmg_multi(ships, n_weaps, dist, evade_bonus, weap_info)
+        to_send = ''
+        for (hull, shields), num in new_ships.most_common():
+            to_send += f'{num}x [{hull}] [{shields}] {name.title()}.\n'
+        to_send += f'({hit_perc}% of {num_shots}'
+        if len(to_send) > 1980:
+            to_send = to_send[:1940] + '\nWarning: too many lines, cut off some.'
+        await ctx.send(to_send)
 
     @commands.command(description='Calculate points from shield (sbd), hull (ru), speed (mglt), length(m)'
                                   ' and armament (pts)')
@@ -328,7 +363,7 @@ class Mechanics(commands.Cog):
         await ctx.send(((shield + hull) / 3) + (mglt * length / 100) + armament)
         log(f'{ctx.author} used the points command.')
 
-    @commands.command(description='Calculate time to get from starting distance to target distance')
+    @commands.command(description='Calculate time to get from starting distance to target distance', aliases=['mglt'])
     async def timespeed(self, ctx, mglt: float, current: float = None, target: float = None):
         """Display how many turns until you're at the target distance.
         MGLT is the MGLT your're approaching at (subtract the two ship speeds if one ship is running away from another)
@@ -361,9 +396,9 @@ class Mechanics(commands.Cog):
         if target <= 0:
             return await ctx.send('Range must be greater than 0.')
         if inaccuracy < 0:
-            inaccuracy = int(2 * 100 / target)
+            inaccuracy = int(2 * 100 / target) + 10
         if target >= 200:
-            inaccuracy = 1
+            inaccuracy = 10
         random_ = randrange(-1 * inaccuracy, inaccuracy)
         result = target + random_
         if result < 0:
