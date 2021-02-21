@@ -98,7 +98,7 @@ class Basics(commands.Cog):
         # ========================N-Word=============================
         await do_n_word_update(message.author, message.content, self.word_list)
         # ===============No chit-chat in bs channel =================
-        if message.channel.id in [408254707388383232, 731726249868656720]:
+        if message.channel.id in []:
             if len(message.content) > 0 and message.content[0] != '$':
                 await message.delete()
                 await message.channel.send(f'{message.author.mention}, shush in here, you!', delete_after=2)
