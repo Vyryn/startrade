@@ -53,7 +53,7 @@ def hit_determine(distance: float, effective_range: float, ship_length: float, b
         hit = True
     else:
         hit = False
-    # print([hit, bonus, length_modifier, hit_chance, result, roll])
+    log([hit, bonus, length_modifier, hit_chance, result, roll], 'DBUG')
     # http://prntscr.com/tgo2e3
     # http://prntscr.com/xcagno
     return hit, bonus, hit_chance, result, roll
@@ -75,7 +75,7 @@ def damage_determine(hull: float, shields: float, weap_damage_shields: float, we
     """Does damage with the provided weapon stats to the target hull and shields in absolute values *not* %s."""
     potential_shield_dmg = weap_damage_shields * (1 - pierce)
     hull_dmg = weap_damage_hull * pierce
-    # print(f'DMG: {hull_dmg},  {potential_shield_dmg}')
+    log(f'DMG: {hull_dmg},  {potential_shield_dmg}', 'DBUG')
     hull -= hull_dmg
     if shields > potential_shield_dmg:
         shields -= potential_shield_dmg
@@ -88,7 +88,7 @@ def damage_determine(hull: float, shields: float, weap_damage_shields: float, we
         hull -= extra_hull_dmg
     new_hull = max(hull, 0)
     new_shields = max(shields, 0)
-    # print([hull, shields, new_hull, new_shields])
+    log([hull, shields, new_hull, new_shields], 'DBUG')
     return new_hull, new_shields
 
 
@@ -116,7 +116,7 @@ def calc_dmg(i_hull: float, i_shield: float, n_weaps: int, dist: float, bonus: i
     for i in range(n_weaps):
         for j in range(weap_rate):
             weap_hits = hit_determine(dist, effective_range, ship_length, bonus, missile=missile, prow=prow)[0]
-            # print([dist, effective_range, ship_length, bonus, hull, shield, weap_hits])
+            log([dist, effective_range, ship_length, bonus, hull, shield, weap_hits], 'DBUG')
             if weap_hits:
                 num_hits += 1
                 (hull, shield) = damage_determine(hull, shield, weap_damage_shields, weap_damage_hull, pierce)
@@ -148,7 +148,7 @@ def calc_dmg_multi(ships: [(float, float, dict)], n_weaps: int, dist: float, bon
         total_hits += round(hit_perc/100 * num_shots)
         total_shots += num_shots
     final_hit_perc = val_to_perc(total_hits, total_shots)
-    print(ships)
+    log(ships, 'DBUG')
     new_ships = Counter([(hull, shields) for hull, shields, _ in ships])
     return new_ships, final_hit_perc, total_shots
 
