@@ -144,11 +144,11 @@ def calc_dmg_multi(ships: [(float, float, dict)], n_weaps: int, dist: float, bon
         selected_ship = random.randrange(len(ships))
         i_hull, i_shield, ship_info = ships[selected_ship]
         new_hull, new_shields, hit_perc, num_shots = calc_dmg(i_hull, i_shield, 1, dist, bonus, ship_info, weap_info)
-        ships[selected_ship] = (i_hull, i_shield, ship_info)
-        total_hits += round(hit_perc * num_shots)
+        ships[selected_ship] = (new_hull, new_shields, ship_info)
+        total_hits += round(hit_perc/100 * num_shots)
         total_shots += num_shots
-
     final_hit_perc = val_to_perc(total_hits, total_shots)
+    print(ships)
     new_ships = Counter([(hull, shields) for hull, shields, _ in ships])
     return new_ships, final_hit_perc, total_shots
 
@@ -344,14 +344,14 @@ class Mechanics(commands.Cog):
                                   f' total shots hit)')
         # Number of ships specified as -x30 or similar
         repeats = int(params.split('-x')[1].split(' ')[0])
-        ships = dict()
+        ships = list()
         for i in range(repeats):
-            ships[i] = (hull, shields, ship_info)
+            ships.append((hull, shields, ship_info))
         new_ships, hit_perc, num_shots = calc_dmg_multi(ships, n_weaps, dist, evade_bonus, weap_info)
         to_send = ''
         for (hull, shields), num in new_ships.most_common():
             to_send += f'{num}x [{hull}] [{shields}] {name.title()}.\n'
-        to_send += f'({hit_perc}% of {num_shots}'
+        to_send += f'({hit_perc}% of {num_shots} total shots hit)'
         if len(to_send) > 1980:
             to_send = to_send[:1940] + '\nWarning: too many lines, cut off some.'
         await ctx.send(to_send)
