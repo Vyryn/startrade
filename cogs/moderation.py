@@ -1,4 +1,6 @@
 import asyncio
+import typing
+
 import discord
 from discord.ext import commands
 from cogs.basics import send_to_log_channel
@@ -80,13 +82,21 @@ class Moderation(commands.Cog):
 
     @commands.command(description='Ban a member.')
     @commands.has_permissions(ban_members=True)
-    async def ban(self, ctx, member: discord.Member, *, reason: str = 'No reason provided.'):
+    async def ban(self, ctx, days: typing.Optional[int] = 0,
+                  member: discord.Member = None, *,
+                  reason: str = None):
         """Ban someone from the server
                 Requires: Ban Members permission
-                Member: the person to ban
-                Reason: the reason why, defaults to 'No reason provided.'"""
-        reason = f'{ctx.author} banned {member} for reason {reason}'
-        await member.ban(reason=reason)
+                Member: The person to ban.
+                Reason: The reason why. Please provide a reason.
+                days: The number of days worth of messages to delete. Leave blank for no message deletions.
+                """
+        if member is None:
+            return await ctx.send('LOL Who do you want me to ban, you?', delete_after=10)
+        if reason is None:
+            reason = f'{ctx.author} is being an irresponsible staff member.'
+        reason = f'{ctx.author} banned {member} because {reason}'
+        await member.ban(reason=reason, delete_message_days=days)
         await ctx.send(f'Banned {member.mention} for {reason}.')
         log(f'{ctx.author} banned {member} from {ctx.guild} for {reason}.', self.bot.prio)
 

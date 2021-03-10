@@ -5,7 +5,9 @@ from bot import logready
 welcome_msg = "Welcome to the Galactic Faction War. In addition to the ping you've received in " \
               "<#801688443641790554>, we'd like to inform you that the server can be rough. If " \
               "you feel harassed by another member, tell them to stop. If they continue, contact" \
-              " a member of staff via pinging or a DM."
+              " a member of staff via pinging or a DM. It is strongly recommended that you say " \
+              "something like 'I'm not into your harassment fetish' up front in the lobby if you" \
+              " want people to leave you alone. "
 
 
 class Welcome(commands.Cog):
