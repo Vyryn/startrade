@@ -401,18 +401,19 @@ async def ignorech(ctx):
 
 @bot.command(name='restart', description='Restart the bot')
 @commands.check(auth(5))
-async def restart():
+async def restart(ctx):
     """
     The command to restart the bot
     Requires: Auth level 5
     """
+    await ctx.send("Restarting. Take a look at my status for when I'm back up.")
     await bot.change_presence(status=discord.Status.idle, activity=discord.Game("Restarting..."))
     for file_name in os.listdir(f'./{cogs_dir}'):
         if file_name.endswith('.py'):
-            # try:
-            bot.unload_extension(f'cogs.{file_name[:-3]}')  # unload each extension gracefully before restart
-            # except:
-            #     log(f'Error unloading extension {file_name[:-3].title()}.', bot.warn)
+            try:
+                bot.unload_extension(f'cogs.{file_name[:-3]}')  # unload each extension gracefully before restart
+            except commands.ExtensionError:
+                log(f'Error unloading extension {file_name[:-3].title()}.', bot.warn)
     os.execv(sys.executable, ['python'] + sys.argv)
 
 
