@@ -51,7 +51,7 @@ class Webhooks(commands.Cog):
     async def on_ready(self):
         logready(self)
 
-    @commands.command(description=f"""Make an imersive NPC say something. If a profile picture exists for the name 
+    @commands.command(description=f"""Make an immersive NPC say something. If a profile picture exists for the name 
         provided, it will be used 
         otherwise the discord default will be used instead.
         Multi-space names can be provided either in quotes or with underscores as spaces.
