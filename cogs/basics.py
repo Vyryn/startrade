@@ -208,14 +208,14 @@ class Basics(commands.Cog):
                 content = message.content[:self.bot.content_max] + '...'
             else:
                 content = message.content
-            embed = discord.Embed(title='',
-                                  description=f'**Message by {message.author.mention} deleted in '
-                                              f'{message.channel.mention}**\n' + content,
-                                  timestamp=datetime.now())
-            embed.set_author(icon_url=message.author.avatar_url, name=message.author)
-            embed.set_footer(text=f'Author: {message.author.id} | Message ID: {message.id}')
-            await self.bot.log_channel.send(embed=embed)
-            log(f'Message {message} deleted in {message.channel}', self.bot.info)
+        embed = discord.Embed(title='',
+                              description=f'**Message by {message.author.mention} deleted in '
+                                          f'{message.channel.mention}**\n' + content,
+                              timestamp=datetime.now())
+        embed.set_author(icon_url=message.author.avatar_url, name=message.author)
+        embed.set_footer(text=f'Author: {message.author.id} | Message ID: {message.id}')
+        await self.bot.log_channel.send(embed=embed)
+        log(f'Message {message} deleted in {message.channel}', self.bot.info)
 
     # Edited message handler
     @commands.Cog.listener()
