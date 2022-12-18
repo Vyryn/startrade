@@ -531,7 +531,6 @@ class Mechanics(commands.Cog):
         """
         res = hit_chance(
             distance,
-            effective_range,
             ship_length,
             weapon_accuracy,
             weapon_turn_rate,

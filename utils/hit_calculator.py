@@ -17,7 +17,6 @@ def f_dist_over_accuracy(dist: float, accuracy: float) -> float:
 
 def hit_chance(
     distance: float,
-    effective_range: float,
     ship_length: float,
     weapon_accuracy: float,
     weapon_turn_rate: float,
