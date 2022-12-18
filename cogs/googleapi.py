@@ -44,7 +44,7 @@ def load_from_sheet(bot) -> None:
         if "" in line[:7]:
             continue
         try:
-            int(line[9][0])
+            int(line[10][0])
         except TypeError:
             continue
         except IndexError:
