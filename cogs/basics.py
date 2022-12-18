@@ -81,6 +81,8 @@ class Basics(commands.Cog):
     # =============================Message handler=========================
     @commands.Cog.listener()
     async def on_message(self, message):
+        if not hasattr(self.bot, "server"):
+            return  # Not fully initialized yet
         if message.guild is not self.bot.server:
             return
         if message.author.bot:
