@@ -118,6 +118,7 @@ def damage_determine(
     fraction_done_to_shields = shields / potential_shield_dmg
     hull_damage = weap_damage_hull * (1 - fraction_done_to_shields)
     new_hull = hull - hull_damage
+    return max(new_hull, 0), 0
 
 
 def val_to_perc(value, max_) -> int:
