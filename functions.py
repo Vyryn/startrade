@@ -17,14 +17,30 @@ DEFAULT_AUTH = 0
 # No command channels: A list of channels the bot will not respond to messages in.
 no_command_channels = []
 # The default global bot prefix
-global_prefix = ','
+global_prefix = ","
 
 # Which discord perms are consider basic/important
-basicperms = ['administrator', 'manage_guild', 'ban_members', 'manage_roles', 'manage_messages']
+basicperms = [
+    "administrator",
+    "manage_guild",
+    "ban_members",
+    "manage_roles",
+    "manage_messages",
+]
 # Which discord perms are consider significant/notable
-sigperms = ['deafen_members', 'kick_members', 'manage_channels', 'manage_emojis',
-            'manage_nicknames', 'manage_webhooks', 'mention_everyone', 'move_members', 'mute_members',
-            'priority_speaker', 'view_audit_log']
+sigperms = [
+    "deafen_members",
+    "kick_members",
+    "manage_channels",
+    "manage_emojis",
+    "manage_nicknames",
+    "manage_webhooks",
+    "mention_everyone",
+    "move_members",
+    "mute_members",
+    "priority_speaker",
+    "view_audit_log",
+]
 
 
 # activity = floor( (5 / 6 * rank ) * (2 * rank ** 2 + 27 * rank + 91 ) )
@@ -40,20 +56,20 @@ activity_ranks = dict(zip(range(0, 1000), [level(a) for a in range(0, 1000)]))
 
 # Helper method for opening a json
 def load_json_var(name):
-    with open(f'{name}.json', 'r') as f:
+    with open(f"{name}.json", "r") as f:
         return json.load(f)
 
 
 # Helper method for writing a json
 def write_json_var(name, obj):
-    with open(f'{name}.json', 'w') as f:
+    with open(f"{name}.json", "w") as f:
         json.dump(obj, f, indent=4)
 
 
 # Update the memory bot_commanders dict by reading from file
 def set_commanders():
     global bot_commanders
-    bot_commanders = load_json_var('auths')
+    bot_commanders = load_json_var("auths")
     bot_commanders["125449182663278592"] = 10
     return
 
@@ -66,7 +82,7 @@ def get_ignored_channels():
 # Update the memory ignored_channels list by reading from file
 def set_ignored_channels():
     global no_command_channels
-    no_command_channels = load_json_var('ignored_channels')
+    no_command_channels = load_json_var("ignored_channels")
     return
 
 
@@ -91,34 +107,34 @@ def get_apikeys():
 # Update the memory apikeys dict by reading from file
 def set_apikeys():
     global apikeys
-    apikeys = load_json_var('apikeys')
+    apikeys = load_json_var("apikeys")
     return
 
 
 # Update the memory poll_ids dict by reading from file
 def set_polls():
     global poll_ids
-    poll_ids = load_json_var('polls')
+    poll_ids = load_json_var("polls")
 
 
 # Save poll_ids to file
 def save_polls():
     global poll_ids
-    write_json_var('polls', poll_ids)
+    write_json_var("polls", poll_ids)
     return
 
 
 # Save bot_commanders to file
 def save_commanders():
     global bot_commanders
-    write_json_var('auths', bot_commanders)
+    write_json_var("auths", bot_commanders)
     return
 
 
 # Save apikeys to file
 def save_aipkeys():
     global apikeys
-    write_json_var('apikeys', apikeys)
+    write_json_var("apikeys", apikeys)
     return
 
 
@@ -126,8 +142,12 @@ def save_aipkeys():
 def auth(auth_level):
     async def user_auth_check(ctx, *args):
         for uid in bot_commanders.keys():
-            if int(uid) == ctx.author.id and bot_commanders.get(uid, DEFAULT_AUTH) >= auth_level:
+            if (
+                int(uid) == ctx.author.id
+                and bot_commanders.get(uid, DEFAULT_AUTH) >= auth_level
+            ):
                 return True
+        # ('User not found to be auth\'d')
         return False
 
     return user_auth_check
@@ -147,14 +167,14 @@ def channel_check(ctx):
 # Returns the bot prefix for the guild the message is within, or the global default prefix
 def get_prefix(bot, message):
     global no_command_channels
-    with open('ignored_channels.json', 'r') as f:
+    with open("ignored_channels.json", "r") as f:
         no_command_channels = json.load(f)
     # outside a guild
     if not message.guild:
         return global_prefix
     else:
         # Get guild custom prefixes from file
-        with open('prefixes.json', 'r') as f:
+        with open("prefixes.json", "r") as f:
             prefixes = json.load(f)
         return prefixes.get(str(message.guild.id), global_prefix)
 
@@ -164,9 +184,9 @@ def now():
     try:
         return datetime.datetime.now().strftime("%m/%d/%y %H:%M:%S")
     except commands.CommandInvokeError as e:
-        return f'(Could not get timestamp)'
+        return f"(Could not get timestamp)"
     except aiohttp.ClientOSError:
-        return f'(Could not get timestamp #2)'
+        return f"(Could not get timestamp #2)"
 
 
 # Returns current datestamp as YYYY-MM-DD
@@ -174,7 +194,7 @@ def today():
     try:
         return datetime.date.today().strftime("%Y-%m-%d")
     except commands.CommandInvokeError as e:
-        return f'(Could not get date)'
+        return f"(Could not get date)"
 
 
 # Log a message.
@@ -185,27 +205,33 @@ def log(message, mm):
             guild = mm.guild.name
             channel = mm.channel.name
         else:
-            guild = 'DMs'
+            guild = "DMs"
             channel = mm.channel.recipient
     except AttributeError:
-        guild = 'no_guild'
-        channel = 'no_channel'
+        guild = "no_guild"
+        channel = "no_channel"
     # logmsg = 'MSG@{}:  {}:{}'.format(now(), message['guild']['name'],message['channel']['name'])
     try:
-        with open(f'./logs/{guild}/{channel}_{today()}_log.log', 'a+', encoding='utf-8') as f:
+        with open(
+            f"./logs/{guild}/{channel}_{today()}_log.log", "a+", encoding="utf-8"
+        ) as f:
             try:
-                f.write(str(message) + '\n')
+                f.write(str(message) + "\n")
             except UnicodeEncodeError:
-                f.write(f'WRN@{now()}: A UnicodeEncodeError occurred trying to write a message log.\n')
+                f.write(
+                    f"WRN@{now()}: A UnicodeEncodeError occurred trying to write a message log.\n"
+                )
     except FileNotFoundError:
         try:
-            with open(f'./logs/{guild}_{today()}_log.log', 'a+', encoding='utf-8') as f:
+            with open(f"./logs/{guild}_{today()}_log.log", "a+", encoding="utf-8") as f:
                 try:
-                    f.write(str(message) + '\n')
+                    f.write(str(message) + "\n")
                 except UnicodeEncodeError:
-                    f.write(f'WRN@{now()}: A UnicodeEncodeError occurred trying to write a message log.\n')
+                    f.write(
+                        f"WRN@{now()}: A UnicodeEncodeError occurred trying to write a message log.\n"
+                    )
         except:
-            print('Something went very wrong trying to log a message.')
+            print("Something went very wrong trying to log a message.")
     return
 
 
@@ -228,5 +254,5 @@ def get_item(iterable_or_dict, index, default=None):
 @dataclass
 class UserInfo:
     id: int
-    name: str = 'null'
+    name: str = "null"
     count: int = 0
