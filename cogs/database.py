@@ -1028,7 +1028,7 @@ class Database(commands.Cog):
             )
         except asyncio.TimeoutError:
             return await ctx.send("Delete cancelled.")
-        if response.content is not "y":
+        if response.content != "y":
             return await ctx.send("Delete cancelled.")
         log(f"Removing item {item} by request of {ctx.author}.", self.bot.cmd)
         await remove_item(item)
