@@ -221,7 +221,7 @@ class Economy(commands.Cog):
         Requires Commander role
         """
         log(f'{ctx.author} used credadd command with amount {amount} and member {member}.', self.bot.cmd)
-        commander = ctx.guild.get_role(456506763139612695)
+        commander = ctx.guild.get_role(977038517710495761)
         if commander not in ctx.author.roles:
             return await ctx.send("You are not authorized to use this command.")
         new_balance = await add_funds(member, amount)
@@ -240,7 +240,7 @@ class Economy(commands.Cog):
         Requires Commander role
         """
         log(f'{ctx.author} used credremove command with amount {amount} and member {member}.', self.bot.cmd)
-        commander = ctx.guild.get_role(456506763139612695)
+        commander = ctx.guild.get_role(977038517710495761)
         if commander not in ctx.author.roles:
             return await ctx.send("You are not authoried to use this command.")
         new_balance = await add_funds(member, -1 * amount)

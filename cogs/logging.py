@@ -36,6 +36,7 @@ def do_log_msg(message):
 
 # Log a message.
 def send_log(message: str, guild: str, channel: str):
+    guild = guild.replace(":", "")
     try:
         writeline(f'./logs/{guild}/{channel}_{today()}_log.log', message)
     except OSError:

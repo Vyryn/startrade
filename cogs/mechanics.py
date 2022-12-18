@@ -63,7 +63,8 @@ def not_in_invalid_channels():
     async def inner(ctx, *args):
         if ctx.author.id == 125449182663278592:
             return True
-        if ctx.channel.id not in [408689619597524993, 411777145002524673, 731726249868656720]:
+        if ctx.channel.id not in [977038528364027986, 977038528842186782, 977038528364027985, 977038529068683265, 
+977038528842186791]:
             return False
         return True
 
@@ -72,25 +73,25 @@ def not_in_invalid_channels():
 
 def damage_determine(hull: float, shields: float, weap_damage_shields: float, weap_damage_hull: float,
                      pierce: float) -> (float, float):
-    """Does damage with the provided weapon stats to the target hull and shields in absolute values *not* %s."""
-    potential_shield_dmg = weap_damage_shields * (1 - pierce)
-    hull_dmg = weap_damage_hull * pierce
-    log(f'DMG: {hull_dmg},  {potential_shield_dmg}', 'DBUG')
+  """Does damage with the provided weapon stats to the target hull and shields in absolute values *not* %s."""
+  potential_shield_dmg = weap_damage_shields * (1 - pierce)
+  hull_dmg = weap_damage_hull * pierce
+  log(f'DMG: {hull_dmg},  {potential_shield_dmg}', 'DBUG')
+  if(shields > 0 or pierce == 1):
     hull -= hull_dmg
-    if shields > potential_shield_dmg:
-        shields -= potential_shield_dmg
-    else:  # If shields overkill
-        undealt_shield_dmg = potential_shield_dmg - shields
-        shields = 0
+  if shields > potential_shield_dmg:
+    shields -= potential_shield_dmg
+  else:  # If shields overkill
+    undealt_shield_dmg = potential_shield_dmg - shields
+    shields = 0
         # Need to convert this portion of damage to the hull-doing rate instead of the shields-doing rate
-        portion_shield_overkill = undealt_shield_dmg / (potential_shield_dmg + 0.00001)
-        extra_hull_dmg = portion_shield_overkill * weap_damage_hull
-        hull -= extra_hull_dmg
-    new_hull = max(hull, 0)
-    new_shields = max(shields, 0)
-    log([hull, shields, new_hull, new_shields], 'DBUG')
-    return new_hull, new_shields
-
+    portion_shield_overkill = undealt_shield_dmg / (potential_shield_dmg + 0.00001)
+    extra_hull_dmg = portion_shield_overkill * weap_damage_hull
+    hull -= extra_hull_dmg
+  new_hull = max(hull, 0)
+  new_shields = max(shields, 0)
+  log([hull, shields, new_hull, new_shields], 'DBUG')
+  return new_hull, new_shields
 
 def calc_dmg(i_hull: float, i_shield: float, n_weaps: int, dist: float, bonus: int, ship_info: dict,
              weap_info: dict) -> (float, float):
@@ -127,8 +128,7 @@ def calc_dmg(i_hull: float, i_shield: float, n_weaps: int, dist: float, bonus: i
     return val_to_perc(hull, max_hull), val_to_perc(shield, max_shield), hit_perc, num_shots
 
 
-def calc_dmg_multi(ships: [(float, float, dict)], n_weaps: int, dist: float, bonus: int, weap_info: dict) \
-        -> (Counter[(float, float)], int, int):
+def calc_dmg_multi(ships, n_weaps, dist, bonus, weap_info):
     """Randomly scatters damage between a bunch of different ships of the same type. Returns a list of hull and
     shields and amounts."""
     weap_damage_shields = weap_info['shield_dmg']

@@ -95,6 +95,8 @@ class Basics(commands.Cog):
             self.bot.list_of_users += [message.author.id]
         # =========================ACTIVITY==========================
         await do_activity_update(self.bot, message.channel, message.author, message.content)
+        if message.content[0] == '$':
+            return
         # ========================N-Word=============================
         await do_n_word_update(message.author, message.content, self.word_list)
         # ===============No chit-chat in bs channel =================

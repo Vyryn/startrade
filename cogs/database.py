@@ -61,6 +61,7 @@ async def new_user(user: discord.User):
     invested = 0
     await connect()
     check = await db.fetchrow(f"SELECT * FROM users WHERE id = $1", uid)
+    print(f'Moving on: {check}')
     if check is not None:
         await disconnect()
         return f'User {name} Already Exists in database.'
@@ -541,7 +542,7 @@ class Database(commands.Cog):
         tables = str(
             await db.fetch("SELECT * FROM pg_catalog.pg_tables WHERE schemaname != 'pg_catalog' AND schemaname "
                            "!='information_schema'"))
-        # log(f'I have the following tables:\n{tables}', self.bot.debug)
+        log(f'I have the following tables:\n{tables}', self.bot.debug)
         if 'settings' not in tables:
             log('Settings table not found. Creating a new one...')
             await db.execute("CREATE TABLE settings( "
@@ -554,8 +555,8 @@ class Database(commands.Cog):
                              1, self.bot.PAYCHECK_INTERVAL, self.bot.PAYCHECK_AMOUNT_MAX, self.bot.STARTING_BALANCE,
                              self.bot.ACTIVITY_WEIGHT)
             log('Saved default settings to database.')
-            # await disconnect()
-            # await connect()
+            await disconnect()
+            await connect()
         else:
             settings = await db.fetchrow("SELECT * FROM settings WHERE id = 1")
             log(settings, self.bot.debug)
