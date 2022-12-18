@@ -10,58 +10,9 @@ from discord.ext import commands
 from cogs.database import update_location
 from functions import auth
 from bot import log, logready, quiet_fail
-from utils.hit_calculator import hit_chance
+from utils.hit_calculator import hit_chance, hit_determine, calc_dmg, calc_dmg_multi
 
 bonuses = {"vet": 10, "ace": 15, "hon": 20, "evad": 20, "jam": 20}
-
-
-def hit_determine(
-    distance: float,
-    effective_range: float,
-    ship_length: float,
-    bonus: float = 0,
-    missile=False,
-    prow=False,
-):
-    if distance < 1:
-        if effective_range >= distance:
-            return True, bonus, 100, 100, 50
-        else:
-            distance = 1
-    length_modifier = math.log(distance / (ship_length * 2)) - 1.4
-    # length_modifier = ship_length / distance * 100
-    if length_modifier < 1:
-        length_modifier = 1
-    elif length_modifier > 10:
-        length_modifier = 10
-    hit_chance = 1 / length_modifier
-    r = distance / effective_range
-    if distance > 2 * effective_range:
-        hit_chance = 0
-    elif distance > effective_range:
-        hit_chance = hit_chance / r**3
-    elif distance < effective_range and not missile:
-        hit_chance = hit_chance * r
-        if hit_chance < 0.2:
-            hit_chance = 0.2
-    if distance <= effective_range and prow:
-        return True, bonus, 100, 100, 50
-    if hit_chance < 0:
-        hit_chance = 0
-    hit_chance *= 100
-    result = max(0.0, hit_chance - (bonus / 7.5))  # + length_modifier
-    # round
-    hit_chance = int(hit_chance * 100) / 100
-    result = int(result * 1000) / 1000
-    roll = randrange(1, 100)
-    if roll < result:
-        hit = True
-    else:
-        hit = False
-    log([hit, bonus, length_modifier, hit_chance, result, roll], "DBUG")
-    # http://prntscr.com/tgo2e3
-    # http://prntscr.com/xcagno
-    return hit, bonus, hit_chance, result, roll
 
 
 def not_in_invalid_channels():
@@ -79,127 +30,6 @@ def not_in_invalid_channels():
         return True
 
     return inner
-
-
-def damage_determine(
-    hull: float,
-    shields: float,
-    weap_damage_shields: float,
-    weap_damage_hull: float,
-    pierce: float,
-) -> (float, float):
-    """Does damage with the provided weapon stats to the target hull and shields in absolute values *not* %s."""
-    potential_shield_dmg = weap_damage_shields * (1 - pierce)
-    hull_dmg = weap_damage_hull * pierce
-    log(f"DMG: {hull_dmg},  {potential_shield_dmg}", "DBUG")
-    if shields > 0 or pierce == 1:
-        hull -= hull_dmg
-    if shields > potential_shield_dmg:
-        shields -= potential_shield_dmg
-    else:  # If shields overkill
-        undealt_shield_dmg = potential_shield_dmg - shields
-        shields = 0
-        # Need to convert this portion of damage to the hull-doing rate instead of the shields-doing rate
-        portion_shield_overkill = undealt_shield_dmg / (potential_shield_dmg + 0.00001)
-        extra_hull_dmg = portion_shield_overkill * weap_damage_hull
-        hull -= extra_hull_dmg
-    new_hull = max(hull, 0)
-    new_shields = max(shields, 0)
-    log([hull, shields, new_hull, new_shields], "DBUG")
-    return new_hull, new_shields
-
-
-def calc_dmg(
-    i_hull: float,
-    i_shield: float,
-    n_weaps: int,
-    dist: float,
-    bonus: int,
-    ship_info: dict,
-    weap_info: dict,
-) -> (float, float):
-    """Determines whether a weapon hits and if so calculates damage. Returns the new hull and shields."""
-    # Look up values
-    weap_damage_shields = weap_info["shield_dmg"]
-    weap_damage_hull = weap_info["hull_dmg"]
-    weap_rate = int(weap_info["rate"])
-    pierce = weap_info["pierce"]
-    missile = "missile" in weap_info["note"].lower()
-    prow = "prow" in weap_info["note"].lower()
-
-    ship_length = ship_info["len"]
-    max_hull = ship_info["hull"]
-    max_shield = ship_info["shield"]
-    effective_range = weap_info["range"] * 1000
-    dist *= 1000
-    # Values need to be in absolutes for damage_determine
-    hull = perc_to_val(i_hull, max_hull)
-    shield = perc_to_val(i_shield, max_shield)
-    num_hits = 0
-    # For each weapon, determine if it hits. If so, subtract the damage dealt by it.
-    for i in range(n_weaps):
-        for j in range(weap_rate):
-            weap_hits = hit_determine(
-                dist, effective_range, ship_length, bonus, missile=missile, prow=prow
-            )[0]
-            log(
-                [dist, effective_range, ship_length, bonus, hull, shield, weap_hits],
-                "DBUG",
-            )
-            if weap_hits:
-                num_hits += 1
-                (hull, shield) = damage_determine(
-                    hull, shield, weap_damage_shields, weap_damage_hull, pierce
-                )
-
-    hit_perc = val_to_perc(num_hits, n_weaps * weap_rate)
-    num_shots = n_weaps * weap_rate
-
-    return (
-        val_to_perc(hull, max_hull),
-        val_to_perc(shield, max_shield),
-        hit_perc,
-        num_shots,
-    )
-
-
-def calc_dmg_multi(ships, n_weaps, dist, bonus, weap_info):
-    """Randomly scatters damage between a bunch of different ships of the same type. Returns a list of hull and
-    shields and amounts."""
-    weap_damage_shields = weap_info["shield_dmg"]
-    weap_damage_hull = weap_info["hull_dmg"]
-    weap_rate = int(weap_info["rate"])
-    pierce = weap_info["pierce"]
-    missile = "missile" in weap_info["note"].lower()
-    prow = "prow" in weap_info["note"].lower()
-    total_hits = 0
-    total_shots = 0
-
-    for i in range(n_weaps):
-        selected_ship = random.randrange(len(ships))
-        i_hull, i_shield, ship_info = ships[selected_ship]
-        new_hull, new_shields, hit_perc, num_shots = calc_dmg(
-            i_hull, i_shield, 1, dist, bonus, ship_info, weap_info
-        )
-        ships[selected_ship] = (new_hull, new_shields, ship_info)
-        total_hits += round(hit_perc / 100 * num_shots)
-        total_shots += num_shots
-    final_hit_perc = val_to_perc(total_hits, total_shots)
-    log(ships, "DBUG")
-    new_ships = Counter([(hull, shields) for hull, shields, _ in ships])
-    return new_ships, final_hit_perc, total_shots
-
-
-def val_to_perc(value, max_) -> int:
-    """Converts a value as a portion of max to a percentage"""
-    if max_ <= 0:
-        return 0
-    return round(value / max_ * 100)
-
-
-def perc_to_val(perc, max_):
-    """Converts a percentage of max to a value"""
-    return perc / 100.0 * max_
 
 
 class Mechanics(commands.Cog):
@@ -307,34 +137,46 @@ class Mechanics(commands.Cog):
 
     @commands.command()
     async def calchit(
-        self, ctx, distance: float, effective_range: float, ship_length: float
+        self,
+        ctx,
+        distance: float,
+        ship_length: float,
+        weapon_accuracy: float,
+        weapon_turn_rate: float,
+        ship_speed: float,
+        bonus: typing.Optional[float] = 0,
     ):
         """Determine how a weapon hit goes.
         This allows you to simulate a weapon firing. Specify distance to the target, effective range of the weapon,
         and size of the target and it will do the rest: ,calchit 10000 8000 500 will tell you how it goes when a
         weapon with effective range 8000m fires from 10000m at a 500m long target.
         """
-        hit, luck, hit_chance, result, roll = hit_determine(
-            distance, effective_range, ship_length
+        if bonus is None:
+            bonus = 0
+        hit: bool = hit_determine(
+            distance,
+            ship_length,
+            weapon_accuracy,
+            weapon_turn_rate,
+            ship_speed,
+            bonus=bonus,
         )
-        await ctx.send(
-            f"Luck roll: {luck}. Hit chance: {hit_chance} Result: {result} For hit, rolled a {roll}. Hit? {hit}"
-        )
-        log(
-            f"{ctx.author} used the calchit command with [distance: {distance}, effective_range: {effective_range},"
-            f" ship_length: {ship_length}]. Their result was [luck: {luck}, hit_chance: {hit_chance},"
-            f" result:{result}, roll: {roll}, hit: {hit}]."
-        )
+        to_send = "Hit."
+        if not hit:
+            to_send = "Not a hit."
+        await ctx.send(to_send)
 
     @commands.command()
     async def calchits(
         self,
         ctx,
         distance: float,
-        effective_range: float,
         ship_length: float,
+        weapon_accuracy: float,
+        weapon_turn_rate: float,
+        ship_speed: float,
         num_guns: int,
-        attacker_upgrade="norm",
+        attacker_upgrade: str = "norm",
         weap_type: str = "TC",
     ):
         """This allows you to simulate many weapons firing - rather more useful for combat. Specify distance to
@@ -367,17 +209,17 @@ class Mechanics(commands.Cog):
             bonus = 0
         hits = 0
         for i in range(0, num_guns):
-            hit, _, _, _, _ = hit_determine(
-                distance, effective_range, ship_length, bonus=bonus
+            hit = hit_determine(
+                distance,
+                ship_length,
+                weapon_accuracy,
+                weapon_turn_rate,
+                ship_speed,
+                bonus=bonus,
             )
             if hit:
                 hits += 1
         await ctx.send(f"{hits} out of {num_guns} weapons hit their target.")
-        log(
-            f"{ctx.author} used the calchits command with [distance: {distance}, effective_range: {effective_range},"
-            f" ship_length: {ship_length}, num_guns: {num_guns}, attacker_upgrade: {attacker_upgrade}]. Their result"
-            f" was: {hits} out of {num_guns} hit their target."
-        )
 
     @commands.command()
     @commands.check(not_in_invalid_channels())
@@ -424,7 +266,7 @@ class Mechanics(commands.Cog):
         # Number of ships specified as -x30 or similar
         repeats = int(params.split("-x")[1].split(" ")[0])
         ships = list()
-        for i in range(repeats):
+        for _ in range(repeats):
             ships.append((hull, shields, ship_info))
         new_ships, hit_perc, num_shots = calc_dmg_multi(
             ships, n_weaps, dist, evade_bonus, weap_info
@@ -449,7 +291,7 @@ class Mechanics(commands.Cog):
 
     @commands.command(
         description="Calculate time to get from starting distance to target distance",
-        aliases=["mglt"],
+        aliases=["mglt", "distance"],
     )
     @commands.check(not_in_invalid_channels())
     async def timespeed(
@@ -498,22 +340,21 @@ class Mechanics(commands.Cog):
         result = target + random_
         if result < 0:
             return await ctx.send(
-                f"Oops, you were too ambitious. This ship was lost in hyperspace attempting "
-                f"fancy maneuvers, with all hands lost. Remove it from your UC, and any characters "
-                f"aboard are dead."
+                "Oops, you were too ambitious. This ship was lost in hyperspace attempting "
+                "fancy maneuvers, with all hands lost. Remove it from your UC, and any characters "
+                "aboard are dead."
             )
         return await ctx.send(
             f"Targetting a range of {target}km, with an inaccuracy of +-{inaccuracy}km, "
             f"you come out at {target + random_}km."
         )
 
-    @commands.command(description=f"Returns the hit % for a given weapon circumstances")
+    @commands.command(description="Returns the hit % for a given weapon circumstances")
     @commands.check(not_in_invalid_channels())
     async def calcchance(
         self,
         ctx,
         distance: float,
-        effective_range: float,
         ship_length: float,
         weapon_accuracy: float,
         weapon_turn_rate: float,

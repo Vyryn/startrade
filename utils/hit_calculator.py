@@ -1,4 +1,6 @@
 import math
+import random
+from collections import Counter
 
 bonuses = {"vet": 10, "ace": 15, "hon": 20, "evad": 20, "jam": 20}
 
@@ -72,3 +74,134 @@ def hit_chance(
     res = min(res, 99)
     res = max(res, 0.1)
     return res
+
+
+def hit_determine(
+    distance: float,
+    ship_length: float,
+    weapon_accuracy: float,
+    weapon_turn_rate: float,
+    ship_speed: float,
+    bonus: float = 0,
+) -> bool:
+    required_roll: float = hit_chance(
+        distance,
+        ship_length,
+        weapon_accuracy,
+        weapon_turn_rate,
+        ship_speed,
+        bonus=bonus,
+    )
+    roll: float = random.random() * 100
+    if roll < required_roll:
+        return True
+    return False
+
+
+def damage_determine(
+    hull: float,
+    shields: float,
+    weap_damage_shields: float,
+    weap_damage_hull: float,
+    pierce: float,
+) -> (float, float):
+    """Does damage with the provided weapon stats to the target hull and shields in absolute values *not* %s."""
+    potential_shield_dmg = weap_damage_shields * (1 - pierce)
+    if shields >= potential_shield_dmg:
+        new_shields = shields - potential_shield_dmg
+        hull_dmg = weap_damage_hull * pierce
+        new_hull = hull - hull_dmg
+        return max(new_hull, 0), new_shields
+    elif shields == 0 or potential_shield_dmg <= 0:
+        new_hull = hull - weap_damage_hull
+        return max(new_hull, 0), 0
+    fraction_done_to_shields = shields / potential_shield_dmg
+    hull_damage = weap_damage_hull * (1 - fraction_done_to_shields)
+    new_hull = hull - hull_damage
+
+
+def val_to_perc(value, max_) -> int:
+    """Converts a value as a portion of max to a percentage"""
+    if max_ <= 0:
+        return 0
+    return round(value / max_ * 100)
+
+
+def perc_to_val(perc, max_):
+    """Converts a percentage of max to a value"""
+    return perc / 100.0 * max_
+
+
+def calc_dmg(
+    i_hull: float,
+    i_shield: float,
+    n_weaps: int,
+    dist: float,
+    bonus: int,
+    ship_info: dict,
+    weap_info: dict,
+) -> (float, float):
+    """Determines whether a weapon hits and if so calculates damage. Returns the new hull and shields."""
+    # Look up values
+    weap_damage_shields = weap_info["shield_dmg"]
+    weap_damage_hull = weap_info["hull_dmg"]
+    weap_rate = int(weap_info["rate"])
+    pierce = weap_info["pierce"]
+    weapon_accuracy = weap_info["accuracy"]
+    weapon_turn_rate = weap_info["turn_speed"]
+
+    ship_length = ship_info["len"]
+    ship_speed = ship_info["speed"]
+    max_hull = ship_info["hull"]
+    max_shield = ship_info["shield"]
+    # Values need to be in absolutes for damage_determine
+    hull = perc_to_val(i_hull, max_hull)
+    shield = perc_to_val(i_shield, max_shield)
+    num_hits = 0
+    # For each weapon, determine if it hits. If so, subtract the damage dealt by it.
+    for _i in range(n_weaps):
+        for _j in range(weap_rate):
+            weap_hits = hit_determine(
+                dist,
+                ship_length,
+                weapon_accuracy,
+                weapon_turn_rate,
+                ship_speed,
+                bonus=bonus,
+            )
+            if not weap_hits:
+                continue
+            num_hits += 1
+            (hull, shield) = damage_determine(
+                hull, shield, weap_damage_shields, weap_damage_hull, pierce
+            )
+
+    hit_perc = val_to_perc(num_hits, n_weaps * weap_rate)
+    num_shots = n_weaps * weap_rate
+
+    return (
+        val_to_perc(hull, max_hull),
+        val_to_perc(shield, max_shield),
+        hit_perc,
+        num_shots,
+    )
+
+
+def calc_dmg_multi(ships, n_weaps, dist, bonus, weap_info):
+    """Randomly scatters damage between a bunch of different ships of the same type.
+    Returns a list of hull and shields and amounts."""
+    total_hits = 0
+    total_shots = 0
+
+    for _ in range(n_weaps):
+        selected_ship = random.randrange(len(ships))
+        i_hull, i_shield, ship_info = ships[selected_ship]
+        new_hull, new_shields, hit_perc, num_shots = calc_dmg(
+            i_hull, i_shield, 1, dist, bonus, ship_info, weap_info
+        )
+        ships[selected_ship] = (new_hull, new_shields, ship_info)
+        total_hits += round(hit_perc / 100 * num_shots)
+        total_shots += num_shots
+    final_hit_perc = val_to_perc(total_hits, total_shots)
+    new_ships = Counter([(hull, shields) for hull, shields, _ in ships])
+    return new_ships, final_hit_perc, total_shots
