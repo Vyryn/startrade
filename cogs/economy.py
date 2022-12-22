@@ -408,7 +408,7 @@ class Economy(commands.Cog):
             seconds_remaining = int(
                 last_paycheck + self.bot.PAYCHECK_INTERVAL - time.time() + 1
             )
-            hammertime = f"t:{int(time.time() + seconds_remaining)}:R>"
+            hammertime = f"<t:{int(time.time() + seconds_remaining)}:R>"
             return await ctx.send(
                 f"You aren't ready for a paycheck yet. Try again {hammertime}."
             )
