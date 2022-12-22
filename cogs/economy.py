@@ -198,7 +198,7 @@ class Economy(commands.Cog):
             )
             log(f"{ctx.author} transferred {amount} to {user}.")
         if 21_999_990 <= amount:
-            ch = self.bot.server.get_channel(977038528842186782)
+            ch = self.bot.server.get_channel(1055577521795641398)
             role = self.bot.server.get_role(977038517756641331)
             await ch.send(
                 f"**Alert** {role.mention}, {ctx.author.mention} ({ctx.author.id}) sent a transfer of "

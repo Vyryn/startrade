@@ -210,7 +210,7 @@ async def distribute_payouts(bot=None):
     await connect()
     channel = None
     if bot is not None:
-        channel = bot.get_channel(731726249868656720)
+        channel = bot.get_channel(1055577521795641398)
         if channel is not None:
             await channel.send("Payouts distributed.")
     users = await db.fetch("SELECT * FROM users")
