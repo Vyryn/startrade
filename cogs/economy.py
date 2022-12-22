@@ -36,8 +36,7 @@ payout_frequency = 10000000
 async def remind_bump(
     channel: discord.TextChannel,
     increments=120 * 60,
-    message="The server can be bumped again."
-    " Who ut_frequency = 10000000ill claim the reward first?",
+    message="The server can be bumped again." " Who will claim the reward first?",
 ):
     message = f":alarm_clock: **Reminder**: \n" + message
     await asyncio.sleep(increments)
@@ -409,24 +408,10 @@ class Economy(commands.Cog):
             seconds_remaining = int(
                 last_paycheck + self.bot.PAYCHECK_INTERVAL - time.time() + 1
             )
-            minutes_remaining = seconds_remaining // 60
-            seconds_remaining = seconds_remaining % 60
-            hours_remaining = minutes_remaining // 60
-            minutes_remaining = minutes_remaining % 60
-            if minutes_remaining < 1:
-                return await ctx.send(
-                    f"You aren't ready for a paycheck yet. Try again in {seconds_remaining} seconds."
-                )
-            elif hours_remaining < 1:
-                return await ctx.send(
-                    f"You aren't ready for a paycheck yet. Try again in {minutes_remaining}:"
-                    f"{seconds_remaining} minutes."
-                )
-            else:
-                return await ctx.send(
-                    f"You aren't ready for a paycheck yet. Try again in {hours_remaining}:"
-                    f"{minutes_remaining}:{seconds_remaining} hours."
-                )
+            hammertime = f"t:{int(time.time() + seconds_remaining)}:R>"
+            return await ctx.send(
+                f"You aren't ready for a paycheck yet. Try again {hammertime}."
+            )
 
         if self.bot.PAYCHECK_AMOUNT_MAX == self.bot.PAYCHECK_AMOUNT_MIN:
             paycheck_amount = self.bot.PAYCHECK_AMOUNT_MAX
