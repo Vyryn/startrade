@@ -317,6 +317,7 @@ bot.activity_channels = [
     1045784301964374067,
     977038522051620921,
     977038522051620920,
+    1059169009007869972,
 ]
 
 # Array to contain ids of each database-registered user to check for inclusion without database query
