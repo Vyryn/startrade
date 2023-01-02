@@ -197,6 +197,11 @@ class Economy(commands.Cog):
                 f" {self.bot.credit_emoji}, their new balance is {to_balance} {self.bot.credit_emoji}."
             )
             log(f"{ctx.author} transferred {amount} to {user}.")
+        check_role = self.bot.server.get_role(
+            977038517655990277
+        )  # E-6, ingore sus transfers
+        if hasattr(ctx.author, "roles") and check_role in ctx.author.roles:
+            return
         if 21_999_990 <= amount:
             ch = self.bot.server.get_channel(1055577521795641398)
             role = self.bot.server.get_role(977038517756641331)
