@@ -223,7 +223,7 @@ class Mechanics(commands.Cog):
 
     @commands.command()
     @commands.check(not_in_invalid_channels())
-    async def calcdamage(
+    async def calcdamage_old(
         self,
         ctx,
         hull: typing.Optional[int] = 100,
@@ -281,7 +281,7 @@ class Mechanics(commands.Cog):
 
     @commands.command()
     @commands.check(not_in_invalid_channels())
-    async def calcdamage2(
+    async def calcdamage(
         self,
         ctx,
         hull: typing.Optional[int] = 100,
