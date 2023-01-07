@@ -251,9 +251,9 @@ class Mechanics(commands.Cog):
         # Apply evasion bonus for -ace, -evading etc
         evade_bonus = 0
         params = params.lower()
-        for upgrade in bonuses:
+        for upgrade, val in bonuses.items():
             if upgrade in params:
-                evade_bonus += bonuses[upgrade]
+                evade_bonus += val
         # Single ship, quick result
         if "-x" not in params:
             new_hull, new_shields, hit_perc, num_shots = calc_dmg(
@@ -270,6 +270,71 @@ class Mechanics(commands.Cog):
             ships.append((hull, shields, ship_info))
         new_ships, hit_perc, num_shots = calc_dmg_multi(
             ships, n_weaps, dist, evade_bonus, weap_info
+        )
+        to_send = ""
+        for (hull, shields), num in new_ships.most_common():
+            to_send += f"{num}x [{hull}] [{shields}] {name.title()}.\n"
+        to_send += f"({hit_perc}% of {num_shots} total shots hit)"
+        if len(to_send) > 1980:
+            to_send = to_send[:1940] + "\nWarning: too many lines, cut off some."
+        await ctx.send(to_send)
+
+    @commands.command()
+    @commands.check(not_in_invalid_channels())
+    async def calcdamage2(
+        self,
+        ctx,
+        hull: typing.Optional[int] = 100,
+        shields: typing.Optional[int] = 100,
+        name: str = "",
+        dist: int = 10,
+        n_weaps: int = 1,
+        weap: str = "TC",
+        *,
+        params="",
+    ):
+        """
+        Calculates damage.
+        $calcdamage  (target hull) (target shields) "[target ship name]" [distance in km] [number of weapons] [weapon
+        type] (-ace/-vet/-hon/-evading)
+        """
+        name = name.lower()
+        weap = weap.lower()
+        ship_info = self.bot.values_ships.get(name, [])
+        weap_info = self.bot.values_weapons.get(weap, [])
+        if not ship_info:
+            return await ctx.send("Incomplete command. I didn't find that ship.")
+        if not weap_info:
+            return await ctx.send("Incomplete command. I didn't find that weapon.")
+        # Apply evasion bonus for -ace, -evading etc
+        evade_bonus = 0
+        params = params.lower()
+        for upgrade, val in bonuses.items():
+            if upgrade in params:
+                evade_bonus += val
+        # Single ship, quick result
+        if "-x" not in params:
+            new_hull, new_shields, hit_perc, num_shots = calc_dmg(
+                hull,
+                shields,
+                n_weaps,
+                dist,
+                evade_bonus,
+                ship_info,
+                weap_info,
+                do_attenuation=True,
+            )
+            return await ctx.send(
+                f"[{new_hull}] [{new_shields}] {name.title()}.\n({hit_perc}% of {num_shots}"
+                f" total shots hit)"
+            )
+        # Number of ships specified as -x30 or similar
+        repeats = int(params.split("-x")[1].split(" ")[0])
+        ships = list()
+        for _ in range(repeats):
+            ships.append((hull, shields, ship_info))
+        new_ships, hit_perc, num_shots = calc_dmg_multi(
+            ships, n_weaps, dist, evade_bonus, weap_info, do_attenuation=True
         )
         to_send = ""
         for (hull, shields), num in new_ships.most_common():
@@ -379,89 +444,6 @@ class Mechanics(commands.Cog):
             bonus=bonus,
         )
         await ctx.send(f"{res:.2f}%")
-
-    @commands.command()
-    async def calchit(
-        self, ctx, distance: float, effective_range: float, ship_length: float
-    ):
-        """Determine how a weapon hit goes.
-        This allows you to simulate a weapon firing. Specify distance to the target, effective range of the weapon,
-        and size of the target and it will do the rest: ,calchit 10000 8000 500 will tell you how it goes when a
-        weapon with effective range 8000m fires from 10000m at a 500m long target.
-        """
-        hit, luck, hit_chance, result, roll = hit_determine(
-            distance, effective_range, ship_length
-        )
-        await ctx.send(
-            f"Luck roll: {luck}. Hit chance: {hit_chance} Result: {result} For hit, rolled a {roll}. Hit? {hit}"
-        )
-        log(
-            f"{ctx.author} used the calchit command with [distance: {distance}, effective_range: {effective_range},"
-            f" ship_length: {ship_length}]. Their result was [luck: {luck}, hit_chance: {hit_chance},"
-            f" result:{result}, roll: {roll}, hit: {hit}]."
-        )
-
-    @commands.command()
-    async def calchits(
-        self,
-        ctx,
-        distance: float,
-        effective_range: float,
-        ship_length: float,
-        num_guns: int,
-        attacker_upgrade="norm",
-        weap_type: str = "TC",
-    ):
-        """This allows you to simulate many weapons firing - rather more useful for combat. Specify distance to
-        the target, effective range of the weapon, size of the target, and number of weapons, and it will tell you
-        how many hits are successful. ,calchits 10000 8000 500 20 will tell you how many hits are successful when 20
-        of the weapon from example 2 above are fired.
-        You can also add a bonus for the attacker's luck chance if they are veteran, ace, etc, as follows:
-        vet: +10
-        ace: +15
-        hon: +20
-        vetace: +25
-        vethon: +30
-        These are used as: ,calchits 10000 8000 500 20 ace
-        """
-        if weap_type.casefold() == "lc":
-            num_guns *= 30
-        elif weap_type.casefold() == "pdc":
-            num_guns *= 100
-        if attacker_upgrade.casefold() == "vet":
-            bonus = 10
-        elif attacker_upgrade.casefold() == "ace":
-            bonus = 15
-        elif attacker_upgrade.casefold() == "hon":
-            bonus = 20
-        elif attacker_upgrade.casefold() == "vetace":
-            bonus = 25
-        elif attacker_upgrade.casefold() == "vethon":
-            bonus = 30
-        else:
-            bonus = 0
-        hits = 0
-        for i in range(0, num_guns):
-            hit, _, _, _, _ = hit_determine(
-                distance, effective_range, ship_length, bonus=bonus
-            )
-            if hit:
-                hits += 1
-        await ctx.send(f"{hits} out of {num_guns} weapons hit their target.")
-        log(
-            f"{ctx.author} used the calchits command with [distance: {distance}, effective_range: {effective_range},"
-            f" ship_length: {ship_length}, num_guns: {num_guns}, attacker_upgrade: {attacker_upgrade}]. Their result"
-            f" was: {hits} out of {num_guns} hit their target."
-        )
-
-    @commands.command(
-        description="Calculate points from shield (sbd), hull (ru), speed (mglt), length(m)"
-        " and armament (pts)"
-    )
-    async def points(self, ctx, shield, hull, mglt, length, armament):
-        """Calculate points from shield (sbd), hull (ru), speed (mglt), length(m) and armament (pts)"""
-        await ctx.send(((shield + hull) / 3) + (mglt * length / 100) + armament)
-        log(f"{ctx.author} used the points command.")
 
 
 def setup(bot):

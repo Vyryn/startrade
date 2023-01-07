@@ -98,14 +98,25 @@ def hit_determine(
     return False
 
 
+def attenuate(damage: float, attenuation: float, dist: float) -> float:
+    """Calculates the attenuated damage of a ship at a given distance."""
+    return damage * pow(2, -1 / attenuation * dist)
+
+
 def damage_determine(
     hull: float,
     shields: float,
     weap_damage_shields: float,
     weap_damage_hull: float,
     pierce: float,
+    attenuation: float,
+    dist: float,
+    do_attenuation: bool = False,
 ) -> (float, float):
     """Does damage with the provided weapon stats to the target hull and shields in absolute values *not* %s."""
+    if do_attenuation:
+        weap_damage_hull = attenuate(weap_damage_hull, attenuation, dist)
+        weap_damage_shields = attenuate(weap_damage_shields, attenuation, dist)
     potential_shield_dmg = weap_damage_shields * (1 - pierce)
     if shields >= potential_shield_dmg:
         new_shields = shields - potential_shield_dmg
@@ -141,6 +152,7 @@ def calc_dmg(
     bonus: int,
     ship_info: dict,
     weap_info: dict,
+    do_attenuation: bool = False,
 ) -> (float, float):
     """Determines whether a weapon hits and if so calculates damage. Returns the new hull and shields."""
     # Look up values
@@ -149,6 +161,7 @@ def calc_dmg(
     weap_rate = int(weap_info["rate"])
     pierce = weap_info["pierce"]
     weapon_accuracy = weap_info["accuracy"]
+    attenuation = weap_info["attenuation"]
     weapon_turn_rate = weap_info["turn_speed"]
 
     ship_length = ship_info["len"]
@@ -174,7 +187,14 @@ def calc_dmg(
                 continue
             num_hits += 1
             (hull, shield) = damage_determine(
-                hull, shield, weap_damage_shields, weap_damage_hull, pierce
+                hull,
+                shield,
+                weap_damage_shields,
+                weap_damage_hull,
+                pierce,
+                attenuation,
+                dist,
+                do_attenuation=do_attenuation,
             )
 
     hit_perc = val_to_perc(num_hits, n_weaps * weap_rate)
@@ -188,7 +208,9 @@ def calc_dmg(
     )
 
 
-def calc_dmg_multi(ships, n_weaps, dist, bonus, weap_info):
+def calc_dmg_multi(
+    ships, n_weaps, dist, bonus, weap_info, do_attenuation: bool = False
+):
     """Randomly scatters damage between a bunch of different ships of the same type.
     Returns a list of hull and shields and amounts."""
     total_hits = 0
@@ -198,7 +220,14 @@ def calc_dmg_multi(ships, n_weaps, dist, bonus, weap_info):
         selected_ship = random.randrange(len(ships))
         i_hull, i_shield, ship_info = ships[selected_ship]
         new_hull, new_shields, hit_perc, num_shots = calc_dmg(
-            i_hull, i_shield, 1, dist, bonus, ship_info, weap_info
+            i_hull,
+            i_shield,
+            1,
+            dist,
+            bonus,
+            ship_info,
+            weap_info,
+            do_attenuation=do_attenuation,
         )
         ships[selected_ship] = (new_hull, new_shields, ship_info)
         total_hits += round(hit_perc / 100 * num_shots)

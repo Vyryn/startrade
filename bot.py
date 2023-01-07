@@ -59,7 +59,7 @@ bot.credit_emoji = "<:Credits:977356871759462440>"
 # Constants to do with the goolge sheet pulls the bot makes.
 bot.SCOPES = ["https://www.googleapis.com/auth/spreadsheets.readonly"]
 bot.SHEET_ID = "1ZU6pTfdIGkQ9zzOH6lW0zkEQuF7-xFsyxgwSgGz4WcM"
-bot.RANGE_SHIPS = "AllShips!A1:T1500"
+bot.RANGE_SHIPS = "AllShips!A1:T1750"
 bot.RANGE_WEAPONS = "Weapons!A1:K250"
 # Don't log or do any other on_message action in the following guilds
 bot.ignored_guilds = [336642139381301249]  # (this one is d.py)
