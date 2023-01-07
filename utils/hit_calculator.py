@@ -100,7 +100,9 @@ def hit_determine(
 
 def attenuate(damage: float, attenuation: float, dist: float) -> float:
     """Calculates the attenuated damage of a ship at a given distance."""
-    return damage * pow(2, -1 / attenuation * dist)
+    if attenuation <= 0:
+        return damage
+    return damage * pow(2, (-1 / attenuation) * dist)
 
 
 def damage_determine(
