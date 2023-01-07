@@ -13,10 +13,7 @@ def clean(s: str) -> float:
     try:
         return float(s.replace(",", "").replace("$", ""))
     except ValueError as e:
-        if s == "":
-            return 0
-        log(f'ValueError with "{s}"', "WARN")
-        raise e
+        return 0
 
 
 def load_from_sheet(bot) -> None:
