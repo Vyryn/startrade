@@ -41,7 +41,16 @@ def load_from_sheet(bot) -> None:
     values_weapons = values_weapons[1:]
     values_ships = values_ships[1:]
     for line in values_weapons:
+        if len(line) < 8:
+            print(f"Skipping {line}")
+            continue
         if "" in line[:8]:
+            continue
+        try:
+            int(line[11][0])
+        except TypeError:
+            continue
+        except IndexError:
             continue
         acronym = line[1]
         bot.values_weapons[acronym.lower()] = {
