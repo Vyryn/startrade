@@ -70,9 +70,9 @@ def hit_chance(
         * f_speed_over_turn_rate(ship_speed, weapon_turn_rate)
         * f_dist_over_accuracy(distance, weapon_accuracy)
     )
-    res += bonus
+    res -= bonus
     res = min(res, 99)
-    res = max(res, 0.1)
+    res = max(res, 0.01)
     return res
 
 
