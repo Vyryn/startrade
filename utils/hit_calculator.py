@@ -23,6 +23,7 @@ def hit_chance(
     weapon_accuracy: float,
     weapon_turn_rate: float,
     ship_speed: float,
+    evading: bool = False,
     bonus: float = 0,
 ) -> float:
     """Calculates the % chance a shot under the given circumstances hits.
@@ -70,6 +71,8 @@ def hit_chance(
         * f_speed_over_turn_rate(ship_speed, weapon_turn_rate)
         * f_dist_over_accuracy(distance, weapon_accuracy)
     )
+    if evading:
+        bonus += ship_speed / 10
     res -= bonus
     res = min(res, 99)
     res = max(res, 0.01)
@@ -82,6 +85,7 @@ def hit_determine(
     weapon_accuracy: float,
     weapon_turn_rate: float,
     ship_speed: float,
+    evading: bool = False,
     bonus: float = 0,
 ) -> bool:
     required_roll: float = hit_chance(
@@ -90,6 +94,7 @@ def hit_determine(
         weapon_accuracy,
         weapon_turn_rate,
         ship_speed,
+        evading=evading,
         bonus=bonus,
     )
     roll: float = random.random() * 100
@@ -154,6 +159,7 @@ def calc_dmg(
     bonus: int,
     ship_info: dict,
     weap_info: dict,
+    evading: bool = False,
     do_attenuation: bool = False,
 ) -> (float, float):
     """Determines whether a weapon hits and if so calculates damage. Returns the new hull and shields."""
@@ -183,6 +189,7 @@ def calc_dmg(
                 weapon_accuracy,
                 weapon_turn_rate,
                 ship_speed,
+                evading=evading,
                 bonus=bonus,
             )
             if not weap_hits:
@@ -211,7 +218,13 @@ def calc_dmg(
 
 
 def calc_dmg_multi(
-    ships, n_weaps, dist, bonus, weap_info, do_attenuation: bool = False
+    ships,
+    n_weaps,
+    dist,
+    bonus,
+    weap_info,
+    evading: bool = False,
+    do_attenuation: bool = False,
 ):
     """Randomly scatters damage between a bunch of different ships of the same type.
     Returns a list of hull and shields and amounts."""
@@ -229,6 +242,7 @@ def calc_dmg_multi(
             bonus,
             ship_info,
             weap_info,
+            evading=evading,
             do_attenuation=do_attenuation,
         )
         ships[selected_ship] = (new_hull, new_shields, ship_info)

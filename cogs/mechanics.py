@@ -12,7 +12,7 @@ from functions import auth
 from bot import log, logready, quiet_fail
 from utils.hit_calculator import hit_chance, hit_determine, calc_dmg, calc_dmg_multi
 
-bonuses = {"vet": 10, "ace": 15, "hon": 20, "evad": 20, "jam": 20}
+bonuses = {"vet": 10, "ace": 15, "hon": 20, "jam": 20, "bh": 15}
 
 
 def not_in_invalid_channels():
@@ -136,92 +136,6 @@ class Mechanics(commands.Cog):
             )
 
     @commands.command()
-    async def calchit(
-        self,
-        ctx,
-        distance: float,
-        ship_length: float,
-        weapon_accuracy: float,
-        weapon_turn_rate: float,
-        ship_speed: float,
-        bonus: typing.Optional[float] = 0,
-    ):
-        """Determine how a weapon hit goes.
-        This allows you to simulate a weapon firing. Specify distance to the target, effective range of the weapon,
-        and size of the target and it will do the rest: ,calchit 10000 8000 500 will tell you how it goes when a
-        weapon with effective range 8000m fires from 10000m at a 500m long target.
-        """
-        if bonus is None:
-            bonus = 0
-        hit: bool = hit_determine(
-            distance,
-            ship_length,
-            weapon_accuracy,
-            weapon_turn_rate,
-            ship_speed,
-            bonus=bonus,
-        )
-        to_send = "Hit."
-        if not hit:
-            to_send = "Not a hit."
-        await ctx.send(to_send)
-
-    @commands.command()
-    async def calchits(
-        self,
-        ctx,
-        distance: float,
-        ship_length: float,
-        weapon_accuracy: float,
-        weapon_turn_rate: float,
-        ship_speed: float,
-        num_guns: int,
-        attacker_upgrade: str = "norm",
-        weap_type: str = "TC",
-    ):
-        """This allows you to simulate many weapons firing - rather more useful for combat. Specify distance to
-        the target, effective range of the weapon, size of the target, and number of weapons, and it will tell you
-        how many hits are successful. ,calchits 10000 8000 500 20 will tell you how many hits are successful when 20
-        of the weapon from example 2 above are fired.
-        You can also add a bonus for the attacker's luck chance if they are veteran, ace, etc, as follows:
-        vet: +10
-        ace: +15
-        hon: +20
-        vetace: +25
-        vethon: +30
-        These are used as: ,calchits 10000 8000 500 20 ace
-        """
-        if weap_type.casefold() == "lc":
-            num_guns *= 30
-        elif weap_type.casefold() == "pdc":
-            num_guns *= 100
-        if attacker_upgrade.casefold() == "vet":
-            bonus = 10
-        elif attacker_upgrade.casefold() == "ace":
-            bonus = 15
-        elif attacker_upgrade.casefold() == "hon":
-            bonus = 20
-        elif attacker_upgrade.casefold() == "vetace":
-            bonus = 25
-        elif attacker_upgrade.casefold() == "vethon":
-            bonus = 30
-        else:
-            bonus = 0
-        hits = 0
-        for i in range(0, num_guns):
-            hit = hit_determine(
-                distance,
-                ship_length,
-                weapon_accuracy,
-                weapon_turn_rate,
-                ship_speed,
-                bonus=bonus,
-            )
-            if hit:
-                hits += 1
-        await ctx.send(f"{hits} out of {num_guns} weapons hit their target.")
-
-    @commands.command()
     @commands.check(not_in_invalid_channels())
     async def calcdamage_old(
         self,
@@ -307,11 +221,14 @@ class Mechanics(commands.Cog):
         if not weap_info:
             return await ctx.send("Incomplete command. I didn't find that weapon.")
         # Apply evasion bonus for -ace, -evading etc
-        evade_bonus = 0
+        _bonus = 0
         params = params.lower()
         for upgrade, val in bonuses.items():
             if upgrade in params:
-                evade_bonus += val
+                _bonus += val
+        evading: bool = False
+        if "evad" in params:
+            evading = True
         # Single ship, quick result
         if "-x" not in params:
             new_hull, new_shields, hit_perc, num_shots = calc_dmg(
@@ -319,9 +236,10 @@ class Mechanics(commands.Cog):
                 shields,
                 n_weaps,
                 dist,
-                evade_bonus,
+                _bonus,
                 ship_info,
                 weap_info,
+                evading=evading,
                 do_attenuation=True,
             )
             return await ctx.send(
@@ -334,7 +252,13 @@ class Mechanics(commands.Cog):
         for _ in range(repeats):
             ships.append((hull, shields, ship_info))
         new_ships, hit_perc, num_shots = calc_dmg_multi(
-            ships, n_weaps, dist, evade_bonus, weap_info, do_attenuation=True
+            ships,
+            n_weaps,
+            dist,
+            _bonus,
+            weap_info,
+            evading=evading,
+            do_attenuation=True,
         )
         to_send = ""
         for (hull, shields), num in new_ships.most_common():
