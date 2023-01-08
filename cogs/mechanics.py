@@ -12,7 +12,7 @@ from functions import auth
 from bot import log, logready, quiet_fail
 from utils.hit_calculator import hit_chance, hit_determine, calc_dmg, calc_dmg_multi
 
-bonuses = {"vet": 10, "ace": 15, "hon": 20, "jam": 20, "bh": 15}
+bonuses = {"vet": 10, "ace": 15, "hon": 20, "jam": 20, "bh": 20}
 
 
 def not_in_invalid_channels():
