@@ -369,6 +369,23 @@ class Mechanics(commands.Cog):
         )
         await ctx.send(f"{res:.2f}%")
 
+    @commands.command(
+        description=f"Calculates how many missiles hit when defended by a given number of PDC"
+    )
+    @commands.check(not_in_invalid_channels())
+    async def missiles(self, ctx, num_missiles: int, num_pdc: int, num_lc: int):
+        """Calculate how many missiles **hit** when 20 missiles are launched at something defended by 10 PDC and 15 LC:
+        $missiles 20 10 15
+        """
+        affected = min(num_missiles, num_pdc + num_lc)
+        if num_pdc >= affected:
+            blocked = affected * 0.9
+        else:
+            blocked = num_pdc * 0.9 + (affected - num_pdc) * 0.8
+        await ctx.send(
+            f"{num_missiles - blocked} missiles hit the target ({blocked} missiles were blocked)"
+        )
+
 
 def setup(bot):
     bot.add_cog(Mechanics(bot))
