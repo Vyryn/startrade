@@ -2,7 +2,7 @@ import math
 import random
 from collections import Counter
 
-bonuses = {"vet": 10, "ace": 15, "hon": 20, "evad": 20, "jam": 20}
+bonuses = {"vet": 10, "ace": 15, "hon": 20, "jam": 20}
 
 
 def f_length(length: float) -> float:
