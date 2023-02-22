@@ -278,19 +278,20 @@ async def get_top(cat: str, page: int, user: discord.Member):
     offset = items_per_top_page * (1 - page)
     offset *= -1
     ind = 3
-    if cat not in ["balance", "invested", "activity", "n"]:
+    mult = 1
+    if cat not in ["balance", "invested", "activity", "earned"]:
         raise NameError(f"Category {cat} not found.")
     else:
         if cat == "invested":
             ind = 5
         elif cat == "activity":
             ind = 2
-        elif cat == "n":
-            cat = "n_word"
-            ind = 10
-    num_users = await db.fetchval(
-        f"SELECT COUNT(id) FROM users WHERE {cat} IS NOT NULL"
-    )
+        elif cat == "earned":
+            ind = 2
+            mult = actweight
+        num_users = await db.fetchval(
+            f"SELECT COUNT(id) FROM users WHERE {cat} IS NOT NULL"
+        )
     if num_users < (page - 1) * items_per_top_page:
         offset = 0
     result = await db.fetch(
@@ -302,7 +303,7 @@ async def get_top(cat: str, page: int, user: discord.Member):
     for line in result:
         if line[ind] is None:
             line[ind] = 0
-        tops.append((line[1], line[ind]))
+        tops.append((line[1], line[ind] * mult))
     subjects_bal = await db.fetchval(f"SELECT {cat} FROM users WHERE id = $1", user.id)
     rank = (
         await db.fetchval(
