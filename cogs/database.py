@@ -289,6 +289,7 @@ async def get_top(cat: str, page: int, user: discord.Member):
         elif cat == "earned":
             ind = 2
             mult = actweight
+            cat = "balance"
         num_users = await db.fetchval(
             f"SELECT COUNT(id) FROM users WHERE {cat} IS NOT NULL"
         )
