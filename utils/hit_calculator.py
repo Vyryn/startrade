@@ -120,7 +120,10 @@ def attenuate(damage: float, attenuation: str, dist: float) -> float:
             return damage
         return 0.1 * damage
 
-    att = float(attenuation)
+    try:
+        att = float(attenuation.replace(",", "").replace("$", ""))
+    except ValueError:
+        att = 0
     if att <= 0:
         return damage
     return damage * pow(2, (-1 / att) * dist)
