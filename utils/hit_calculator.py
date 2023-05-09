@@ -1,8 +1,18 @@
 import math
 import random
+import re
 from collections import Counter
 
 bonuses = {"vet": 10, "ace": 15, "hon": 20, "jam": 20, "tractor": -10}
+
+
+def extractint(s: str) -> float:
+    pattern = r"\d+(\.\d+)?"
+    match = re.search(pattern, s)
+    if match:
+        return float(match.group())
+    else:
+        return 0
 
 
 def f_length(length: float) -> float:
@@ -103,11 +113,19 @@ def hit_determine(
     return False
 
 
-def attenuate(damage: float, attenuation: float, dist: float) -> float:
+def attenuate(damage: float, attenuation: str, dist: float) -> float:
     """Calculates the attenuated damage of a ship at a given distance."""
-    if attenuation <= 0:
+    if "m" in attenuation:
+        # missile
+        at = extractint(attenuation)
+        if dist > at:
+            return damage
+        return 0.1 * damage
+    else:
+        at = float(attenuation)
+    if at <= 0:
         return damage
-    return damage * pow(2, (-1 / attenuation) * dist)
+    return damage * pow(2, (-1 / at) * dist)
 
 
 def damage_determine(
@@ -116,7 +134,7 @@ def damage_determine(
     weap_damage_shields: float,
     weap_damage_hull: float,
     pierce: float,
-    attenuation: float,
+    attenuation: str,
     dist: float,
     do_attenuation: bool = False,
 ) -> (float, float):
