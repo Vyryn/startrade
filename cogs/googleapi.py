@@ -58,7 +58,7 @@ def load_from_sheet(bot) -> None:
             "rate": clean(line[6]),
             "turn_speed": clean(line[7]),
             "accuracy": clean(line[8]),
-            "attenuation": clean(line[9]),
+            "attenuation": line[9],
             "note": line[10],
             "name": line[0],
             "range": 100,
