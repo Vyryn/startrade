@@ -3,8 +3,6 @@ import random
 import re
 from collections import Counter
 
-bonuses = {"vet": 10, "ace": 15, "hon": 20, "jam": 20, "tractor": -10}
-
 
 def extractint(s: str) -> float:
     pattern = r"\d+(\.\d+)?"
