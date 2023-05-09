@@ -115,15 +115,15 @@ def attenuate(damage: float, attenuation: str, dist: float) -> float:
     """Calculates the attenuated damage of a ship at a given distance."""
     if "m" in attenuation:
         # missile
-        at = extractint(attenuation)
-        if dist > at:
+        att = float(attenuation.replace("m", ""))
+        if dist > att:
             return damage
         return 0.1 * damage
-    else:
-        at = float(attenuation)
-    if at <= 0:
+
+    att = float(attenuation)
+    if att <= 0:
         return damage
-    return damage * pow(2, (-1 / at) * dist)
+    return damage * pow(2, (-1 / att) * dist)
 
 
 def damage_determine(
