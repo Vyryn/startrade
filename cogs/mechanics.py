@@ -225,6 +225,8 @@ class Mechanics(commands.Cog):
         params = params.lower()
         for upgrade, val in bonuses.items():
             if upgrade in params:
+                if upgrade == "ace" and val > dist - 1:
+                    val = dist - 1
                 _bonus += val
         evading: bool = False
         if "evad" in params:
