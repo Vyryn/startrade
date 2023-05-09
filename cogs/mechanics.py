@@ -269,6 +269,7 @@ class Mechanics(commands.Cog):
         if len(to_send) > 1980:
             to_send = to_send[:1940] + "\nWarning: too many lines, cut off some."
         await ctx.send(to_send)
+        print("OVER HERE!!!! exiting calcdamage")
 
     @commands.command(
         description="Calculate points from shield (sbd), hull (ru), speed (mglt), length(m)"

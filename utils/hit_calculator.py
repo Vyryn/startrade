@@ -1,16 +1,6 @@
 import math
 import random
-import re
 from collections import Counter
-
-
-def extractint(s: str) -> float:
-    pattern = r"\d+(\.\d+)?"
-    match = re.search(pattern, s)
-    if match:
-        return float(match.group())
-    else:
-        return 0
 
 
 def f_length(length: float) -> float:
@@ -116,6 +106,9 @@ def attenuate(damage: float, attenuation: str, dist: float) -> float:
     if "m" in attenuation:
         # missile
         att = float(attenuation.replace("m", ""))
+        print(
+            f"OVER HERE!!!! attenuation is {att}, attenuation was {attenuation} (missile detected)"
+        )
         if dist > att:
             return damage
         return 0.1 * damage
@@ -124,6 +117,7 @@ def attenuate(damage: float, attenuation: str, dist: float) -> float:
         att = float(attenuation.replace(",", "").replace("$", ""))
     except ValueError:
         att = 0
+    print(f"OVER HERE!!!! attenuation is {att}, attenuation was {attenuation}")
     if att <= 0:
         return damage
     return damage * pow(2, (-1 / att) * dist)
