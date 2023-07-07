@@ -288,9 +288,7 @@ class Economy(commands.Cog):
         try:
             lines, num_pages, rank = await get_top("balance", page, ctx.author)
         except NameError:
-            return await ctx.send(
-                "Invalid category. Try balance, invested or activity."
-            )
+            return await ctx.send("Invalid category. Try balance or activity.")
         message = f"**Top {'balance'.title()} Page {page}/{num_pages}**\n\n"
         count = (page - 1) * self.bot.ITEMS_PER_TOP_PAGE + 1
         for line in lines:
@@ -309,7 +307,7 @@ class Economy(commands.Cog):
         try:
             lines, num_pages, rank = await get_top(look_type, page, ctx.author)
         except NameError:
-            return await ctx.send("Invalid category. Try balance, n or activity.")
+            return await ctx.send("Invalid category. Try balance or activity.")
         if page > num_pages:
             page %= num_pages
         message = f"**Top {look_type.title()} Page {page}/{num_pages}**\n\n"
