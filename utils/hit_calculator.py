@@ -106,9 +106,9 @@ def attenuate(damage: float, attenuation: str, dist: float) -> float:
     if "m" in attenuation:
         # missile
         att = float(attenuation.replace("m", ""))
-        print(
-            f"OVER HERE!!!! attenuation is {att}, attenuation was {attenuation} (missile detected)"
-        )
+        # print(
+        #    f"OVER HERE!!!! attenuation is {att}, attenuation was {attenuation} (missile detected)"
+        # )
         if dist <= att:
             return damage
         return 0.1 * damage

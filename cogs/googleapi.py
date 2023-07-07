@@ -92,7 +92,7 @@ def load_from_sheet(bot) -> None:
     log(
         f"Loaded {len(bot.values_weapons.keys())} weapons: {list(bot.values_weapons.keys())}"
     )
-    print("OVER HERE!!!! exiting load_from_sheet")
+    # print("OVER HERE!!!! exiting load_from_sheet")
 
 
 class GoogleAPI(commands.Cog):
@@ -118,7 +118,7 @@ class GoogleAPI(commands.Cog):
                 pickle.dump(credentials, token)
         bot.api_service = build("sheets", "v4", credentials=credentials)
         load_from_sheet(self.bot)
-        print("OVER HERE!!!! exiting api init")
+        # print("OVER HERE!!!! exiting api init")
 
     # Events
     @commands.Cog.listener()
