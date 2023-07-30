@@ -56,9 +56,8 @@ class Management(commands.Cog):
 
     @prefix.command()
     @commands.guild_only()
+    @commands.has_permissions(administrator=True)
     async def set(self, ctx, prefix=None):
-        if ctx.author.id not in self.bot.settings_modifiers:
-            return await ctx.send(f"You do not have permission to run this command.")
         if prefix is None:
             prefix = self.bot.global_prefix
         with open('prefixes.json', 'r') as f:

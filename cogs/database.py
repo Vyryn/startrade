@@ -1062,6 +1062,7 @@ class Database(commands.Cog):
             )
 
     @commands.command(description="Adjust bot settings")
+    @commands.has_permissions(administrator=True)
     async def settings(self, ctx, setting: str, value: str):
         """Adjust bot settings.
         Setting must be one of: 'cooldown', 'amount', 'starting', 'actweight'
@@ -1070,8 +1071,6 @@ class Database(commands.Cog):
         Starting: the amount of credits a brand new player starts with
         Actweight: The number of credits to pay out per internal bot "activity point"
         """
-        if ctx.author.id not in self.bot.settings_modifiers:
-            return await ctx.send(f"You do not have permission to run this command.")
         config_opts = ["cooldown", "amount", "starting", "actweight"]
         if setting not in config_opts:
             return await ctx.send(
@@ -1097,11 +1096,10 @@ class Database(commands.Cog):
         log(f"Updated {setting} to {value} for {ctx.author}.", self.bot.cmd)
 
     @commands.command(description="Reset the economy entirely.")
+    @commands.has_permissions(administrator=True)
     async def wipe_the_whole_fucking_economy_like_seriously(self, ctx):
         """Set everyone's balance to the configured starting balance and activity to 0. Several safeguards are in
         place."""
-        if ctx.author.id not in self.bot.settings_modifiers:
-            return await ctx.send(f"You do not have permission to run this command.")
         confirmation_phrase = "I understand I am wiping the whole economy"
         await ctx.send(
             f"This will reset **everyone's** balance to {self.bot.STARTING_BALANCE} and activity to 0. "

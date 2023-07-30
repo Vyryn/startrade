@@ -31,13 +31,6 @@ owner_id = 486271502107279391
 deltime = 10
 # The id of the primary guild the bot is operating in
 bot.serverid = 977038517588885545  # 718893913976340561 for startrade
-# Who can modify settings
-bot.settings_modifiers = [
-    125449182663278592,
-    171810360473550849,
-    185496547436396545,
-    486271502107279391,
-]
 bot.BUMP_PAYMENT = 0  # Payment for disboard bumps
 bot.PAYCHECK_AMOUNT_MIN = 4_000_000  # Minimum paycheck payout
 bot.PAYCHECK_AMOUNT_MAX = 4_000_000  # Maximum paycheck payout
