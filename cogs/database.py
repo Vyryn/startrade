@@ -28,7 +28,6 @@ actweight = 10000
 AUTH_LOCKDOWN = 1
 COMMODITIES = {}
 
-
 async def connect():
     global db
     try:
@@ -83,8 +82,8 @@ async def new_user(user: discord.User):
     return result
 
 
-async def add_invest(member: discord.Member, amount: float):
-    uid = member.id
+async def add_invest(user: discord.User, amount: float):
+    uid = user.id
     await connect()
     check = await db.fetchrow(f"SELECT * FROM users WHERE id = $1", uid)
     invested = check[5]
@@ -131,8 +130,8 @@ async def transfer_funds(from_user: discord.User, to_user: discord.User, amount:
     return from_balance, to_balance
 
 
-async def update_activity(member: discord.Member, amount: int):
-    uid = member.id
+async def update_activity(user: discord.User, amount: int):
+    uid = user.id
     await connect()
     activity = None
     try:
@@ -149,9 +148,9 @@ async def update_activity(member: discord.Member, amount: int):
     level_before = level(activity - amount)
     level_after = level(activity)
     if level_after > level_before:
-        # await channel.send(f"Congratulations {member} on reaching activity level {level_after}!")
+        # await channel.send(f"Congratulations {user} on reaching activity level {level_after}!")
         log(
-            f"{member} ranked up their activity from level {level_before} to {level_after}",
+            f"{user} ranked up their activity from level {level_before} to {level_after}",
             "RKUP",
         )
     try:
@@ -161,7 +160,7 @@ async def update_activity(member: discord.Member, amount: int):
     except TypeError:
         recent_activity = amount
     log(
-        f"Adding {amount} activity score to {member}. New activity score: {activity}. "
+        f"Adding {amount} activity score to {user}. New activity score: {activity}. "
         f"New recent activity score: {recent_activity}",
         "DBUG",
     )
@@ -172,20 +171,20 @@ async def update_activity(member: discord.Member, amount: int):
     await disconnect()
 
 
-async def add_funds(member: discord.Member, amount: int):
-    uid = member.id
+async def add_funds(user: discord.User, amount: int):
+    uid = user.id
     await connect()
     result = await db.fetchrow(f"SELECT balance FROM users WHERE id = $1", uid)
     balance = result[0]
-    log(f"Adding {amount} credits to {member}.")
+    log(f"Adding {amount} credits to {user}.")
     balance += amount
     await db.execute(f"UPDATE users SET balance = $1 where id = $2", balance, uid)
     await disconnect()
     return balance
 
 
-async def check_bal(member: discord.Member):
-    uid = member.id
+async def check_bal(user: discord.User):
+    uid = user.id
     await connect()
     check = await db.fetchrow(f"SELECT * FROM users WHERE id = $1", uid)
     log(type(check), "DBUG")
@@ -273,7 +272,7 @@ async def set_last_paycheck_now(user: discord.User):
     return time_now
 
 
-async def get_top(cat: str, page: int, user: discord.Member):
+async def get_top(cat: str, page: int, user: discord.User):
     await connect()
     offset = items_per_top_page * (1 - page)
     offset *= -1
@@ -484,7 +483,7 @@ def flatten(flatten_list):  # Just a one layer flatten
 
 
 async def add_possession(
-    user: discord.Member, item: str, cost: float = 0, amount: float = 1
+    user: discord.User, item: str, cost: float = 0, amount: float = 1
 ):
     uid = user.id
     await connect()
@@ -534,7 +533,7 @@ async def add_possession(
 
 
 async def add_ships_commodities(
-    user: discord.Member, commodity: str, amount: float = 1
+    user: discord.User, commodity: str, amount: float = 1
 ):
     # TODO: NOT IMPLEMENTED YET, MAY NOT WORK AS EXPECTED
     uid = user.id
@@ -565,7 +564,7 @@ async def add_ships_commodities(
     await disconnect()
 
 
-async def sell_possession(ctx, user: discord.Member, item: str, amount: int = 1):
+async def sell_possession(ctx, user: discord.User, item: str, amount: int = 1):
     uid = user.id
     await connect()
     full_item = await db.fetchrow(f"SELECT * FROM items WHERE name = $1", item)
@@ -625,7 +624,7 @@ async def sell_possession(ctx, user: discord.Member, item: str, amount: int = 1)
 
 
 async def transact_possession(
-    user: discord.Member,
+    user: discord.User,
     item: str,
     cost: float = 0,
     amount: int = 1,
@@ -670,38 +669,38 @@ async def transact_possession(
     pass
 
 
-async def view_items(member: discord.Member):
+async def view_items(user: discord.User):
     await connect()
     items = await db.fetch(
-        f"SELECT amount, name FROM possessions WHERE owner = $1", member.id
+        f"SELECT amount, name FROM possessions WHERE owner = $1", user.id
     )
     await disconnect()
     log(items, "DBUG")
     return set(items)
 
 
-async def update_location(member: discord.Member, channel: discord.TextChannel):
+async def update_location(user: discord.User, channel: discord.TextChannel):
     await connect()
-    # old_location = await db.fetchval(f"SELECT location FROM users WHERE id = $1", member.id)
+    # old_location = await db.fetchval(f"SELECT location FROM users WHERE id = $1", user.id)
     new_location = channel.id
     recent_activity = await db.fetchval(
-        f"SELECT recent_activity FROM users WHERE id = $1", member.id
+        f"SELECT recent_activity FROM users WHERE id = $1", user.id
     )
     if recent_activity < move_activity_threshold:
         raise ValueError
-    await pay_recent_activity(member)
+    await pay_recent_activity(user)
     await db.execute(
-        f"UPDATE users SET location = $1 where id = $2", new_location, member.id
+        f"UPDATE users SET location = $1 where id = $2", new_location, user.id
     )
 
 
-async def pay_recent_activity(member):
+async def pay_recent_activity(user):
     await connect()
     recent_activity = await db.fetchval(
-        f"SELECT recent_activity FROM users WHERE id = $1", member.id
+        f"SELECT recent_activity FROM users WHERE id = $1", user.id
     )
-    await add_funds(member, recent_activity * ACTIVITY_FACTOR)
-    await db.execute(f"UPDATE users SET recent_activity = 0 where id = $1", member.id)
+    await add_funds(user, recent_activity * ACTIVITY_FACTOR)
+    await db.execute(f"UPDATE users SET recent_activity = 0 where id = $1", user.id)
 
 
 async def send_formatted_browse(ctx, result, i_type):
