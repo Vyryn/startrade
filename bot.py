@@ -724,6 +724,3 @@ async def restart(ctx):
 # for filename in os.listdir('./cogs'):
 #    if filename.endswith('.py'):
 #        bot.load_extension(f'cogs.{filename[:-3]}')  # load up each extension
-
-# run bot
-bot.run(TOKEN)
