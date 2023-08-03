@@ -26,7 +26,14 @@ class Bot(commands.Bot):
     """Initializes and manages a discord bot."""
     def __init__(self, *args, **kwargs):
         self.owner_id = None
-        super().__init__(*args, **kwargs)
+        super().__init__(
+            command_prefix=get_prefix,  # type: ignore[arg-type]
+            case_insensitive=True,
+            intents=intents,
+            allowed_mentions=discord.AllowedMentions(everyone=False, roles=False),
+            activity=discord.Game("Starting up..."),
+            status=discord.Status.do_not_disturb,
+        )
         
     async def setup_hook(self):
         #asyncio.get_running_loop().set_exception_handler(self.handler)
@@ -45,13 +52,7 @@ class Bot(commands.Bot):
         await self.load_extension("cogs.economy")
 
 
-bot = Bot(command_prefix=get_prefix,
-          case_insensitive=True,
-          intents=intents,
-          allowed_mentions=discord.AllowedMentions(everyone=False, roles=False),
-          activity=discord.Game("Starting up..."),
-          status=discord.Status.do_not_disturb,
-          )
+bot = Bot()
 # ========================== Easily Configurable Values ========================
 # Default number of seconds to wait before deleting many bot responses and player commands
 deltime = 10
