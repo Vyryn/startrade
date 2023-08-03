@@ -64,10 +64,6 @@ class Economy(commands.Cog):
         self.send_payouts.cancel()
         log("Ended the investment payout task.")
 
-    def cog_load(self):
-        self.send_payouts.start()
-        log("Weirldy Started the investment payouts task (2).")
-
     # Events
     @commands.Cog.listener()
     async def on_ready(self):
