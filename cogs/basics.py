@@ -113,7 +113,7 @@ class Basics(commands.Cog):
             f"{message.channel.mention}**\n" + content,
             timestamp=datetime.now(),
         )
-        embed.set_author(icon_url=message.author.avatar_url, name=message.author)
+        embed.set_author(icon_url=message.author.display_avatar.url, name=message.author)
         embed.set_footer(text=f"Author: {message.author.id} | Message ID: {message.id}")
         await self.bot.log_channel.send(embed=embed)
         log(f"Message {message} deleted in {message.channel}", self.bot.info)
@@ -147,13 +147,13 @@ class Basics(commands.Cog):
                     timestamp=datetime.now(),
                 )
                 embed_1.set_author(
-                    icon_url=before.author.avatar_url, name=before.author
+                    icon_url=before.author.display_avatar.url, name=before.author
                 )
                 embed_1.set_footer(
                     text=f"Author: {before.author.id} | Message ID: {after.id}"
                 )
                 embed_2.set_author(
-                    icon_url=before.author.avatar_url, name=before.author
+                    icon_url=before.author.display_avatar.url, name=before.author
                 )
                 embed_2.set_footer(
                     text=f"Author: {before.author.id} | Message ID: {after.id}"
@@ -170,7 +170,7 @@ class Basics(commands.Cog):
                     + after_content,
                     timestamp=datetime.now(),
                 )
-                embed.set_author(icon_url=before.author.avatar_url, name=before.author)
+                embed.set_author(icon_url=before.author.display_avatar.url, name=before.author)
                 embed.set_footer(
                     text=f"Author: {before.author.id} | Message ID: {after.id}"
                 )
@@ -192,7 +192,7 @@ class Basics(commands.Cog):
                 f"{message.channel.mention}**\n" + content,
                 timestamp=datetime.now(),
             )
-            embed.set_author(icon_url=message.author.avatar_url, name=message.author)
+            embed.set_author(icon_url=message.author.display_avatar.url, name=message.author)
             embed.set_footer(
                 text=f"Author: {message.author.id} | Message ID: {message.id}"
             )
@@ -284,5 +284,5 @@ class Basics(commands.Cog):
         log(f"Time command used by {ctx.author}.", self.bot.cmd)
 
 
-def setup(bot):
-    bot.add_cog(Basics(bot))
+async def setup(bot):
+    await bot.add_cog(Basics(bot))

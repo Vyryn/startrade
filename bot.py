@@ -2,7 +2,6 @@ import json
 import traceback
 from json import JSONDecodeError
 
-import aiohttp
 import discord
 import os
 import random
@@ -23,10 +22,37 @@ from privatevars import TOKEN
 intents = discord.Intents.all()
 intents.typing = False
 
-bot = commands.Bot(command_prefix=get_prefix, case_insensitive=True, intents=intents)
+class Bot(commands.Bot):
+    """Initializes and manages a discord bot."""
+    def __init__(self, *args, **kwargs):
+        self.owner_id = None
+        super().__init__(*args, **kwargs)
+        
+    async def setup_hook(self):
+        asyncio.get_running_loop().set_exception_handler(self.handler)
+        
+        self.appinfo = await self.application_info()
+        self.owner_id = self.appinfo.owner.id
+        await self.load_extension("cogs.logging")
+        await self.load_extension("cogs.dev")
+        await self.load_extension("cogs.management")
+        await self.load_extension("cogs.welcome")
+        await self.load_extension("cogs.database")
+        await self.load_extension("cogs.googleapi")
+        await self.load_extension("cogs.basics")
+        await self.load_extension("cogs.moderation")
+        await self.load_extension("cogs.mechanics")
+        await self.load_extension("cogs.economy")
+
+
+bot = Bot(command_prefix=get_prefix,
+          case_insensitive=True,
+          intents=intents,
+          allowed_mentions=discord.AllowedMentions(everyone=False, roles=False),
+          activity=discord.Game("Starting up..."),
+          status=discord.Status.do_not_disturb,
+          )
 # ========================== Easily Configurable Values ========================
-# The id of the bot owner
-owner_id = 486271502107279391
 # Default number of seconds to wait before deleting many bot responses and player commands
 deltime = 10
 # The id of the primary guild the bot is operating in
@@ -321,7 +347,6 @@ bot.activity_channels = [
 
 # Array to contain ids of each database-registered user to check for inclusion without database query
 bot.list_of_users = []
-OWNER_ID = owner_id
 # Set debug display values
 bot.debug = "DBUG"
 bot.info = "INFO"
@@ -369,7 +394,7 @@ async def quiet_send(ctx, message, delete_after=None) -> None:
         log(f"Insufficient permissions to send {message}", bot.debug)
     except discord.HTTPException:
         log(f"Failed to send {message} due to a discord HTTPException.", bot.debug)
-    except discord.InvalidArgument:
+    except (TypeError, ValueError):
         log(
             f"Failed to send {message} because files list is of the wrong size, reference is not a Message or "
             f"MessageReference, or both file and files parameters are specified.",
@@ -393,7 +418,7 @@ async def quiet_x(ctx) -> None:
             f"Failed to react to {ctx.message} with an x due to a discord HTTPException",
             bot.debug,
         )
-    except discord.InvalidArgument:
+    except (TypeError, ValueError):
         log(
             f"Failed to react to {ctx.message} because the X reaction is not recognized by discord."
         )
@@ -568,8 +593,8 @@ async def on_command_error(ctx, error) -> None:
     elif isinstance(error, discord.HTTPException):
         return await quiet_fail(
             ctx,
-            f"the result was longer than I expected. Discord only supports 2000 "
-            f"characters.",
+            "the result was longer than I expected. Discord only supports 2000 "
+            "characters.",
         )
     elif isinstance(error, JSONDecodeError):
         return await quiet_fail(
@@ -580,8 +605,8 @@ async def on_command_error(ctx, error) -> None:
     elif isinstance(error, asyncio.TimeoutError):
         return await quiet_fail(
             ctx,
-            f"you took too long. Please re-run the command to continue when "
-            f"you're ready.",
+            "you took too long. Please re-run the command to continue when "
+            "you're ready.",
         )
     else:
         # Get data from exception and format
@@ -598,16 +623,16 @@ async def on_command_error(ctx, error) -> None:
                 f"Hmm, something went wrong with {ctx.command}. I have let the developer know, and they will "
                 f"take a look."
             )
-            owner = bot.get_user(OWNER_ID)
+            owner = bot.get_user(bot.owner_id)
             await owner.send(
                 f"Hey {owner}, there was an error in the command {ctx.command}: {error}.\n It was used by "
                 f"{ctx.author} in {ctx.guild}, {ctx.channel}."
             )
             try:
-                await bot.get_user(OWNER_ID).send(traceback_text)
+                await bot.get_user(bot.owner_id).send(traceback_text)
             except discord.errors.HTTPException:
-                await bot.get_user(OWNER_ID).send(traceback_text[0:1995] + "\n```")
-                await bot.get_user(OWNER_ID).send("```py\n" + traceback_text[1995:3994])
+                await bot.get_user(bot.owner_id).send(traceback_text[0:1995] + "\n```")
+                await bot.get_user(bot.owner_id).send("```py\n" + traceback_text[1995:3994])
         except discord.errors.Forbidden:
             await ctx.message.add_reaction("❌")
             log(
@@ -641,7 +666,7 @@ async def load(ctx, extension):
     Requires: Auth level 4
     Extension: the cog to load
     """
-    bot.load_extension(f"cogs.{extension}")
+    await bot.load_extension(f"cogs.{extension}")
     log(f"Loaded {extension}.")
     await ctx.send(f"Loaded {extension}.", delete_after=deltime)
     await ctx.message.delete(delay=deltime)  # delete the command
@@ -683,7 +708,7 @@ async def restart(ctx):
     for file_name in os.listdir(f"./{cogs_dir}"):
         if file_name.endswith(".py"):
             try:
-                bot.unload_extension(
+                await bot.unload_extension(
                     f"cogs.{file_name[:-3]}"
                 )  # unload each extension gracefully before restart
             except commands.ExtensionError:
@@ -695,18 +720,6 @@ async def restart(ctx):
 # for filename in os.listdir('./cogs'):
 #    if filename.endswith('.py'):
 #        bot.load_extension(f'cogs.{filename[:-3]}')  # load up each extension
-
-
-bot.load_extension(f"cogs.logging")
-bot.load_extension(f"cogs.dev")
-bot.load_extension(f"cogs.management")
-bot.load_extension("cogs.welcome")
-bot.load_extension(f"cogs.database")
-bot.load_extension(f"cogs.googleapi")
-bot.load_extension(f"cogs.basics")
-bot.load_extension(f"cogs.moderation")
-bot.load_extension(f"cogs.mechanics")
-bot.load_extension(f"cogs.economy")
 
 # run bot
 bot.run(TOKEN)

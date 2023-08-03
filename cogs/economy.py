@@ -540,5 +540,5 @@ class Economy(commands.Cog):
         log("Payouts sent.")
 
 
-def setup(bot):
-    bot.add_cog(Economy(bot))
+async def setup(bot):
+    await bot.add_cog(Economy(bot))

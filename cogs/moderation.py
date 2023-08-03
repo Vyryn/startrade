@@ -151,7 +151,7 @@ class Moderation(commands.Cog):
         """Unban someone from the server
         Requires: Manage Server permission
         Member: the person to unban"""
-        async for ban in await ctx.guild.bans():
+        async for ban in ctx.guild.bans(limit=1000):
             if ban.user.id == member.id:
                 await ctx.guild.unban(ban.user)
                 await ctx.send(f"Unbanned {ban.user}")
@@ -213,5 +213,5 @@ class Moderation(commands.Cog):
         log(f"{ctx.author} granted {member} the Certified Literate role.", self.bot.cmd)
 
 
-def setup(bot):
-    bot.add_cog(Moderation(bot))
+async def setup(bot):
+    await bot.add_cog(Moderation(bot))

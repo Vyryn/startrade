@@ -108,7 +108,7 @@ class Dev(commands.Cog):
         auth_level = get_commanders().get(str(user.id), DEFAULT_AUTH)
         embed = discord.Embed(title="", description="", color=user.color)
         embed.set_author(
-            icon_url=user.avatar_url,
+            icon_url=user.display_avatar.url,
             name=f"{user} is " f"authorized at level {auth_level}",
         )
         if detail != "":
@@ -165,7 +165,7 @@ class Dev(commands.Cog):
     async def all_commanders(self, ctx):
         commanders = get_commanders()
         embed = discord.Embed(title="", description="", color=ctx.author.color)
-        embed.set_author(icon_url=ctx.author.avatar_url, name="Here you go:")
+        embed.set_author(icon_url=ctx.author.display_avatar.url, name="Here you go:")
         message = ""
         for c in commanders:
             message += (
@@ -185,7 +185,7 @@ class Dev(commands.Cog):
         Requires: Auth level 4
         Extension: The cog to unload
         """
-        self.bot.unload_extension(f"cogs.{extension}")
+        await self.bot.unload_extension(f"cogs.{extension}")
         log(f"Unloaded {extension}")
         await ctx.send(f"Unloaded {extension}.", delete_after=self.deltime)
         await ctx.message.delete(delay=self.deltime)  # delete the command
@@ -201,10 +201,10 @@ class Dev(commands.Cog):
         Extension: The cog to reload
         """
         try:
-            self.bot.unload_extension(f"cogs.{extension}")
+            await self.bot.unload_extension(f"cogs.{extension}")
         except discord.ext.commands.errors.ExtensionNotLoaded:
             await ctx.send(f"Cog {extension} wasn't loaded, loading it now.")
-        self.bot.load_extension(f"cogs.{extension}")
+        await self.bot.load_extension(f"cogs.{extension}")
         log(f"Reloaded {extension}")
         await ctx.send(f"Reloaded {extension}", delete_after=self.deltime)
         await ctx.message.delete(delay=self.deltime)  # delete the command
@@ -363,5 +363,5 @@ class Dev(commands.Cog):
                 await ctx.send(message.content)
 
 
-def setup(bot):
-    bot.add_cog(Dev(bot))
+async def setup(bot):
+    await bot.add_cog(Dev(bot))

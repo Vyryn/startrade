@@ -134,5 +134,5 @@ class GoogleAPI(commands.Cog):
         await ctx.send("Done.")
 
 
-def setup(bot):
-    bot.add_cog(GoogleAPI(bot))
+async def setup(bot):
+    await bot.add_cog(GoogleAPI(bot))

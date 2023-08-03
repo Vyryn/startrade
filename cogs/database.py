@@ -1193,5 +1193,5 @@ class Database(commands.Cog):
         )
 
 
-def setup(bot_o):
-    bot_o.add_cog(Database(bot_o))
+async def setup(bot_o):
+    await bot_o.add_cog(Database(bot_o))
