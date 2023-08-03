@@ -729,8 +729,8 @@ async def restart(ctx):
 if __name__ == "__main__":
     bot = Bot()
     try:
-        bot.run()
+        bot.run(TOKEN)
     except ConnectionResetError:
         print("Initially failed to connect. Retrying in five seconds.")
         time.sleep(5000)
-        bot.run()
+        bot.run(TOKEN)
