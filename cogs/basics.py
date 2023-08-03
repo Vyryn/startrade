@@ -92,7 +92,7 @@ class Basics(commands.Cog):
             await new_user(message.author)
             self.bot.list_of_users.append(message.author.id)
         # =========================ACTIVITY==========================
-        if message.content[0] == "$":
+        if message.content.get(0, "") == "$":
             return
         await do_activity_update(
             self.bot, message.channel, message.author, message.content
