@@ -29,7 +29,7 @@ class Bot(commands.Bot):
         super().__init__(*args, **kwargs)
         
     async def setup_hook(self):
-        asyncio.get_running_loop().set_exception_handler(self.handler)
+        #asyncio.get_running_loop().set_exception_handler(self.handler)
         
         self.appinfo = await self.application_info()
         self.owner_id = self.appinfo.owner.id
