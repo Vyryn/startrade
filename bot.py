@@ -727,7 +727,6 @@ async def restart(ctx):
 #        bot.load_extension(f'cogs.{filename[:-3]}')  # load up each extension
 
 if __name__ == "__main__":
-    bot = Bot()
     try:
         bot.run(TOKEN)
     except ConnectionResetError:
