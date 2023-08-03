@@ -724,3 +724,12 @@ async def restart(ctx):
 # for filename in os.listdir('./cogs'):
 #    if filename.endswith('.py'):
 #        bot.load_extension(f'cogs.{filename[:-3]}')  # load up each extension
+
+if __name__ == "__main__":
+    bot = Bot()
+    try:
+        bot.run()
+    except ConnectionResetError:
+        print("Initially failed to connect. Retrying in five seconds.")
+        time.sleep(5000)
+        bot.run()
