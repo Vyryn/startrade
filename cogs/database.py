@@ -300,6 +300,10 @@ async def distribute_payouts(bot=None):
             networth = user.networth
         except AttributeError:
             networth = 0
+        try:
+            recent_activity = user.recent_activity
+        except AttributeError:
+            recent_activity = 0
         # If wealth factor is zero, this bit doesn't give anything.
         payout_generosity = (
             random.random() * wealth_factor
@@ -309,13 +313,13 @@ async def distribute_payouts(bot=None):
         activity_payout = 0
         act_mult = activity_multiplier(networth)
         if user[6] is not None:
-            activity_payout = int(user.recent_activity) * actweight
-            # activity_payout = int(user.recent_activity) * actweight * act_mult
+            activity_payout = int(recent_activity) * actweight
+            # activity_payout = int(recent_activity) * actweight * act_mult
         new_user_balance = int(user.balance) + investment_payout + activity_payout
         new_user_networth = int(networth) + investment_payout + activity_payout
         if new_user_balance > user.balance:
             log(
-                f"User {user.name}: activity: {user.recent_activity}, "
+                f"User {user.name}: activity: {recent_activity}, "
                 f"activity_payout: {activity_payout}, investment: {invested}, "
                 f"investment_payout: {investment_payout}, "
                 f"old bal: {user.balance}, new bal: {new_user_balance}",
