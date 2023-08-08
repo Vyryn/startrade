@@ -375,16 +375,15 @@ async def get_top(cat: str, page: int, user: discord.User):
     offset *= -1
     ind = 3
     mult = 1
-    if cat not in ["balance", "invested", "activity", "earned"]:
+    if cat not in ["balance", "invested", "activity", "earned", "networth"]:
         raise NameError(f"Category {cat} not found.")
     else:
         if cat == "invested":
             ind = 5
         elif cat == "activity":
             ind = 2
-        elif cat in ["net", "worth", "rich", "networth"]:
+        elif cat == "networth":
             ind = 8
-            cat = "networth"
         elif cat == "earned":
             ind = 2
             mult = actweight
