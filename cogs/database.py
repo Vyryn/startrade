@@ -296,6 +296,10 @@ async def distribute_payouts(bot=None):
             invested = user.invested
         except AttributeError:
             invested = 0
+        try:
+            networth = user.networth
+        except AttributeError:
+            networth = 0
         # If wealth factor is zero, this bit doesn't give anything.
         payout_generosity = (
             random.random() * wealth_factor
@@ -303,12 +307,12 @@ async def distribute_payouts(bot=None):
         investment_payout = int(invested * (payout_generosity + wealth_factor))
         # Distribute activity payouts too
         activity_payout = 0
-        act_mult = activity_multiplier(user.networth)
+        act_mult = activity_multiplier(networth)
         if user[6] is not None:
             activity_payout = int(user.recent_activity) * actweight
             # activity_payout = int(user.recent_activity) * actweight * act_mult
         new_user_balance = int(user.balance) + investment_payout + activity_payout
-        new_user_networth = int(user.networth) + investment_payout + activity_payout
+        new_user_networth = int(networth) + investment_payout + activity_payout
         if new_user_balance > user.balance:
             log(
                 f"User {user.name}: activity: {user.recent_activity}, "
@@ -327,7 +331,7 @@ async def distribute_payouts(bot=None):
                 disp_delta = f"{disp_delta[:-3]}.{disp_delta[-3:-1]}k"
             await channel.send(
                 f"{user.name}: +{disp_delta} credits for activity in the past hour.\n"
-                f"*(Considering their net worth of {user.networth}, "
+                f"*(Considering their net worth of {networth}, "
                 f"this would be multiplied by {act_mult} if the scaling multiplier were active)*"
             )
 
