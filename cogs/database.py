@@ -95,10 +95,10 @@ async def add_invest(user: discord.User, amount: float):
     await connect()
     check = await db.fetchrow("SELECT * FROM users WHERE id = $1", uid)
     try:
-        invested = check.invested
+        invested = check[5]
     except AttributeError:
         invested = 0
-    balance = check.balance
+    balance = check[3]
     if check is None:
         return -1, 0, 0
     log(f"{invested}, {amount}", "DBUG")
@@ -293,17 +293,21 @@ async def distribute_payouts(bot=None):
     users = await db.fetch("SELECT * FROM users")
     for user in users:
         try:
-            invested = user.invested
+            invested = user[5]
         except AttributeError:
             invested = 0
         try:
-            networth = user.networth
+            networth = user[8]
         except AttributeError:
             networth = 0
         try:
-            recent_activity = user.recent_activity
+            recent_activity = user[6]
         except AttributeError:
             recent_activity = 0
+        try:
+            balance = user[3]
+        except AttributeError:
+            balance = 0
         # If wealth factor is zero, this bit doesn't give anything.
         payout_generosity = (
             random.random() * wealth_factor
@@ -315,18 +319,18 @@ async def distribute_payouts(bot=None):
         if user[6] is not None:
             activity_payout = int(recent_activity) * actweight
             # activity_payout = int(recent_activity) * actweight * act_mult
-        new_user_balance = int(user.balance) + investment_payout + activity_payout
+        new_user_balance = int(balance) + investment_payout + activity_payout
         new_user_networth = int(networth) + investment_payout + activity_payout
-        if new_user_balance > user.balance:
+        if new_user_balance > balance:
             log(
-                f"User {user.name}: activity: {recent_activity}, "
+                f"User {user[1]}: activity: {recent_activity}, "
                 f"activity_payout: {activity_payout}, investment: {invested}, "
                 f"investment_payout: {investment_payout}, "
-                f"old bal: {user.balance}, new bal: {new_user_balance}",
+                f"old bal: {user[3]}, new bal: {new_user_balance}",
                 "INFO",
             )
-        if channel is not None and new_user_balance > user.balance + 20 * actweight:
-            delta = new_user_balance - user.balance
+        if channel is not None and new_user_balance > user[3] + 20 * actweight:
+            delta = new_user_balance - user[3]
             disp_delta = str(int(delta))
             digits = len(str(delta))
             if digits > 6:
@@ -334,7 +338,7 @@ async def distribute_payouts(bot=None):
             elif digits > 3:
                 disp_delta = f"{disp_delta[:-3]}.{disp_delta[-3:-1]}k"
             await channel.send(
-                f"{user.name}: +{disp_delta} credits for activity in the past hour.\n"
+                f"{user[1]}: +{disp_delta} credits for activity in the past hour.\n"
                 f"*(Considering their net worth of {networth}, "
                 f"this would be multiplied by {act_mult} if the scaling multiplier were active)*"
             )
@@ -344,7 +348,7 @@ async def distribute_payouts(bot=None):
             new_user_balance,
             new_user_networth,
             0,
-            user.id,
+            user[0],
         )
     await disconnect()
 
@@ -354,7 +358,7 @@ async def check_last_paycheck(user: discord.User):
     await connect()
     check = await db.fetchrow("SELECT * FROM users WHERE id = $1", uid)
     try:
-        last_paycheck = check.last_pay
+        last_paycheck = check[4]
     except IndexError:
         return 0
     return last_paycheck
