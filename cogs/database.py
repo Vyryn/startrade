@@ -164,11 +164,11 @@ async def transfer_funds(from_user: discord.User, to_user: discord.User, amount:
 
         await tr.commit()
 
-        from_balance = await db.fetchrow(
-            "SELECT balance FROM users WHERE id = $1", uid_from
+        from_balance = (
+            await db.fetchrow("SELECT balance FROM users WHERE id = $1", uid_from)
         )[0]
-        to_balance = await db.fetchrow(
-            "SELECT balance FROM users WHERE id = $1", uid_to
+        to_balance = (
+            await db.fetchrow("SELECT balance FROM users WHERE id = $1", uid_to)
         )[0]
     except (PostgresError, InterfaceError):
         await tr.rollback()
@@ -228,7 +228,7 @@ async def add_funds(user: discord.User, amount: int):
         amount,
         uid,
     )
-    balance = await db.fetchrow("SELECT balance FROM users WHERE id = $1", uid)[0]
+    balance = (await db.fetchrow("SELECT balance FROM users WHERE id = $1", uid))[0]
     await disconnect()
     return balance
 
@@ -242,7 +242,7 @@ async def add_networth(user: discord.User, amount: int):
         amount,
         uid,
     )
-    networth = await db.fetchrow("SELECT networth FROM users WHERE id = $1", uid)[0]
+    networth = (await db.fetchrow("SELECT networth FROM users WHERE id = $1", uid))[0]
     await disconnect()
     return networth
 
