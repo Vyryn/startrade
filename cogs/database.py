@@ -390,14 +390,12 @@ async def get_top(cat: str, page: int, user: discord.User):
             mult = actweight
             cat = "activity"
         num_users = await db.fetchval(
-            "SELECT COUNT(id) FROM users WHERE $1 IS NOT NULL", cat
+            f"SELECT COUNT(id) FROM users WHERE {cat} IS NOT NULL"
         )
     if num_users < (page - 1) * items_per_top_page:
         offset = 0
     result = await db.fetch(
-        "SELECT * FROM users WHERE $1 IS NOT NULL ORDER BY $1 DESC LIMIT $2 OFFSET $3",
-        cat,
-        items_per_top_page,
+        f"SELECT * FROM users WHERE {cat} IS NOT NULL ORDER BY {cat} DESC LIMIT {items_per_top_page} OFFSET $1",
         offset,
     )
     tops = []
@@ -406,10 +404,10 @@ async def get_top(cat: str, page: int, user: discord.User):
         if line[ind] is None:
             line[ind] = 0
         tops.append((line[1], line[ind] * mult))
-    subjects_bal = await db.fetchval("SELECT $1 FROM users WHERE id = $2", cat, user.id)
+    subjects_bal = await db.fetchval(f"SELECT {cat} FROM users WHERE id = $1", user.id)
     rank = (
         await db.fetchval(
-            "SELECT COUNT($1) FROM users WHERE $1 > $2", cat, subjects_bal
+            f"SELECT COUNT({cat}) FROM users WHERE {cat} > $2", subjects_bal
         )
         + 1
     )
