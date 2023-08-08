@@ -407,7 +407,7 @@ async def get_top(cat: str, page: int, user: discord.User):
     subjects_bal = await db.fetchval(f"SELECT {cat} FROM users WHERE id = $1", user.id)
     rank = (
         await db.fetchval(
-            f"SELECT COUNT({cat}) FROM users WHERE {cat} > $2", subjects_bal
+            f"SELECT COUNT({cat}) FROM users WHERE {cat} > $1", subjects_bal
         )
         + 1
     )
