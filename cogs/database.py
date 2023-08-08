@@ -294,22 +294,16 @@ async def distribute_payouts(bot=None):
             await channel.send("Payouts distributed.")
     users = await db.fetch("SELECT * FROM users")
     for user in users:
-        try:
-            invested = user[5]
-        except AttributeError:
+        invested = user[5]
+        if not invested:
             invested = 0
-        try:
-            networth = user[8]
-        except AttributeError:
-            networth = 0
-        try:
-            recent_activity = user[6]
-        except AttributeError:
+        balance = user[3]
+        networth = user[8]
+        if not networth:
+            networth = balance
+        recent_activity = user[6]
+        if not recent_activity:
             recent_activity = 0
-        try:
-            balance = user[3]
-        except AttributeError:
-            balance = 0
         # If wealth factor is zero, this bit doesn't give anything.
         payout_generosity = (
             random.random() * wealth_factor
