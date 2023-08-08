@@ -270,6 +270,8 @@ async def check_bal_str(username: str):
 
 
 def activity_multiplier(networth: float):
+    if not networth:
+        networth = 0
     if networth < 100_000_000:
         return 3
     if networth < 200_000_000:
