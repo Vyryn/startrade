@@ -1,13 +1,12 @@
 import asyncio
-import json
 import time
 from datetime import datetime
-import discord
-from discord.ext import commands
+import discord  # pylint: disable=import-error
+from discord.ext import commands  # pylint: disable=import-error
 
 from bot import log, logready
 from cogs.database import new_user, update_activity
-from functions import poll_ids, now, set_polls, auth
+from functions import now, set_polls
 
 
 def get_activity_worth(msg: str) -> int:
@@ -88,7 +87,10 @@ class Basics(commands.Cog):
         if message.author.bot:
             return
         # =========================NEW USER==========================
-        if message.author.id not in self.bot.list_of_users and not message.content.startswith("$paycheck"):
+        if (
+            message.author.id not in self.bot.list_of_users
+            and not message.content.startswith("$paycheck")
+        ):
             await new_user(message.author)
             self.bot.list_of_users.append(message.author.id)
         # =========================ACTIVITY==========================
@@ -100,7 +102,6 @@ class Basics(commands.Cog):
         await do_activity_update(
             self.bot, message.channel, message.author, message.content
         )
-
 
     # Deleted message handler
     @commands.Cog.listener()
@@ -116,7 +117,9 @@ class Basics(commands.Cog):
             f"{message.channel.mention}**\n" + content,
             timestamp=datetime.now(),
         )
-        embed.set_author(icon_url=message.author.display_avatar.url, name=message.author)
+        embed.set_author(
+            icon_url=message.author.display_avatar.url, name=message.author
+        )
         embed.set_footer(text=f"Author: {message.author.id} | Message ID: {message.id}")
         await self.bot.log_channel.send(embed=embed)
         log(f"Message {message} deleted in {message.channel}", self.bot.info)
@@ -173,7 +176,9 @@ class Basics(commands.Cog):
                     + after_content,
                     timestamp=datetime.now(),
                 )
-                embed.set_author(icon_url=before.author.display_avatar.url, name=before.author)
+                embed.set_author(
+                    icon_url=before.author.display_avatar.url, name=before.author
+                )
                 embed.set_footer(
                     text=f"Author: {before.author.id} | Message ID: {after.id}"
                 )
@@ -195,7 +200,9 @@ class Basics(commands.Cog):
                 f"{message.channel.mention}**\n" + content,
                 timestamp=datetime.now(),
             )
-            embed.set_author(icon_url=message.author.display_avatar.url, name=message.author)
+            embed.set_author(
+                icon_url=message.author.display_avatar.url, name=message.author
+            )
             embed.set_footer(
                 text=f"Author: {message.author.id} | Message ID: {message.id}"
             )
@@ -229,7 +236,7 @@ class Basics(commands.Cog):
         1h:   1 hour from now
         1d: tomorrow at this time
         1w: next week at this time
-        1y: next year (or probably never, as the bot intentionally forgets reminders when it restarts)
+        1y: next year (or probably never, as the bot forgets reminders when it restarts)
         """
         if reminder is None:
             return await ctx.send('Incorrect usage. Try "remind do xyz in 1h"')
@@ -248,13 +255,14 @@ class Basics(commands.Cog):
         try:
             if t[1][
                 :-1
-            ].isdecimal():  # true if in 15m format is proper, 1 letter at the end preceded by a number
-                # preceded by in
+            ].isdecimal():  # true if in 15m format is proper, 1 letter at the end preceded by
+                # a number preceded by in
                 increments = int(t[1][:-1])  # number of increment to wait
                 increment = t[1][-1]  # s, m, h, d, w, y
                 increments *= self.bot.time_options.get(increment, 1)
                 log(
-                    f"{ctx.author} created a reminder to {user} for {increments} seconds from now; {t}"
+                    f"{ctx.author} created a reminder to {user} for {increments} seconds from now;"
+                    f"{t}"
                 )
                 self.bot.loop.create_task(
                     remind_routine(increments, user, ctx.author, reminder)
@@ -265,8 +273,8 @@ class Basics(commands.Cog):
                 )
             else:
                 await ctx.send(
-                    "Please enter a valid time interval. You can use s, m, h, d, w, y as your interval time "
-                    "prefix.",
+                    "Please enter a valid time interval. You can use s, m, h, d, w, y as"
+                    " your interval time prefix.",
                     delete_after=self.deltime,
                 )
         except IndexError:
