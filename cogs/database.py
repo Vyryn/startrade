@@ -94,7 +94,10 @@ async def add_invest(user: discord.User, amount: float):
     uid = user.id
     await connect()
     check = await db.fetchrow("SELECT * FROM users WHERE id = $1", uid)
-    invested = check.invested
+    try:
+        invested = check.invested
+    except AttributeError:
+        invested = 0
     balance = check.balance
     if check is None:
         return -1, 0, 0
@@ -289,11 +292,15 @@ async def distribute_payouts(bot=None):
             await channel.send("Payouts distributed.")
     users = await db.fetch("SELECT * FROM users")
     for user in users:
+        try:
+            invested = user.invested
+        except AttributeError:
+            invested = 0
         # If wealth factor is zero, this bit doesn't give anything.
         payout_generosity = (
             random.random() * wealth_factor
         )  # Normalizes it to give between wf and 2* wf per hour
-        investment_payout = int(user.invested * (payout_generosity + wealth_factor))
+        investment_payout = int(invested * (payout_generosity + wealth_factor))
         # Distribute activity payouts too
         activity_payout = 0
         act_mult = activity_multiplier(user.networth)
@@ -305,7 +312,7 @@ async def distribute_payouts(bot=None):
         if new_user_balance > user.balance:
             log(
                 f"User {user.name}: activity: {user.recent_activity}, "
-                f"activity_payout: {activity_payout}, investment: {user.invested}, "
+                f"activity_payout: {activity_payout}, investment: {invested}, "
                 f"investment_payout: {investment_payout}, "
                 f"old bal: {user.balance}, new bal: {new_user_balance}",
                 "INFO",
