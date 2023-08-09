@@ -22,8 +22,10 @@ from privatevars import TOKEN
 intents = discord.Intents.all()
 intents.typing = False
 
+
 class Bot(commands.Bot):
     """Initializes and manages a discord bot."""
+
     def __init__(self, *args, **kwargs):
         self.owner_id = None
         super().__init__(
@@ -34,12 +36,13 @@ class Bot(commands.Bot):
             activity=discord.Game("Starting up..."),
             status=discord.Status.do_not_disturb,
         )
-        
+
     async def setup_hook(self):
-        #asyncio.get_running_loop().set_exception_handler(self.handler)
-        
+        # asyncio.get_running_loop().set_exception_handler(self.handler)
+
         self.appinfo = await self.application_info()
-        self.owner_id = self.appinfo.owner.id
+        # self.owner_id = self.appinfo.owner.id
+        self.owner_id = 125449182663278592
         await self.load_extension("cogs.logging")
         await self.load_extension("cogs.dev")
         await self.load_extension("cogs.management")
@@ -637,7 +640,9 @@ async def on_command_error(ctx, error) -> None:
                 await bot.get_user(bot.owner_id).send(traceback_text)
             except discord.errors.HTTPException:
                 await bot.get_user(bot.owner_id).send(traceback_text[0:1995] + "\n```")
-                await bot.get_user(bot.owner_id).send("```py\n" + traceback_text[1995:3994])
+                await bot.get_user(bot.owner_id).send(
+                    "```py\n" + traceback_text[1995:3994]
+                )
         except discord.errors.Forbidden:
             await ctx.message.add_reaction("❌")
             log(
