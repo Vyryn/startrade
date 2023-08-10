@@ -82,8 +82,7 @@ class Economy(commands.Cog):
                 and "Patlatma tamamlandı" not in embed_content
             ):
                 return
-            bumper_id = int(embed_content[2:20])
-            bumper = self.bot.server.get_member(bumper_id)
+            bumper = message.interaction.user
             bump_amount = self.bot.BUMP_PAYMENT
 
             balance = await add_funds(bumper, bump_amount)

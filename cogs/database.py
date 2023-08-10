@@ -79,7 +79,6 @@ async def new_user(user: discord.User):
             last_pay,
             invested,
             0,
-            "",
             networth,
         )
         result = f"User {name} added to database at {now()}."
