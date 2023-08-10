@@ -159,7 +159,7 @@ async def transfer_funds(from_user: discord.User, to_user: discord.User, amount:
         WHERE id IN ($1, $2)
         """
 
-        await conn.execute(query, uid_to, uid_from, amount)
+        await db.execute(query, uid_to, uid_from, amount)
 
         await tr.commit()
 
