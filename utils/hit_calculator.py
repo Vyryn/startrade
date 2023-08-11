@@ -1,5 +1,6 @@
 import math
 import random
+from typing import Tuple
 from collections import Counter
 
 
@@ -85,6 +86,7 @@ def hit_determine(
     ship_speed: float,
     evading: bool = False,
     bonus: float = 0,
+    clear_advantage: bool = False,
 ) -> bool:
     required_roll: float = hit_chance(
         distance,
@@ -95,6 +97,8 @@ def hit_determine(
         evading=evading,
         bonus=bonus,
     )
+    if clear_advantage:
+        required_roll *= 2
     roll: float = random.random() * 100
     if roll < required_roll:
         return True
@@ -132,7 +136,7 @@ def damage_determine(
     attenuation: str,
     dist: float,
     do_attenuation: bool = False,
-) -> (float, float):
+) -> Tuple[float, float]:
     """Does damage with the provided weapon stats to the target hull and shields in absolute values *not* %s."""
     if do_attenuation:
         weap_damage_hull = attenuate(weap_damage_hull, attenuation, dist)
@@ -174,17 +178,21 @@ def calc_dmg(
     weap_info: dict,
     evading: bool = False,
     do_attenuation: bool = False,
-) -> (float, float):
+    uncoordinated: bool = False,
+    clear_advantage: bool = False,
+) -> Tuple[float, float, float, int]:
     """Determines whether a weapon hits and if so calculates damage. Returns the new hull and shields."""
     # Look up values
     weap_damage_shields = weap_info["shield_dmg"]
     weap_damage_hull = weap_info["hull_dmg"]
+    if uncoordinated:
+        weap_damage_shields = weap_damage_shields * 0.7
+        weap_damage_hull = weap_damage_hull * 0.7
     weap_rate = int(weap_info["rate"])
     pierce = weap_info["pierce"]
     weapon_accuracy = weap_info["accuracy"]
     attenuation = weap_info["attenuation"]
     weapon_turn_rate = weap_info["turn_speed"]
-
     ship_length = ship_info["len"]
     ship_speed = ship_info["speed"]
     max_hull = ship_info["hull"]
@@ -204,11 +212,12 @@ def calc_dmg(
                 ship_speed,
                 evading=evading,
                 bonus=bonus,
+                clear_advantage=clear_advantage,
             )
             if not weap_hits:
                 continue
             num_hits += 1
-            (hull, shield) = damage_determine(
+            hull, shield = damage_determine(
                 hull,
                 shield,
                 weap_damage_shields,
@@ -237,6 +246,8 @@ def calc_dmg_multi(
     bonus,
     weap_info,
     evading: bool = False,
+    clear_advantage: bool = False,
+    uncoordinated: bool = False,
     do_attenuation: bool = False,
 ):
     """Randomly scatters damage between a bunch of different ships of the same type.
@@ -256,6 +267,8 @@ def calc_dmg_multi(
             ship_info,
             weap_info,
             evading=evading,
+            clear_advantage=clear_advantage,
+            uncoordinated=uncoordinated,
             do_attenuation=do_attenuation,
         )
         ships[selected_ship] = (new_hull, new_shields, ship_info)

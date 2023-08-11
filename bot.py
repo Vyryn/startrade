@@ -2,12 +2,12 @@ import json
 import traceback
 from json import JSONDecodeError
 
-import discord
+import discord  # pylint: disable=import-error
 import os
 import random
 import sys
 import asyncio
-from discord.ext import commands
+from discord.ext import commands  # pylint: disable=import-error
 from functions import (
     get_prefix,
     global_prefix,
@@ -17,7 +17,7 @@ from functions import (
     auth,
     now,
 )
-from privatevars import TOKEN
+from privatevars import TOKEN  # pylint: disable=import-error
 
 intents = discord.Intents.all()
 intents.typing = False

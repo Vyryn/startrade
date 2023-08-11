@@ -1,9 +1,10 @@
-import asyncio
 import time
 import random
 from datetime import datetime
-import discord  # pylint: disable=import-error
 import typing
+
+import asyncio
+import discord  # pylint: disable=import-error
 from discord.ext import commands, tasks  # pylint: disable=import-error
 
 from bot import log, logready
@@ -23,7 +24,6 @@ from cogs.database import (
     view_items,
     sell_possession,
     items_per_top_page,
-    new_user,
 )
 from functions import auth
 
