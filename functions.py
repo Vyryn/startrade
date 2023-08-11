@@ -1,21 +1,18 @@
-import datetime
 import json
+from datetime import datetime, timezone, date
+from typing import List
 
-import aiohttp
-import discord
-from discord.ext import commands
-from attr import dataclass
+import aiohttp  # pylint: disable=import-error
+import discord  # pylint: disable=import-error
+from discord.ext import commands  # pylint: disable=import-error
+from attr import dataclass  # pylint: disable=import-error
 
 # The bot commanders (imported from a file)
 bot_commanders = {}  # {125449182663278592: 10}
-# The ids of ongoing polls (imported from a file)
-poll_ids = {}
-# Whether this person has used a command that requires a confirmation
-confirmed_ids = {}
 # Authorization level of someone not in bot_commanders. Think carefully before changing this.
 DEFAULT_AUTH = 0
 # No command channels: A list of channels the bot will not respond to messages in.
-no_command_channels = []
+no_command_channels: List[int] = []
 # The default global bot prefix
 global_prefix = ","
 
@@ -52,6 +49,15 @@ def level(a):
 
 
 activity_ranks = dict(zip(range(0, 1000), [level(a) for a in range(0, 1000)]))
+
+
+def utcnow() -> datetime:
+    """
+    Returns the current time as a timezone aware utc datetime object.
+    :return: the current time as a timezone aware utc datetime object.
+    :rtype:
+    """
+    return datetime.now(tz=timezone.utc)
 
 
 # Helper method for opening a json
@@ -92,49 +98,10 @@ def get_commanders():
     return bot_commanders
 
 
-# Return the poll_ids dict
-def get_polls():
-    global poll_ids
-    return poll_ids
-
-
-# Return the apikeys dict
-def get_apikeys():
-    global apikeys
-    return apikeys
-
-
-# Update the memory apikeys dict by reading from file
-def set_apikeys():
-    global apikeys
-    apikeys = load_json_var("apikeys")
-    return
-
-
-# Update the memory poll_ids dict by reading from file
-def set_polls():
-    global poll_ids
-    poll_ids = load_json_var("polls")
-
-
-# Save poll_ids to file
-def save_polls():
-    global poll_ids
-    write_json_var("polls", poll_ids)
-    return
-
-
 # Save bot_commanders to file
 def save_commanders():
     global bot_commanders
     write_json_var("auths", bot_commanders)
-    return
-
-
-# Save apikeys to file
-def save_aipkeys():
-    global apikeys
-    write_json_var("apikeys", apikeys)
     return
 
 
@@ -182,7 +149,7 @@ def get_prefix(bot, message):
 # Returns current timestamp in the desired format, in this case MM/DD/YYYY HH:MM:SS
 def now():
     try:
-        return datetime.datetime.now().strftime("%m/%d/%y %H:%M:%S")
+        return datetime.now().strftime("%m/%d/%y %H:%M:%S")
     except commands.CommandInvokeError as e:
         return f"(Could not get timestamp)"
     except aiohttp.ClientOSError:
@@ -192,7 +159,7 @@ def now():
 # Returns current datestamp as YYYY-MM-DD
 def today():
     try:
-        return datetime.date.today().strftime("%Y-%m-%d")
+        return date.today().strftime("%Y-%m-%d")
     except commands.CommandInvokeError as e:
         return f"(Could not get date)"
 

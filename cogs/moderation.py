@@ -13,7 +13,7 @@ class Moderation(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.literate = None
-        self.confirmed_ids = None
+        self.confirmed_ids = []
 
     async def confirmation_on(self, user: int):
         await asyncio.sleep(self.bot.deltime * 2)

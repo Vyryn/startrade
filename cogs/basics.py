@@ -6,7 +6,7 @@ from discord.ext import commands  # pylint: disable=import-error
 
 from bot import log, logready
 from cogs.database import new_user, update_activity
-from functions import now, set_polls
+from functions import now
 
 
 def get_activity_worth(msg: str) -> int:
@@ -61,7 +61,6 @@ async def send_to_log_channel(log_channel, ctx, content: str, event_name: str = 
 
 class Basics(commands.Cog):
     def __init__(self, bot):
-        set_polls()
         self.bot = bot
         self.verified_role = None
         self.log_channel = None

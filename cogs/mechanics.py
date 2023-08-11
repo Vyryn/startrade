@@ -8,7 +8,7 @@ import discord  # pylint: disable=import-error
 from discord.ext import commands  # pylint: disable=import-error
 
 from cogs.database import update_location
-from functions import auth
+from functions import auth, utcnow
 from bot import log, logready, quiet_fail
 from utils.hit_calculator import hit_chance, hit_determine, calc_dmg, calc_dmg_multi
 
@@ -131,6 +131,41 @@ class Mechanics(commands.Cog):
                 f" travel to a new location yet. Try RPing a bit first.",
                 delete_after=30,
             )
+
+    @commands.command()
+    @commands.check(not_in_invalid_channels())
+    async def statline(self, ctx, *, ship_name: str):
+        """Displays the stats for a specified ship. Name must be exact.
+        Do not include quotation marks unless they are part of the ship name."""
+        info = self.bot.values_ships.get(ship_name, [])
+        if not info:
+            return await ctx.send("I didn't find that ship. Spelling must be exact.")
+
+        title = f"**{info['fac']} {info['class']}/{info['subclass']}**\n"
+        description = f"Armament: {info['arm']}\nSpecials: {info['spec']}\n"
+        embed = discord.Embed(
+            title=title,
+            description=description,
+        )
+        embed.add_field(name="Hull", value=f"{info['hull']} RU")
+        embed.add_field(name="Shields", value=f"{info['shield']} SBD")
+        embed.add_field(name="Speed", value=f"{info['speed']} MGLT")
+        embed.add_filed(name="Length", value=f"{info['len']}m")
+        embed.add_field(name="Price", value=info["unclean_price"])
+        embed.add_field(name="Points", value=f"{info['points']}")
+        embed.color = discord.Color.darker_grey()
+        embed.set_author(
+            name=ship_name, icon_url=self.display_avatar.url, url=info["source"]
+        )
+        # description += f"Hull: {info['hull']}\n"
+        # description += f"Shields: {info['shield']}\n"
+        # description += f"Speed: {info['speed']} MGLT\n"
+        # description += f"Length: {info['len']}m\n"
+        # description += f"Price: {info['unclean_price']}\n"
+        # description += f"Points: {info['points']}\n"
+        embed.set_footer(text=f"Requested by {ctx.author}")
+        embed.timestamp = utcnow()
+        return await ctx.send(embed=embed)
 
     @commands.command()
     @commands.check(not_in_invalid_channels())

@@ -1,9 +1,9 @@
 import pickle
 import os.path
-from googleapiclient.discovery import build
-from google_auth_oauthlib.flow import InstalledAppFlow
-from google.auth.transport.requests import Request
-from discord.ext import commands
+from googleapiclient.discovery import build  # pylint: disable=import-error
+from google_auth_oauthlib.flow import InstalledAppFlow  # pylint: disable=import-error
+from google.auth.transport.requests import Request  # pylint: disable=import-error
+from discord.ext import commands  # pylint: disable=import-error
 from bot import log, logready
 from functions import auth
 
@@ -72,6 +72,7 @@ def load_from_sheet(bot) -> None:
             continue
         bot.values_ships[line[0].lower()] = {
             "price": clean(line[1]),
+            "unclean_price": line[1],
             "points": clean(line[2]),
             "len": clean(line[13]),
             "shield": clean(line[8]),
@@ -79,6 +80,7 @@ def load_from_sheet(bot) -> None:
             "speed": clean(line[10]),
             "fac": line[11],
             "class": line[16],
+            "subclass": line[17],
             "arm": line[3],
             "armp": clean(line[4]),
             "spec": line[5],

@@ -1,6 +1,7 @@
 import json
 import traceback
 from json import JSONDecodeError
+from typing import Dict
 
 import discord  # pylint: disable=import-error
 import os
@@ -13,7 +14,6 @@ from functions import (
     global_prefix,
     get_ignored_channels,
     set_ignored_channels,
-    confirmed_ids,
     auth,
     now,
 )
@@ -139,7 +139,7 @@ sigperms = [
 cogs_dir = "cogs"
 bot.global_prefix = global_prefix
 bot.deltime = deltime
-bot.confirmed_ids = confirmed_ids
+bot.confirmed_ids: Dict[int, int] = {}
 bot.content_max = 1970  # The maximum number of characters that can safely be fit into a logged message
 bot.time_options = {
     "s": 1,
