@@ -349,7 +349,7 @@ async def distribute_payouts(bot=None):
     await disconnect()
 
 
-async def check_last_paycheck(user: discord.User):
+async def check_last_paycheck(user: discord.User, do_not_reinvoke: bool = False):
     uid = user.id
     await connect()
     check = await db.fetchrow("SELECT * FROM users WHERE id = $1", uid)
@@ -357,6 +357,12 @@ async def check_last_paycheck(user: discord.User):
         last_paycheck = check[4]
     except IndexError:
         return 0
+    except TypeError:
+        if do_not_reinvoke:
+            return 0
+        # First ever message, need to initialize user first
+        await new_user(user)
+        return await check_last_paycheck(user, do_not_reinvoke=True)
     return last_paycheck
 
 

@@ -452,15 +452,7 @@ class Economy(commands.Cog):
                 title="Paycheck", description=message, timestamp=datetime.now()
             )
             return await ctx.send(embed=embed)
-        try:
-            last_paycheck = await check_last_paycheck(ctx.author)
-        except (
-            TypeError
-        ):  # Message is user's first ever message on the server and we need to register them first. Wait for registration.
-            await new_user(ctx.author)
-            # return await ctx.send(
-            #     f"{ctx.author}, you need to chat first before you can use economy commands."
-            # )
+        last_paycheck = await check_last_paycheck(ctx.author)
         if time.time() - last_paycheck < self.bot.PAYCHECK_INTERVAL:
             seconds_remaining = int(
                 last_paycheck + self.bot.PAYCHECK_INTERVAL - time.time() + 1
