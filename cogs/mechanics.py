@@ -155,7 +155,9 @@ class Mechanics(commands.Cog):
         embed.add_field(name="Points", value=f"{info['points']}")
         embed.color = discord.Color.darker_grey()
         embed.set_author(
-            name=ship_name, icon_url=self.display_avatar.url, url=info["source"]
+            name=ship_name,
+            icon_url=self.bot.user.display_avatar.url,
+            url=info["source"],
         )
         # description += f"Hull: {info['hull']}\n"
         # description += f"Shields: {info['shield']}\n"
