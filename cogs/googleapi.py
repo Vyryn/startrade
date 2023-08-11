@@ -73,6 +73,7 @@ def load_from_sheet(bot) -> None:
         bot.values_ships[line[0].lower()] = {
             "price": clean(line[1]),
             "unclean_price": line[1],
+            "unclean_name": line[0],
             "points": clean(line[2]),
             "len": clean(line[13]),
             "shield": clean(line[8]),

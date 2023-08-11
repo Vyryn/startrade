@@ -141,7 +141,7 @@ class Mechanics(commands.Cog):
         if not info:
             return await ctx.send("I didn't find that ship. Spelling must be exact.")
 
-        title = f"**{info['fac']} {info['class']}/{info['subclass']}**\n"
+        title = f"{info['fac']} {info['class']} ({info['subclass']})\n"
         description = f"Armament: {info['arm']}\nSpecials: {info['spec']}\n"
         embed = discord.Embed(
             title=title,
@@ -155,7 +155,7 @@ class Mechanics(commands.Cog):
         embed.add_field(name="Points", value=f"{info['points']}")
         embed.color = discord.Color.darker_grey()
         embed.set_author(
-            name=ship_name,
+            name=info["unclean_name"],
             icon_url=self.bot.user.display_avatar.url,
             url=info["source"],
         )
