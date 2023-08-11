@@ -150,7 +150,7 @@ class Mechanics(commands.Cog):
         embed.add_field(name="Hull", value=f"{info['hull']} RU")
         embed.add_field(name="Shields", value=f"{info['shield']} SBD")
         embed.add_field(name="Speed", value=f"{info['speed']} MGLT")
-        embed.add_filed(name="Length", value=f"{info['len']}m")
+        embed.add_field(name="Length", value=f"{info['len']}m")
         embed.add_field(name="Price", value=info["unclean_price"])
         embed.add_field(name="Points", value=f"{info['points']}")
         embed.color = discord.Color.darker_grey()
