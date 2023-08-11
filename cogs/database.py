@@ -79,6 +79,7 @@ async def new_user(user: discord.User):
             last_pay,
             invested,
             0,
+            0,
             networth,
         )
         result = f"User {name} added to database at {now()}."
@@ -488,7 +489,7 @@ async def get_custom_items(user: discord.User) -> [(str, str)]:
 
 async def add_commodity_location(name: str, channel_id: int, is_buy: bool, **kwargs):
     await connect()
-    query = "INSERT INTO commodities_locations VALUES ($1, $2, $3 "
+    query = "INSERT INTO commodities_locations VALUES ($1, $2, $3)"
     counter = 3
     for _ in kwargs:
         counter += 1
@@ -1005,7 +1006,10 @@ class Database(commands.Cog):
         await connect()
         add_text = ""
         try:
-            result = await db.fetch(query)
+            if query.strip().lower().startswith("select"):
+                result = await db.fetch(query)
+            else:
+                result = await db.execute(query)
             await disconnect()
             await ctx.send(result)
             add_text = f"Result was:\n{result}"

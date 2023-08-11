@@ -61,7 +61,7 @@ bot = Bot()
 deltime = 10
 # The id of the primary guild the bot is operating in
 bot.serverid = 977038517588885545  # 718893913976340561 for startrade
-bot.BUMP_PAYMENT = 100_000  # Payment for disboard bumps
+bot.BUMP_PAYMENT = 0  # Payment for disboard bumps
 bot.PAYCHECK_AMOUNT_MIN = 4_000_000  # Minimum paycheck payout
 bot.PAYCHECK_AMOUNT_MAX = 4_000_000  # Maximum paycheck payout
 bot.PAYCHECK_INTERVAL = 3600  # Time between paychecks, in seconds

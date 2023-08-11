@@ -37,7 +37,7 @@ payout_frequency = 10000000
 async def remind_bump(
     channel: discord.TextChannel,
     increments=120 * 60,
-    message="The server can be bumped again." " Who will claim the reward first?",
+    message="The server can be bumped again.",
 ):
     message = f":alarm_clock: **Reminder**: \n{message}"
     await asyncio.sleep(increments)
@@ -88,8 +88,8 @@ class Economy(commands.Cog):
             balance = await add_funds(bumper, bump_amount)
             to_send = (
                 f"Thank you for bumping {self.bot.server.name} on Disboard, {bumper.mention}."
-                f" I've added {self.bot.BUMP_PAYMENT}"
-                f" {self.bot.credit_emoji} to your balance. Your new balance is {balance}."
+                # f" I've added {self.bot.BUMP_PAYMENT}"
+                # f" {self.bot.credit_emoji} to your balance. Your new balance is {balance}."
             )
             log(
                 f"{bumper} bumped the server on Disboard. Gave them {self.bot.BUMP_PAYMENT}, "
