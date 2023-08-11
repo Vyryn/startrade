@@ -400,7 +400,8 @@ async def get_top(cat: str, page: int, user: discord.User):
     if num_users < (page - 1) * items_per_top_page:
         offset = 0
     result = await db.fetch(
-        f"SELECT * FROM users WHERE {cat} IS NOT NULL ORDER BY {cat} DESC LIMIT {items_per_top_page} OFFSET $1",
+        f"SELECT * FROM users WHERE {cat} IS NOT NULL ORDER BY {cat} DESC LIMIT "
+        f"{items_per_top_page} OFFSET $1",
         offset,
     )
     tops = []

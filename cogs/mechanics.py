@@ -12,7 +12,7 @@ from functions import auth
 from bot import log, logready, quiet_fail
 from utils.hit_calculator import hit_chance, hit_determine, calc_dmg, calc_dmg_multi
 
-bonuses = {"vet": 10, "ace": 15, "hon": 20, "jam": 20, "bh": 25, "tractor": -10}
+bonuses = {"v": 10, "a": 15, "hon": 20, "jam": 20, "bh": 25, "tractor": -10}
 
 
 def not_in_invalid_channels():
@@ -152,7 +152,7 @@ class Mechanics(commands.Cog):
         """
         Calculates damage.
         $calcdamage  (target hull) (target shields) "[target ship name]" [distance in km] [number of weapons] [weapon
-        type] (-ace/-vet/-hon/-evading)
+        type] (-a/-v/-hon/-evading)
         """
         name = name.lower()
         weap = weap.lower()
@@ -210,7 +210,7 @@ class Mechanics(commands.Cog):
         """
         Calculates damage.
         $calcdamage  (target hull) (target shields) "[target ship name]" [distance in km] [number of weapons] [weapon
-        type] (-ace/-vet/-hon/-evading)
+        type] (-a/-v/-hon/-evading)
         """
         name = name.lower()
         weap = weap.lower()

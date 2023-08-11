@@ -202,17 +202,19 @@ class Economy(commands.Cog):
             ch = self.bot.server.get_channel(1055577521795641398)
             role = self.bot.server.get_role(977038517756641331)
             await ch.send(
-                f"**Alert** {role.mention}, {ctx.author.mention} ({ctx.author.id}) sent a transfer of "
-                f"{amount} to {user.mention} ({user.id}). It was flagged for being in the suspicious range, "
-                f"check if this is an alt or similar."
+                f"**Alert** {role.mention}, {ctx.author.mention} ({ctx.author.id}) "
+                f"sent a transfer of {amount} to {user.mention} ({user.id}). It was "
+                "flagged for being in the suspicious range, check if this is an alt "
+                "or similar."
             )
 
     @commands.command(name="buy", description="Buy an item from the browse listings.")
     @commands.check(auth(1))
     async def buyitem(self, ctx, amount: typing.Optional[int] = 1, *, item: str):
         """
-        Buy an item from the browse listings. You can specify an amount of the item to buy before the
-         name of the item to buy multiple. Exact name is required to prevent accidental matching.
+        Buy an item from the browse listings. You can specify an amount of the item to
+        buy before the name of the item to buy multiple. Exact name is required to
+        prevent accidental matching.
         """
         # TODO: Add price determination depending on context
         log(f"{ctx.author} is attempting to purchase {amount} {item}(s).", self.bot.cmd)
@@ -225,8 +227,9 @@ class Economy(commands.Cog):
     @commands.check(auth(1))
     async def sellitem(self, ctx, amount: typing.Optional[int] = 1, *, item: str):
         """
-        Sell an item from your possessions for 60% of its purchase value. You can specify the amount of the
-         item to buy before the name of the item to buy multiple. Exact name is required to prevent accidental matching.
+        Sell an item from your possessions for 60% of its purchase value. You can specify
+        the amount of the item to buy before the name of the item to buy multiple. Exact
+        name is required to prevent accidental matching.
         """
         log(f"{ctx.author} is attempting to sell {amount} {item}(s).", self.bot.cmd)
         if not amount or amount < 1:
