@@ -137,7 +137,7 @@ class Mechanics(commands.Cog):
     async def statline(self, ctx, *, ship_name: str):
         """Displays the stats for a specified ship. Name must be exact.
         Do not include quotation marks unless they are part of the ship name."""
-        info = self.bot.values_ships.get(ship_name, [])
+        info = self.bot.values_ships.get(ship_name.lower().strip(), [])
         if not info:
             return await ctx.send("I didn't find that ship. Spelling must be exact.")
 
