@@ -243,7 +243,7 @@ class Mechanics(commands.Cog):
             # default to 10 MGLT if parameter isn't included.
             try:
                 tractors = int(params.split("t")[1].split(" ")[0])
-            except IndexError:
+            except (IndexError, ValueError):
                 tractors = 1
             reduced_speed = ship_info["speed"] - 10 * tractors
             ship_info["speed"] = max(0, reduced_speed)
