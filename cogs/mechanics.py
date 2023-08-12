@@ -145,7 +145,7 @@ class Mechanics(commands.Cog):
         title = f"{info['fac']} {info['subclass']}\n"
         description = f"Armament: {info['arm']}\nSpecials: {info['spec']}\n"
         embed = discord.Embed(
-            title=title,
+            title=info["unclean_name"],
             description=description,
         )
         embed.add_field(name="Hull", value=f"{info['hull']} RU")
@@ -156,7 +156,7 @@ class Mechanics(commands.Cog):
         embed.add_field(name="Points", value=f"{info['points']}")
         embed.color = discord.Color.darker_grey()
         embed.set_author(
-            name=info["unclean_name"],
+            name=title,
             icon_url=self.bot.user.display_avatar.url,
             url=info["source"],
         )
@@ -167,6 +167,7 @@ class Mechanics(commands.Cog):
         # description += f"Price: {info['unclean_price']}\n"
         # description += f"Points: {info['points']}\n"
         embed.set_footer(text=f"Requested by {ctx.author}")
+        embed.url = info["source"]
         embed.timestamp = utcnow()
         return await ctx.send(embed=embed)
 
