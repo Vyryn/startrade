@@ -142,7 +142,7 @@ class Mechanics(commands.Cog):
         if not info:
             return await ctx.send("I didn't find that ship. Spelling must be exact.")
 
-        title = f"{info['fac']} {info['class']} ({info['subclass']})\n"
+        title = f"{info['fac']} {info['subclass']}\n"
         description = f"Armament: {info['arm']}\nSpecials: {info['spec']}\n"
         embed = discord.Embed(
             title=title,
