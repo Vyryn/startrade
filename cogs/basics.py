@@ -14,7 +14,9 @@ def get_activity_worth(msg: str) -> int:
     # if not message.author.bot:
     if len(msg) < 3:
         return 0  # No activity score for teeny messages.
-    if msg[0] == "(" or msg[0] == "/":  # or msg[0] == '$' or msg[0] == ',':
+    if (
+        msg[0] == "(" or msg[0] == "/" or msg[-1] == ")"
+    ):  # or msg[0] == '$' or msg[0] == ',':
         return 0  # No activity score for ooc comments.
     words = msg.split(" ")
     valid_words = list(set([word.casefold() for word in words if len(word) > 3]))
