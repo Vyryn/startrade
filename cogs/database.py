@@ -277,19 +277,29 @@ async def check_bal_str(username: str):
 
 
 def activity_multiplier(networth: float):
-    if not networth:
+    if not networth or networth < 0:
         networth = 0
     if networth < 100_000_000:
         return 3
-    if networth < 200_000_000:
+    if networth < 250_000_000:
         return 2
-    if networth < 300_000_000:
-        return 1.5
-    if networth < 400_000_000:
-        return 1.25
     if networth < 500_000_000:
+        return 1.5
+    if networth < 700_000_000:
+        return 1.25
+    if networth < 900_000_000:
         return 1.1
-    return 1
+    if networth < 1_500_000_000:
+        return 1
+    if networth < 1_600_000_000:
+        return 0.9
+    if networth < 1_700_000_000:
+        return 0.7
+    if networth < 1_900_000_000:
+        return 0.5
+    if networth < 2_000_000_000:
+        return 0.3
+    return 0.25
 
 
 async def distribute_payouts(bot=None):
