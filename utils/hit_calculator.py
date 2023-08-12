@@ -9,7 +9,7 @@ def f_length(length: float) -> float:
 
 
 def f_speed_over_turn_rate(speed: float, turn_rate: float) -> float:
-    return 15 / (math.log(speed + 0.0001) / turn_rate) + 3
+    return 15 / (math.log(max(speed, 1) + 0.0001) / turn_rate) + 3
 
 
 def f_dist_over_accuracy(dist: float, accuracy: float) -> float:
@@ -98,7 +98,7 @@ def hit_determine(
         bonus=bonus,
     )
     if clear_advantage:
-        required_roll *= 2
+        required_roll /= 2
     roll: float = random.random() * 100
     if roll < required_roll:
         return True

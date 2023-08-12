@@ -246,7 +246,6 @@ class Mechanics(commands.Cog):
         if "u" in params:
             # Reduces damage dealt by 30%
             uncoordinated = True
-            pass
         if "c" in params:
             # Doubles # of hits landed
             clear_advantage = True
