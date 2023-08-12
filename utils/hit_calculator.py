@@ -9,7 +9,7 @@ def f_length(length: float) -> float:
 
 
 def f_speed_over_turn_rate(speed: float, turn_rate: float) -> float:
-    return 15 / (math.log(max(speed, 1) + 0.0001) / turn_rate) + 3
+    return 15 / (math.log(max(speed, 1.5) + 0.0001) / turn_rate) + 3
 
 
 def f_dist_over_accuracy(dist: float, accuracy: float) -> float:
