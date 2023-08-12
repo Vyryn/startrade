@@ -98,7 +98,7 @@ def hit_determine(
         bonus=bonus,
     )
     if clear_advantage:
-        required_roll /= 2
+        required_roll *= 2
     roll: float = random.random() * 100
     if roll < required_roll:
         return True
