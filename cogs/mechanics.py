@@ -134,7 +134,6 @@ class Mechanics(commands.Cog):
             )
 
     @commands.command()
-    @commands.check(not_in_invalid_channels())
     async def statline(self, ctx, *, ship_name: str):
         """Displays the stats for a specified ship. Name must be exact.
         Do not include quotation marks unless they are part of the ship name."""
