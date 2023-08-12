@@ -128,8 +128,8 @@ class Mechanics(commands.Cog):
             # TODO: Send in a dedicated travel channel instead
         except ValueError:
             await ctx.send(
-                f"{ctx.author}, you haven't done enough at your current location to be able to move to"
-                f" travel to a new location yet. Try RPing a bit first.",
+                f"{ctx.author}, you haven't done enough at your current location to be "
+                f"able to move to travel to a new location yet. Try RPing a bit first.",
                 delete_after=30,
             )
 
@@ -242,7 +242,7 @@ class Mechanics(commands.Cog):
             # reduce speed by 10 MGLT times the parameter following t
             # default to 10 MGLT if parameter isn't included.
             try:
-                tractors = int(params.split("-x")[1].split(" ")[0])
+                tractors = int(params.split("t")[1].split(" ")[0])
             except IndexError:
                 tractors = 1
             reduced_speed = ship_info["speed"] - 10 * tractors
