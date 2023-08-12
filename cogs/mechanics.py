@@ -3,6 +3,7 @@ import typing
 from random import randrange
 import random
 from collections import Counter
+import copy
 
 import discord  # pylint: disable=import-error
 from discord.ext import commands  # pylint: disable=import-error
@@ -209,7 +210,7 @@ class Mechanics(commands.Cog):
         params += " "
         name = name.lower()
         weap = weap.lower()
-        ship_info = self.bot.values_ships.get(name, [])
+        ship_info = copy.deepcopy(self.bot.values_ships.get(name, []))
         weap_info = self.bot.values_weapons.get(weap, [])
         if not ship_info:
             return await ctx.send("Incomplete command. I didn't find that ship.")
