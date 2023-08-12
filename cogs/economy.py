@@ -362,7 +362,7 @@ class Economy(commands.Cog):
         commander = ctx.guild.get_role(977038517710495761)
         if commander not in ctx.author.roles:
             return await ctx.send("You are not authoried to use this command.")
-        new_balance = await add_funds(member, -1 * amount)
+        new_balance = await add_funds(member, -1 * amount, reduce_networth=False)
         log(
             f"Removed {amount} credits from {member} by authority of {ctx.author}. Their new balance is {new_balance}"
         )

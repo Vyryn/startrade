@@ -219,15 +219,20 @@ async def update_activity(user: discord.User, amount: int):
     await disconnect()
 
 
-async def add_funds(user: discord.User, amount: int):
+async def add_funds(user: discord.User, amount: int, reduce_networth: bool = True):
     uid = user.id
     await connect()
     log(f"Adding {amount} credits to {user}.")
-    await db.execute(
-        "UPDATE users SET balance = balance + $1, networth = networth + $1 where id = $2",
-        amount,
-        uid,
-    )
+    if reduce_networth:
+        await db.execute(
+            "UPDATE users SET balance = balance + $1, networth = networth + $1 where id = $2",
+            amount,
+            uid,
+        )
+    else:
+        await db.execute(
+            "UPDATE users set balance = balance + $1 where id = $2", amount, uid
+        )
     balance = (await db.fetchrow("SELECT balance FROM users WHERE id = $1", uid))[0]
     await disconnect()
     return balance
