@@ -149,10 +149,15 @@ class Economy(commands.Cog):
             if user is None:
                 user = ctx.author
             if isinstance(user, discord.Member):
-                balance, invested = await check_bal(user)
+                balance, invested, networth = await check_bal(user)
             else:
-                balance, invested, user = await check_bal_str(user)
-            message = f"{user.name}'s balance is {int(balance)} {self.bot.credit_emoji}"
+                balance, invested, networth, user = await check_bal_str(user)
+            message = (
+                f"{user.name}'s balance is {int(balance)} {self.bot.credit_emoji}\n"
+            )
+            message += (
+                f"{user.name}'s networth is {int(networth)} {self.bot.credit_emoji}"
+            )
             embed = discord.Embed(
                 title="Balance", description=message, timestamp=datetime.now()
             )

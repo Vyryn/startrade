@@ -259,7 +259,8 @@ async def check_bal(user: discord.User):
     log(type(check), "DBUG")
     balance = check[3]
     invested = check[5]
-    return balance, invested
+    networth = check[8] or balance
+    return balance, invested, networth
 
 
 async def check_bal_str(username: str):
@@ -269,9 +270,10 @@ async def check_bal_str(username: str):
     log(check, "DBUG")
     balance = check[3]
     invested = check[5]
+    networth = check[8] or balance
     username = check[1]
     await disconnect()
-    return balance, invested, username
+    return balance, invested, networth, username
 
 
 def activity_multiplier(networth: float):
