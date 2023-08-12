@@ -169,7 +169,12 @@ class Mechanics(commands.Cog):
         embed.set_footer(text=f"Requested by {ctx.author}")
         embed.url = info["source"]
         embed.timestamp = utcnow()
-        return await ctx.send(embed=embed)
+        try:
+            return await ctx.send(embed=embed)
+        except discord.HTTPException:
+            embed.set_author(name=title, icon_url=None, url=None)
+            embed.url = None
+            return await ctx.send(embed=embed)
 
     @commands.command()
     @commands.check(not_in_invalid_channels())
