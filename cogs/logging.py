@@ -75,5 +75,5 @@ class Logging(commands.Cog):
         do_log_msg(message)
 
 
-def setup(bot):
-    bot.add_cog(Logging(bot))
+async def setup(bot):
+    await bot.add_cog(Logging(bot))

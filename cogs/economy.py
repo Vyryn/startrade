@@ -64,10 +64,6 @@ class Economy(commands.Cog):
         self.send_payouts.cancel()
         log("Ended the investment payout task.")
 
-    def cog_load(self):
-        self.send_payouts.start()
-        log("Weirldy Started the investment payouts task (2).")
-
     # Events
     @commands.Cog.listener()
     async def on_ready(self):
@@ -404,9 +400,10 @@ class Economy(commands.Cog):
         try:
             last_paycheck = await check_last_paycheck(ctx.author)
         except TypeError:  # Message is user's first ever message on the server and we need to register them first. Wait for registration.
-            return await ctx.send(
-                f"{ctx.author}, you need to chat first before you can use economy commands."
-            )
+            await new_user(ctx.author)
+            # return await ctx.send(
+            #     f"{ctx.author}, you need to chat first before you can use economy commands."
+            # )
         if time.time() - last_paycheck < self.bot.PAYCHECK_INTERVAL:
             seconds_remaining = int(
                 last_paycheck + self.bot.PAYCHECK_INTERVAL - time.time() + 1
@@ -539,5 +536,5 @@ class Economy(commands.Cog):
         log("Payouts sent.")
 
 
-def setup(bot):
-    bot.add_cog(Economy(bot))
+async def setup(bot):
+    await bot.add_cog(Economy(bot))
