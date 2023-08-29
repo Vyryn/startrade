@@ -3,16 +3,15 @@ import typing
 from random import randrange
 import random
 from collections import Counter
+import copy
 
-import discord
-from discord.ext import commands
+import discord  # pylint: disable=import-error
+from discord.ext import commands  # pylint: disable=import-error
 
 from cogs.database import update_location
-from functions import auth
+from functions import auth, utcnow
 from bot import log, logready, quiet_fail
 from utils.hit_calculator import hit_chance, hit_determine, calc_dmg, calc_dmg_multi
-
-bonuses = {"vet": 10, "ace": 15, "hon": 20, "jam": 20, "bh": 25, "tractor": -10}
 
 
 def not_in_invalid_channels():
@@ -44,7 +43,7 @@ class Mechanics(commands.Cog):
 
     # Commands
     @commands.command(aliases=["die", "dice"], description="Roll some dice.")
-    async def roll(self, ctx, *, content: str = None):
+    async def roll(self, ctx, *, content: str = ""):
         """Roll some dice.
         Roll x d y dice, where x is the number of dice and y is the number of sides. Defaults to 1D20.
         If you only specify one number, this will be the number of D20s to roll. If you only specify dy,
@@ -58,10 +57,9 @@ class Mechanics(commands.Cog):
             f"{ctx.author} used the roll command with content: {content}.", self.bot.cmd
         )
         summ = 0
-        if content is not None:
-            content = content.lower().split(" ")
-            #            args_pre = content[0].lower().split('>')
-            args = content[0].lower().split("d")
+        if content != "":
+            content = content.lower().replace(" ", "")
+            args = content.split("d")
             try:
                 num_dice = int(args[0])
             except ValueError:
@@ -130,68 +128,52 @@ class Mechanics(commands.Cog):
             # TODO: Send in a dedicated travel channel instead
         except ValueError:
             await ctx.send(
-                f"{ctx.author}, you haven't done enough at your current location to be able to move to"
-                f" travel to a new location yet. Try RPing a bit first.",
+                f"{ctx.author}, you haven't done enough at your current location to be "
+                f"able to move to travel to a new location yet. Try RPing a bit first.",
                 delete_after=30,
             )
 
     @commands.command()
-    @commands.check(not_in_invalid_channels())
-    async def calcdamage_old(
-        self,
-        ctx,
-        hull: typing.Optional[int] = 100,
-        shields: typing.Optional[int] = 100,
-        name: str = "",
-        dist: int = 10,
-        n_weaps: int = 1,
-        weap: str = "TC",
-        *,
-        params="",
-    ):
-        """
-        Calculates damage.
-        $calcdamage  (target hull) (target shields) "[target ship name]" [distance in km] [number of weapons] [weapon
-        type] (-ace/-vet/-hon/-evading)
-        """
-        name = name.lower()
-        weap = weap.lower()
-        ship_info = self.bot.values_ships.get(name, [])
-        weap_info = self.bot.values_weapons.get(weap, [])
-        if not ship_info:
-            return await ctx.send("Incomplete command. I didn't find that ship.")
-        if not weap_info:
-            return await ctx.send("Incomplete command. I didn't find that weapon.")
-        # Apply evasion bonus for -ace, -evading etc
-        evade_bonus = 0
-        params = params.lower()
-        for upgrade, val in bonuses.items():
-            if upgrade in params:
-                evade_bonus += val
-        # Single ship, quick result
-        if "-x" not in params:
-            new_hull, new_shields, hit_perc, num_shots = calc_dmg(
-                hull, shields, n_weaps, dist, evade_bonus, ship_info, weap_info
-            )
-            return await ctx.send(
-                f"[{new_hull}] [{new_shields}] {name.title()}.\n({hit_perc}% of {num_shots}"
-                f" total shots hit)"
-            )
-        # Number of ships specified as -x30 or similar
-        repeats = int(params.split("-x")[1].split(" ")[0])
-        ships = list()
-        for _ in range(repeats):
-            ships.append((hull, shields, ship_info))
-        new_ships, hit_perc, num_shots = calc_dmg_multi(
-            ships, n_weaps, dist, evade_bonus, weap_info
+    async def statline(self, ctx, *, ship_name: str):
+        """Displays the stats for a specified ship. Name must be exact.
+        Do not include quotation marks unless they are part of the ship name."""
+        info = self.bot.values_ships.get(ship_name.lower().strip(), [])
+        if not info:
+            return await ctx.send("I didn't find that ship. Spelling must be exact.")
+
+        title = f"{info['fac']} {info['subclass']}\n"
+        description = f"Armament: {info['arm']}\nSpecials: {info['spec']}\n"
+        embed = discord.Embed(
+            title=info["unclean_name"],
+            description=description,
         )
-        to_send = ""
-        for (hull, shields), num in new_ships.most_common():
-            to_send += f"{num}x [{hull}] [{shields}] {name.title()}.\n"
-        to_send += f"({hit_perc}% of {num_shots} total shots hit)"
-        if len(to_send) > 1980:
-            to_send = to_send[:1940] + "\nWarning: too many lines, cut off some."
-        await ctx.send(to_send)
+        embed.add_field(name="Hull", value=f"{info['hull']} RU")
+        embed.add_field(name="Shields", value=f"{info['shield']} SBD")
+        embed.add_field(name="Speed", value=f"{info['speed']} MGLT")
+        embed.add_field(name="Length", value=f"{info['len']}m")
+        embed.add_field(name="Price", value=info["unclean_price"])
+        embed.add_field(name="Points", value=f"{info['points']}")
+        embed.color = discord.Color.darker_grey()
+        embed.set_author(
+            name=title,
+            icon_url=self.bot.user.display_avatar.url,
+            url=info["source"],
+        )
+        # description += f"Hull: {info['hull']}\n"
+        # description += f"Shields: {info['shield']}\n"
+        # description += f"Speed: {info['speed']} MGLT\n"
+        # description += f"Length: {info['len']}m\n"
+        # description += f"Price: {info['unclean_price']}\n"
+        # description += f"Points: {info['points']}\n"
+        embed.set_footer(text=f"Requested by {ctx.author}")
+        embed.url = info["source"]
+        embed.timestamp = utcnow()
+        try:
+            return await ctx.send(embed=embed)
+        except discord.HTTPException:
+            embed.set_author(name=title, icon_url=None, url=None)
+            embed.url = None
+            return await ctx.send(embed=embed)
 
     @commands.command()
     @commands.check(not_in_invalid_channels())
@@ -210,11 +192,30 @@ class Mechanics(commands.Cog):
         """
         Calculates damage.
         $calcdamage  (target hull) (target shields) "[target ship name]" [distance in km] [number of weapons] [weapon
-        type] (-ace/-vet/-hon/-evading)
+        type] (-a/-v/-j/-bh/-t5/-aibh, etc)
+        The following modifiers have objective criteria:
+        -a (Ace): Used if the target has the Ace modifier. Applies a medium point bonus to dodge capability
+        -v (Veteran): Used if the target has the Veteran modifier. Applies a medium point bonus to dodge capability.
+            The combined bonus from a and v will not exceed the distance at which combat is taking place.
+        -j (Jammed): Used if the firing ship is jammed. Applies a large point bonus to dodge capability.
+        -bh (Bounty hunter): Always used if the target pilot is a bounty hunter. Applies a large point bonus to dodge capability.
+        -tX (Tractor beam): Used if the target is tractor beamed. X indicates how many tractor beams are locked onto the target and defaults to 1.
+            Each reduces target's speed by a moderate amount, to a minimum speed of 0 MGLT.
+        -i (Immobile): Applied if the target ship is completely immobile, for example landed. Reduces target's speed to 0 MGLT.
+        The following modifiers may be applied at GM discretion:
+        -c (Clear advantage): Used for things like catching a vessel off guard. Doubles the hits landed.
+        -u (Uncoordinated): Used for things like the attacker being a large fighter swarm. Reduces damage by a significant amount.
+        -e (Evading): Used when the target is not firing weapons, is a relatively small or agile ship, and can plausibly evade.
+            Applies a hit chance reduction that depends on the speed of the target ship.
         """
+        if not hull:
+            hull = 100
+        if not shields:
+            shields = 100
+        params += " "
         name = name.lower()
         weap = weap.lower()
-        ship_info = self.bot.values_ships.get(name, [])
+        ship_info = copy.deepcopy(self.bot.values_ships.get(name, []))
         weap_info = self.bot.values_weapons.get(weap, [])
         if not ship_info:
             return await ctx.send("Incomplete command. I didn't find that ship.")
@@ -222,16 +223,43 @@ class Mechanics(commands.Cog):
             return await ctx.send("Incomplete command. I didn't find that weapon.")
         # Apply evasion bonus for -ace, -evading etc
         _bonus = 0
-        params = params.lower()
-        for upgrade, val in bonuses.items():
-            if upgrade in params:
-                if upgrade == "ace" and val > dist - 1:
-                    val = dist - 1
-                _bonus += val
         evading: bool = False
-        if "evad" in params:
+        uncoordinated: bool = False
+        clear_advantage: bool = False
+
+        params = params.lower().replace("-", "").replace(" ", "")
+        if "v" in params:
+            _bonus += 10
+        if "a" in params:
+            _bonus += 15
+        _bonus = min(dist - 1, _bonus)
+        if "j" in params:
+            _bonus += 20
+        if "bh" in params:
+            _bonus += 25
+        if "t" in params:
+            # reduce speed by 10 MGLT times the parameter following t
+            # default to 10 MGLT if parameter isn't included.
+            try:
+                tractors = int(params.split("t")[1].split(" ")[0])
+            except (IndexError, ValueError):
+                tractors = 1
+            reduced_speed = ship_info["speed"] - 10 * tractors
+            ship_info["speed"] = max(0, reduced_speed)
+        if "i" in params:
+            # Reduces speed to 0MGLT
+            ship_info["speed"] = 0
+        if "u" in params:
+            # Reduces damage dealt by 30%
+            uncoordinated = True
+        if "c" in params:
+            # Doubles # of hits landed
+            clear_advantage = True
+        if "e" in params:
+            # reduces hit chance by a variable amount depneding on speed and size
             evading = True
         # Single ship, quick result
+
         if "-x" not in params:
             new_hull, new_shields, hit_perc, num_shots = calc_dmg(
                 hull,
@@ -242,6 +270,8 @@ class Mechanics(commands.Cog):
                 ship_info,
                 weap_info,
                 evading=evading,
+                clear_advantage=clear_advantage,
+                uncoordinated=uncoordinated,
                 do_attenuation=True,
             )
             return await ctx.send(
@@ -260,11 +290,13 @@ class Mechanics(commands.Cog):
             _bonus,
             weap_info,
             evading=evading,
+            clear_advantage=clear_advantage,
+            uncoordinated=uncoordinated,
             do_attenuation=True,
         )
         to_send = ""
-        for (hull, shields), num in new_ships.most_common():
-            to_send += f"{num}x [{hull}] [{shields}] {name.title()}.\n"
+        for (_hull, _shields), num in new_ships.most_common():
+            to_send += f"{num}x [{_hull}] [{_shields}] {name.title()}.\n"
         to_send += f"({hit_perc}% of {num_shots} total shots hit)"
         if len(to_send) > 1980:
             to_send = to_send[:1940] + "\nWarning: too many lines, cut off some."
@@ -287,7 +319,11 @@ class Mechanics(commands.Cog):
     )
     @commands.check(not_in_invalid_channels())
     async def timespeed(
-        self, ctx, mglt: float, current: float = None, target: float = None
+        self,
+        ctx,
+        mglt: float,
+        current: typing.Optional[float] = None,
+        target: typing.Optional[float] = None,
     ):
         """Display how many turns until you're at the target distance.
         MGLT is the MGLT your're approaching at (subtract the two ship speeds if one ship is running away from another)
@@ -320,26 +356,25 @@ class Mechanics(commands.Cog):
     @commands.command(description="Calculate a range coming out of hyperspace")
     @commands.check(not_in_invalid_channels())
     async def range(self, ctx, target: float, inaccuracy: float = -1):
-        """range target inaccuracy, where target is the desired starting range in km and inaccuracy is the
-        inaccuracy. Default inaccuracy scales inversely to target."""
+        """Range target inaccuracy, where target is the desired starting range in km and
+        inaccuracy is the inaccuracy. Default inaccuracy scales inversely to target."""
         if target <= 0:
             return await ctx.send("Range must be greater than 0.")
         if inaccuracy < 0:
             inaccuracy = int(2 * 100 / target) + 10
         if target >= 200:
             inaccuracy = 10
-        random_ = randrange(-1 * inaccuracy, inaccuracy)
-        result = target + random_
+        random_ = randrange(int(-1 * inaccuracy), int(inaccuracy))
+        if target + random_ < 0:
+            result = target - random_
+        else:
+            result = target + random_
+
+        msg = f"Targetting a range of {target}km, with an inaccuracy of "
+        msg += f"+-{inaccuracy}km, you come out at {result}km"
         if result < 0:
-            return await ctx.send(
-                "Oops, you were too ambitious. This ship was lost in hyperspace attempting "
-                "fancy maneuvers, with all hands lost. Remove it from your UC, and any characters "
-                "aboard are dead."
-            )
-        return await ctx.send(
-            f"Targetting a range of {target}km, with an inaccuracy of +-{inaccuracy}km, "
-            f"you come out at {target + random_}km."
-        )
+            msg += " **behind** your target."
+        return await ctx.send(msg)
 
     @commands.command(description="Returns the hit % for a given weapon circumstances")
     @commands.check(not_in_invalid_channels())
@@ -373,11 +408,12 @@ class Mechanics(commands.Cog):
         await ctx.send(f"{res:.2f}%")
 
     @commands.command(
-        description=f"Calculates how many missiles hit when defended by a given number of PDC"
+        description="Calculates how many missiles hit when defended by a given number of PDC"
     )
     @commands.check(not_in_invalid_channels())
     async def missiles(self, ctx, num_missiles: int, num_pdc: int, num_lc: int):
-        """Calculate how many missiles **hit** when 20 missiles are launched at something defended by 10 PDC and 15 LC:
+        """Calculate how many missiles **hit** when 20 missiles are launched at something
+        defended by 10 PDC and 15 LC:
         $missiles 20 10 15
         """
         affected = min(num_missiles, num_pdc + num_lc)

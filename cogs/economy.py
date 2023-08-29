@@ -1,10 +1,11 @@
-import asyncio
 import time
 import random
 from datetime import datetime
-import discord
 import typing
-from discord.ext import commands, tasks
+
+import asyncio
+import discord  # pylint: disable=import-error
+from discord.ext import commands, tasks  # pylint: disable=import-error
 
 from bot import log, logready
 from cogs.database import (
@@ -12,6 +13,7 @@ from cogs.database import (
     check_bal,
     transfer_funds,
     add_funds,
+    add_networth,
     distribute_payouts,
     check_last_paycheck,
     set_last_paycheck_now,
@@ -22,7 +24,6 @@ from cogs.database import (
     view_items,
     sell_possession,
     items_per_top_page,
-    get_custom_items,
 )
 from functions import auth
 
@@ -36,9 +37,9 @@ payout_frequency = 10000000
 async def remind_bump(
     channel: discord.TextChannel,
     increments=120 * 60,
-    message="The server can be bumped again." " Who will claim the reward first?",
+    message="The server can be bumped again.",
 ):
-    message = f":alarm_clock: **Reminder**: \n" + message
+    message = f":alarm_clock: **Reminder**: \n{message}"
     await asyncio.sleep(increments)
     await channel.send(message)
     message = message.replace("\n", "  ")
@@ -57,11 +58,11 @@ class Economy(commands.Cog):
         self.bot = bot
         global payout_frequency
         payout_frequency = self.bot.PAYOUT_FREQUENCY
-        self.send_payouts.start()
+        self.send_payouts.start()  # pylint: disable=no-member
         log("Started the investment payouts task (1).", self.bot.debug)
 
     def cog_unload(self):
-        self.send_payouts.cancel()
+        self.send_payouts.cancel()  # pylint: disable=no-member
         log("Ended the investment payout task.")
 
     # Events
@@ -81,15 +82,14 @@ class Economy(commands.Cog):
                 and "Patlatma tamamlandı" not in embed_content
             ):
                 return
-            bumper_id = int(embed_content[2:20])
-            bumper = self.bot.server.get_member(bumper_id)
+            bumper = message.interaction.user
             bump_amount = self.bot.BUMP_PAYMENT
 
             balance = await add_funds(bumper, bump_amount)
             to_send = (
                 f"Thank you for bumping {self.bot.server.name} on Disboard, {bumper.mention}."
-                f" I've added {self.bot.BUMP_PAYMENT}"
-                f" {self.bot.credit_emoji} to your balance. Your new balance is {balance}."
+                # f" I've added {self.bot.BUMP_PAYMENT}"
+                # f" {self.bot.credit_emoji} to your balance. Your new balance is {balance}."
             )
             log(
                 f"{bumper} bumped the server on Disboard. Gave them {self.bot.BUMP_PAYMENT}, "
@@ -149,10 +149,15 @@ class Economy(commands.Cog):
             if user is None:
                 user = ctx.author
             if isinstance(user, discord.Member):
-                balance, invested = await check_bal(user)
+                balance, invested, networth = await check_bal(user)
             else:
-                balance, invested, user = await check_bal_str(user)
-            message = f"{user.name}'s balance is {int(balance)} {self.bot.credit_emoji}"
+                balance, invested, networth, user = await check_bal_str(user)
+            message = (
+                f"{user.name}'s balance is {int(balance)} {self.bot.credit_emoji}\n"
+            )
+            message += (
+                f"{user.name}'s networth is {int(networth)} {self.bot.credit_emoji}"
+            )
             embed = discord.Embed(
                 title="Balance", description=message, timestamp=datetime.now()
             )
@@ -186,7 +191,7 @@ class Economy(commands.Cog):
             return await ctx.send("You can't send nothing!")
         from_balance, to_balance = await transfer_funds(ctx.author, user, amount)
         if from_balance == -1:
-            await ctx.send(f"You can not send more credits than you have.")
+            await ctx.send("You can not send more credits than you have.")
         else:
             await ctx.send(
                 f"Successfully transferred {amount} to {user}. Your new balance is {from_balance}"
@@ -202,17 +207,19 @@ class Economy(commands.Cog):
             ch = self.bot.server.get_channel(1055577521795641398)
             role = self.bot.server.get_role(977038517756641331)
             await ch.send(
-                f"**Alert** {role.mention}, {ctx.author.mention} ({ctx.author.id}) sent a transfer of "
-                f"{amount} to {user.mention} ({user.id}). It was flagged for being in the suspicious range, "
-                f"check if this is an alt or similar."
+                f"**Alert** {role.mention}, {ctx.author.mention} ({ctx.author.id}) "
+                f"sent a transfer of {amount} to {user.mention} ({user.id}). It was "
+                "flagged for being in the suspicious range, check if this is an alt "
+                "or similar."
             )
 
     @commands.command(name="buy", description="Buy an item from the browse listings.")
     @commands.check(auth(1))
     async def buyitem(self, ctx, amount: typing.Optional[int] = 1, *, item: str):
         """
-        Buy an item from the browse listings. You can specify an amount of the item to buy before the
-         name of the item to buy multiple. Exact name is required to prevent accidental matching.
+        Buy an item from the browse listings. You can specify an amount of the item to
+        buy before the name of the item to buy multiple. Exact name is required to
+        prevent accidental matching.
         """
         # TODO: Add price determination depending on context
         log(f"{ctx.author} is attempting to purchase {amount} {item}(s).", self.bot.cmd)
@@ -225,11 +232,12 @@ class Economy(commands.Cog):
     @commands.check(auth(1))
     async def sellitem(self, ctx, amount: typing.Optional[int] = 1, *, item: str):
         """
-        Sell an item from your possessions for 60% of its purchase value. You can specify the amount of the
-         item to buy before the name of the item to buy multiple. Exact name is required to prevent accidental matching.
+        Sell an item from your possessions for 60% of its purchase value. You can specify
+        the amount of the item to buy before the name of the item to buy multiple. Exact
+        name is required to prevent accidental matching.
         """
         log(f"{ctx.author} is attempting to sell {amount} {item}(s).", self.bot.cmd)
-        if amount < 1:
+        if not amount or amount < 1:
             return await ctx.send("Invalid sell amount.")
         try:
             await sell_possession(ctx, ctx.author, item.title(), amount)
@@ -244,7 +252,7 @@ class Economy(commands.Cog):
     async def useitem(self, ctx, amount: typing.Optional[int] = 1, *, item: str):
         """Consume an item. Irreversible, and can be used on any item."""
         log(f"{ctx.author} used {amount}x {item}.")
-        if amount < 1:
+        if not amount or amount < 1:
             return await ctx.send("Invalid use amount.")
         try:
             await add_possession(ctx.author, item, cost=0, amount=(-1 * amount))
@@ -298,7 +306,10 @@ class Economy(commands.Cog):
     async def topstat(
         self, ctx, look_type: typing.Optional[str] = "balance", page: int = 1
     ):
-        # This method queries the database and returns a list of ten tuples of (name, stat) which is one page of results
+        if not look_type:
+            look_type = "balance"
+        # This method queries the database and returns a list of ten tuples of (name, stat)
+        # which is one page of results
         log(f"{ctx.author} used topbank {look_type} {page}.", self.bot.cmd)
         try:
             lines, num_pages, rank = await get_top(look_type, page, ctx.author)
@@ -356,7 +367,7 @@ class Economy(commands.Cog):
         commander = ctx.guild.get_role(977038517710495761)
         if commander not in ctx.author.roles:
             return await ctx.send("You are not authoried to use this command.")
-        new_balance = await add_funds(member, -1 * amount)
+        new_balance = await add_funds(member, -1 * amount, reduce_networth=False)
         log(
             f"Removed {amount} credits from {member} by authority of {ctx.author}. Their new balance is {new_balance}"
         )
@@ -366,6 +377,58 @@ class Economy(commands.Cog):
         )
         embed = discord.Embed(
             title="Money", description=message, timestamp=datetime.now()
+        )
+        await ctx.send(embed=embed)
+
+    @commands.command(description="Give someone net worth. Staff only.")
+    async def worthadd(self, ctx, member: discord.Member, amount: int):
+        """
+        Staff override to give people networth. Can also take networth away with negative amount.
+        Requires Commander role
+        """
+        log(
+            f"{ctx.author} used worthadd command with amount {amount} and member {member}.",
+            self.bot.cmd,
+        )
+        commander = ctx.guild.get_role(977038517710495761)
+        if commander not in ctx.author.roles:
+            return await ctx.send("You are not authorized to use this command.")
+        new_balance = await add_networth(member, amount)
+        log(
+            f"Added {amount} net worth to {member} by authority of {ctx.author}. Their new net worth is {new_balance}"
+        )
+        message = (
+            f"Added {int(amount)} {self.bot.credit_emoji} to {member.name}'s net worth by request of "
+            f"{ctx.author.name}."
+        )
+        embed = discord.Embed(
+            title="Net Worth", description=message, timestamp=datetime.now()
+        )
+        await ctx.send(embed=embed)
+
+    @commands.command(description="Remove net worth from someone. Staff only.")
+    async def worthremove(self, ctx, member: discord.Member, amount: int):
+        """
+        Staff override to take networth from people. Can also add networth to people with negative amount.
+        Requires Commander role
+        """
+        log(
+            f"{ctx.author} used worthremove command with amount {amount} and member {member}.",
+            self.bot.cmd,
+        )
+        commander = ctx.guild.get_role(977038517710495761)
+        if commander not in ctx.author.roles:
+            return await ctx.send("You are not authorized to use this command.")
+        new_balance = await add_networth(member, -1 * amount)
+        log(
+            f"Removed {amount} net worth from {member} by authority of {ctx.author}. Their new net worth is {new_balance}"
+        )
+        message = (
+            f"Removed {int(amount)} {self.bot.credit_emoji} from {member.name}'s net worth by request of "
+            f"{ctx.author.name}."
+        )
+        embed = discord.Embed(
+            title="Net Worth", description=message, timestamp=datetime.now()
         )
         await ctx.send(embed=embed)
 
@@ -397,13 +460,7 @@ class Economy(commands.Cog):
                 title="Paycheck", description=message, timestamp=datetime.now()
             )
             return await ctx.send(embed=embed)
-        try:
-            last_paycheck = await check_last_paycheck(ctx.author)
-        except TypeError:  # Message is user's first ever message on the server and we need to register them first. Wait for registration.
-            await new_user(ctx.author)
-            # return await ctx.send(
-            #     f"{ctx.author}, you need to chat first before you can use economy commands."
-            # )
+        last_paycheck = await check_last_paycheck(ctx.author)
         if time.time() - last_paycheck < self.bot.PAYCHECK_INTERVAL:
             seconds_remaining = int(
                 last_paycheck + self.bot.PAYCHECK_INTERVAL - time.time() + 1
@@ -490,7 +547,7 @@ class Economy(commands.Cog):
                     if price < threshold or threshold < 0:
                         spaces = " " * (17 - len(item))
                         random_modifier = random.random() * 0.001 + 1 - 0.0005
-                        log(random_modifier, self.bot.debug)
+                        log(str(random_modifier), self.bot.debug)
                         to_send += f"{item}:{spaces} ~{price * random_modifier:,.2f}\n"
                 append = "```"
                 while len(to_send) > 1995:
@@ -519,7 +576,7 @@ class Economy(commands.Cog):
                     if price < threshold or threshold < 0:
                         spaces = " " * (17 - len(item))
                         random_modifier = random.random() * 0.001 + 1 - 0.0005
-                        log(random_modifier, self.bot.debug)
+                        log(str(random_modifier), self.bot.debug)
                         to_send += f"{item}:{spaces} ~{price * random_modifier:,.2f}\n"
                 append = "```"
                 while len(to_send) > 1990:

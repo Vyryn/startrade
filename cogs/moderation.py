@@ -1,11 +1,11 @@
 import asyncio
 import typing
 
-import discord
-from discord.ext import commands
+import discord  # pylint: disable=import-error
+from discord.ext import commands  # pylint: disable=import-error
 from cogs.basics import send_to_log_channel
 from cogs.database import add_funds
-from functions import auth, now
+from functions import auth
 from bot import log, logready
 
 
@@ -13,7 +13,7 @@ class Moderation(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.literate = None
-        self.confirmed_ids = None
+        self.confirmed_ids = []
 
     async def confirmation_on(self, user: int):
         await asyncio.sleep(self.bot.deltime * 2)
@@ -77,7 +77,7 @@ class Moderation(commands.Cog):
     @commands.command(description="Delete a number of messages")
     @commands.check(auth(6))
     async def forcepurge(self, ctx, amount: int):
-        f"""Delete a bunch of messages
+        """Delete a bunch of messages
         Requires: Auth 6. This is meant for use only in cases where the bot has caused spam that it shouldn't
         have.
         Amount: The number of messages to purge. Typically limited to {self.bot.MAX_PURGE}.
@@ -123,7 +123,7 @@ class Moderation(commands.Cog):
         days: typing.Optional[int] = 0,
         member: discord.Member = None,
         *,
-        reason: str = None,
+        reason: typing.Optional[str] = None,
     ):
         """Ban someone from the server
         Requires: Ban Members permission
@@ -162,7 +162,8 @@ class Moderation(commands.Cog):
     async def clearpins(self, ctx):
         """Clear all the pinned messages from a channel.
         Requires: Manage Messages permission
-        Note: It is highly recommended to be absolutely sure before using this command."""
+        Note: It is highly recommended to be absolutely sure before using this command.
+        """
         if self.bot.confirmed_ids.get(ctx.author.id, 0) > 0:
             i = 0
             for pin in await ctx.channel.pins():
@@ -195,11 +196,11 @@ class Moderation(commands.Cog):
             )
         if self.literate in member.roles:  # Don't allow getting the role twice
             return await ctx.send(
-                f"That user has already been granted the Certified Literate role."
+                "That user has already been granted the Certified Literate role."
             )
         await ctx.send(
             f"{member.mention}\n```\nI hereby declare you an outstanding writer. May you be granted"
-            f" fortune in your future endeavours.```"
+            " fortune in your future endeavours.```"
         )
         await add_funds(member, self.bot.GRANT_AMOUNT)
         await send_to_log_channel(
