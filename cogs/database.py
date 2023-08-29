@@ -302,6 +302,16 @@ def activity_multiplier(networth: float):
     return 0.25
 
 
+def calc_disp_delta(amount: float) -> str:
+    disp_delta = str(int(amount))
+    digits = len(str(amount))
+    if digits > 6:
+        disp_delta = f"{disp_delta[:-6]}.{disp_delta[-6:-4]}m"
+    elif digits > 3:
+        disp_delta = f"{disp_delta[:-3]}.{disp_delta[-3:-1]}k"
+    return disp_delta
+
+
 async def distribute_payouts(bot=None):
     await connect()
     channel = None
@@ -330,8 +340,8 @@ async def distribute_payouts(bot=None):
         activity_payout = 0
         act_mult = activity_multiplier(networth)
         if user[6] is not None:
-            activity_payout = int(recent_activity) * actweight
-            # activity_payout = int(recent_activity) * actweight * act_mult
+            # activity_payout = int(recent_activity) * actweight # Un-scaled
+            activity_payout = int(recent_activity) * actweight * act_mult
         new_user_balance = int(balance) + investment_payout + activity_payout
         new_user_networth = int(networth) + investment_payout + activity_payout
         if new_user_balance > balance:
@@ -344,16 +354,11 @@ async def distribute_payouts(bot=None):
             )
         if channel is not None and new_user_balance > user[3] + 20 * actweight:
             delta = new_user_balance - user[3]
-            disp_delta = str(int(delta))
-            digits = len(str(delta))
-            if digits > 6:
-                disp_delta = f"{disp_delta[:-6]}.{disp_delta[-6:-4]}m"
-            elif digits > 3:
-                disp_delta = f"{disp_delta[:-3]}.{disp_delta[-3:-1]}k"
+            disp_delta = calc_disp_delta(delta)
+            disp_networth = calc_disp_delta(networth)
             await channel.send(
                 f"{user[1]}: +{disp_delta} credits for activity in the past hour.\n"
-                f"*(Considering their net worth of {networth}, "
-                f"this would be multiplied by {act_mult} if the scaling multiplier were active)*"
+                f"*(x{act_mult} due to their net worth of {disp_networth})*"
             )
 
         await db.execute(
@@ -1001,7 +1006,6 @@ class Database(commands.Cog):
                 f"AttributeError trying to close aiohttp session at {now()}",
                 self.bot.warn,
             )
-            pass
 
     @commands.command(description="Prints the list of users to the console.")
     @commands.check(auth(max(4, AUTH_LOCKDOWN)))
