@@ -246,7 +246,6 @@ class Mechanics(commands.Cog):
                 tractors = 1
             reduced_speed = ship_info["speed"] - 10 * tractors
             ship_info["speed"] = max(0, reduced_speed)
-            await ctx.send(f"Parsed tractors, {tractors=}, {reduced_speed=}")
         if "i" in params:
             # Reduces speed to 0MGLT
             ship_info["speed"] = 0
@@ -261,7 +260,7 @@ class Mechanics(commands.Cog):
             evading = True
         # Single ship, quick result
 
-        if "-x" not in params:
+        if "x" not in params:
             new_hull, new_shields, hit_perc, num_shots = calc_dmg(
                 hull,
                 shields,
