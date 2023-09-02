@@ -280,7 +280,6 @@ class Mechanics(commands.Cog):
             )
         # Number of ships specified as -x30 or similar
         repeats = int(params.split("x")[1].split(" ")[0])
-        await ctx.send(f"Parsed multi, {repeats=}")
         ships = list()
         for _ in range(repeats):
             ships.append((hull, shields, ship_info))
