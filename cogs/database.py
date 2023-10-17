@@ -71,7 +71,7 @@ async def new_user(user: discord.User):
         return f"User {name} Already Exists in database."
     try:
         await db.execute(
-            "INSERT INTO users VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+            "INSERT INTO users VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)",
             uid,
             name,
             activity,
@@ -81,6 +81,8 @@ async def new_user(user: discord.User):
             0,
             0,
             networth,
+            0,
+            0,
         )
         result = f"User {name} added to database at {now()}."
     except conn.UniqueViolationError:
@@ -118,31 +120,6 @@ async def transfer_funds(from_user: discord.User, to_user: discord.User, amount:
     uid_from = from_user.id
     uid_to = to_user.id
     await connect()
-    # from_res = (
-    #     await db.fetchrow("SELECT balance, networth FROM users WHERE id = $1", uid_from)
-    # )
-    # to_res = (
-    #     await db.fetchrow("SELECT balance, networth FROM users WHERE id = $1", uid_to)
-    # )
-    # log(f"Transferring {amount} from {from_user} to {to_user}.")
-    # to_balance = float(to_res.balance) + float(amount)
-    # to_networth = float(to_res.networth) + float(amount)
-    # from_balance = float(from_res.balance) - float(amount)
-    # from_networth = float(from_res.networth) - float(amount)
-    # if float(from_balance) < 0:
-    #     return -1, 0
-    # await db.execute(
-    #     "UPDATE users SET balance = $1 networth = $2 where id = $3",
-    #     from_balance,
-    #     from_networth,
-    #     uid_from
-    # )
-    # await db.execute(
-    #     "UPDATE users SET balance = $1 networth = $2 where id = $3",
-    #     to_balance,
-    #     to_networth,
-    #     uid_to
-    # )
     tr = db.transaction()
     await tr.start()
     try:
@@ -233,7 +210,7 @@ async def add_funds(user: discord.User, amount: int, reduce_networth: bool = Tru
         await db.execute(
             "UPDATE users set balance = balance + $1 where id = $2", amount, uid
         )
-    balance = (await db.fetchrow("SELECT balance FROM users WHERE id = $1", uid))[0]
+    balance = await db.fetchval("SELECT balance FROM users WHERE id = $1", uid)
     await disconnect()
     return balance
 
@@ -247,7 +224,7 @@ async def add_networth(user: discord.User, amount: int):
         amount,
         uid,
     )
-    networth = (await db.fetchrow("SELECT networth FROM users WHERE id = $1", uid))[0]
+    networth = await db.fetchval("SELECT networth FROM users WHERE id = $1", uid)
     await disconnect()
     return networth
 
@@ -272,34 +249,40 @@ async def check_bal_str(username: str):
     invested = check[5]
     networth = check[8] or balance
     username = check[1]
-    await disconnect()
-    return balance, invested, networth, username
+    passive = check[9]
+    bonus = check[10]
+    return balance, invested, networth, passive, bonus, username
 
 
 def activity_multiplier(networth: float):
     if not networth or networth < 0:
         networth = 0
     if networth < 100_000_000:
-        return 3
+        return 5.0
     if networth < 250_000_000:
-        return 2
-    if networth < 500_000_000:
-        return 1.5
-    if networth < 700_000_000:
-        return 1.25
-    if networth < 900_000_000:
-        return 1.1
-    if networth < 1_500_000_000:
-        return 1
+        return 4.0
+    if networth < 400_000_000:
+        return 3.0
+    if networth < 650_000_000:
+        return 2.5
+    if networth < 1_000_000_000:
+        return 2.0
+    if networth < 1_200_000_000:
+        return 1.8
+    if networth < 1_400_000_000:
+        return 1.6
     if networth < 1_600_000_000:
-        return 0.9
-    if networth < 1_700_000_000:
-        return 0.7
-    if networth < 1_900_000_000:
-        return 0.5
+        return 1.4
+    if networth < 1_800_000_000:
+        return 1.2
     if networth < 2_000_000_000:
-        return 0.3
-    return 0.25
+        return 1.1
+    return 1
+
+
+async def activity_multiplier_for_user(user_id: int) -> float:
+    networth = await db.fetchval("SELECT networth FROM users where id = $1", user_id)
+    return activity_multiplier(networth)
 
 
 def calc_disp_delta(amount: float) -> str:
@@ -326,11 +309,14 @@ async def distribute_payouts(bot=None):
             invested = 0
         balance = user[3]
         networth = user[8]
+        remaining_bonus = user[10]
         if not networth:
             networth = balance
         recent_activity = user[6]
         if not recent_activity:
             recent_activity = 0
+        if not remaining_bonus:
+            remaining_bonus = 0
         # If wealth factor is zero, this bit doesn't give anything.
         payout_generosity = (
             random.random() * wealth_factor
@@ -342,13 +328,19 @@ async def distribute_payouts(bot=None):
         if user[6] is not None:
             # activity_payout = int(recent_activity) * actweight # Un-scaled
             activity_payout = int(recent_activity) * actweight * act_mult
-        new_user_balance = int(balance) + investment_payout + activity_payout
-        new_user_networth = int(networth) + investment_payout + activity_payout
+            bonus_payout = min(activity_payout * 2, remaining_bonus)
+        new_user_balance = (
+            int(balance) + investment_payout + activity_payout  # + bonus_payout
+        )
+        new_user_networth = (
+            int(networth) + investment_payout + activity_payout  # + bonus_payout
+        )
         if new_user_balance > balance:
             log(
-                f"User {user[1]}: activity: {recent_activity}, "
-                f"activity_payout: {activity_payout}, investment: {invested}, "
-                f"investment_payout: {investment_payout}, "
+                f"User {user[1]}: {recent_activity=}, "
+                f"{activity_payout=}, {invested=}, "
+                f"{investment_payout=}, "
+                f"{bonus_payout=}"
                 f"old bal: {user[3]}, new bal: {new_user_balance}",
                 "INFO",
             )
@@ -356,16 +348,22 @@ async def distribute_payouts(bot=None):
             delta = new_user_balance - user[3]
             disp_delta = calc_disp_delta(delta)
             disp_networth = calc_disp_delta(networth)
-            await channel.send(
+            to_send = (
                 f"{user[1]}: +{disp_delta} credits for activity in the past hour.\n"
-                f"*(x{act_mult} due to their net worth of {disp_networth})*"
             )
+            to_send += f"*(x{act_mult} due to their net worth of {disp_networth})*"
+            if bonus_payout > 0:
+                to_send += f"""
+                \n*(Bonus payout of {bonus_payout} also earned due to having passive
+                income remaining for the cycle)* (Not applied, informational only)"""
+            await channel.send(to_send)
 
         await db.execute(
-            "UPDATE users SET balance = $1, networth = $2, recent_activity = $3 where id = $4",
+            "UPDATE users SET balance = $1, networth = $2, recent_activity = $3, bonus = $4 where id = $5",
             new_user_balance,
             new_user_networth,
             0,
+            remaining_bonus - bonus_payout,
             user[0],
         )
     await disconnect()
@@ -397,13 +395,42 @@ async def set_last_paycheck_now(user: discord.User):
     return time_now
 
 
+async def set_passive_income(user: discord.User, amount: int):
+    uid = user.id
+    await connect()
+    await db.execute("UPDATE users SET passive_income = $1 WHERE id = $2", amount, uid)
+    await disconnect()
+
+
+async def get_passive_and_bonus_for_user(user: discord.User) -> (int, int):
+    uid = user.id
+    await connect()
+    result = await db.execute("SELECT * from users where id = $1", uid)
+    await disconnect()
+    return result[9], result[10]
+
+
+async def reset_bonus_for_all_users():
+    await connect()
+    await db.execute("UPDATE users SET bonus = passive_income")
+    await disconnect()
+
+
 async def get_top(cat: str, page: int, user: discord.User):
     await connect()
     offset = items_per_top_page * (1 - page)
     offset *= -1
     ind = 3
     mult = 1
-    if cat not in ["balance", "invested", "activity", "earned", "networth"]:
+    if cat not in [
+        "balance",
+        "invested",
+        "activity",
+        "earned",
+        "networth",
+        "bonus",
+        "passive",
+    ]:
         raise NameError(f"Category {cat} not found.")
     else:
         if cat == "invested":
@@ -416,6 +443,11 @@ async def get_top(cat: str, page: int, user: discord.User):
             ind = 2
             mult = actweight
             cat = "activity"
+        elif cat == "passive":
+            ind = 9
+            cat = "passive_income"
+        elif cat == "bonus":
+            ind = 10
         num_users = await db.fetchval(
             f"SELECT COUNT(id) FROM users WHERE {cat} IS NOT NULL"
         )
@@ -949,7 +981,9 @@ class Database(commands.Cog):
                 "invested DOUBLE PRECISION,"
                 "recent_activity BIGINT,"
                 "location BIGINT,"
-                "networth DOUBLE PRECISION)"
+                "networth DOUBLE PRECISION,"
+                "passive_income DOUBLE PRECISION,"
+                "bonus DOUBLE PRECISION)"
             )
             # await disconnect()
             # await connect()
