@@ -330,10 +330,10 @@ async def distribute_payouts(bot=None):
             activity_payout = int(recent_activity) * actweight * act_mult
             bonus_payout = min(activity_payout * 2, remaining_bonus)
         new_user_balance = (
-            int(balance) + investment_payout + activity_payout  # + bonus_payout
+            int(balance) + investment_payout + activity_payout + bonus_payout
         )
         new_user_networth = (
-            int(networth) + investment_payout + activity_payout  # + bonus_payout
+            int(networth) + investment_payout + activity_payout + bonus_payout
         )
         if new_user_balance > balance:
             log(
@@ -348,14 +348,14 @@ async def distribute_payouts(bot=None):
             delta = new_user_balance - user[3]
             disp_delta = calc_disp_delta(delta)
             disp_networth = calc_disp_delta(networth)
+            disp_bonus = calc_disp_delta(bonus_payout)
             to_send = (
                 f"{user[1]}: +{disp_delta} credits for activity in the past hour.\n"
             )
             to_send += f"*(x{act_mult} due to their net worth of {disp_networth})*"
             if bonus_payout > 0:
                 to_send += f"""
-                \n*(Bonus payout of {bonus_payout} also earned due to having passive
-                income remaining for the cycle)* (Not applied, informational only)"""
+                *(Bonus payout of {disp_bonus} also earned)*"""
             await channel.send(to_send)
 
         await db.execute(
