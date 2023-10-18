@@ -407,7 +407,7 @@ async def get_passive_and_bonus_for_user(user: discord.User) -> (int, int):
     await connect()
     result = await db.fetchrow("SELECT * from users where id = $1", uid)
     await disconnect()
-    return result[9], result[10]
+    return result[9] or 0, result[10] or 0
 
 
 async def reset_bonus_for_all_users():
