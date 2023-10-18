@@ -104,9 +104,9 @@ class GoogleAPI(commands.Cog):
         credentials = None
         log(f"Loading data from spreadsheet...")
         # Find the authorizations file
-        if os.path.exists("token.pickle"):
-            with open("token.pickle", "rb") as token:
-                credentials = pickle.load(token)
+        if os.path.exists("token.json"):
+            with open("token.json", "rb") as token:
+                credentials = json.load(token)
         # If there are no (valid) credentials available, update credentials with login
         if not credentials or not credentials.valid:
             if credentials and credentials.expired and credentials.refresh_token:
@@ -117,8 +117,8 @@ class GoogleAPI(commands.Cog):
                 )
                 credentials = flow.run_local_server(port=0)
             # Save the credentials for the next run
-            with open("token.pickle", "wb") as token:
-                pickle.dump(credentials, token)
+            with open("token.json", "wb") as token:
+                json.dump(credentials, token)
         bot.api_service = build("sheets", "v4", credentials=credentials)
         load_from_sheet(self.bot)
         # print("OVER HERE!!!! exiting api init")
