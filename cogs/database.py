@@ -405,7 +405,7 @@ async def set_passive_income(user: discord.User, amount: int):
 async def get_passive_and_bonus_for_user(user: discord.User) -> (int, int):
     uid = user.id
     await connect()
-    result = await db.execute("SELECT * from users where id = $1", uid)
+    result = await db.fetchrow("SELECT * from users where id = $1", uid)
     await disconnect()
     return result[9], result[10]
 
