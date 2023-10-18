@@ -155,12 +155,10 @@ class Economy(commands.Cog):
             if isinstance(user, discord.Member):
                 balance, invested, networth = await check_bal(user)
                 passive, bonus = await get_passive_and_bonus_for_user(user)
-                print(f"Used get_passive_and_bonus_for_user, {balance=}, {invested=}, {networth=}, {passive=}, {bonus=}")
             else:
                 balance, invested, networth, passive, bonus, user = await check_bal_str(
                     user
                 )
-                print(f"Used check_bal_str, {balance=}, {invested=}, {networth=}, {passive=}, {bonus=}, {user=}")
             message = f"{user.name}'s balance is {int(balance)} {self.bot.credit_emoji}"
             message += (
                 f"\n{user.name}'s networth is {int(networth)} {self.bot.credit_emoji}"
@@ -173,7 +171,7 @@ class Economy(commands.Cog):
             if bonus > 0:
                 message += (
                     f"\n{user.name}'s remaining bonus from weekly passive income"
-                    f"is {int(bonus)} {self.bot.credit_emoji}"
+                    f" is {int(bonus)} {self.bot.credit_emoji}"
                 )
             embed = discord.Embed(
                 title="Balance", description=message, timestamp=datetime.now()
