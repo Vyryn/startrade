@@ -249,8 +249,8 @@ async def check_bal_str(username: str):
     invested = check[5]
     networth = check[8] or balance
     username = check[1]
-    passive = check[9]
-    bonus = check[10]
+    passive = check[9] or 0
+    bonus = check[10] or 0
     return balance, invested, networth, passive, bonus, username
 
 
