@@ -137,7 +137,7 @@ class Mechanics(commands.Cog):
     async def statline(self, ctx, *, ship_name: str):
         """Displays the stats for a specified ship. Name must be exact.
         Do not include quotation marks unless they are part of the ship name."""
-        gm_role = await ctx.guild.get_role(977038517710495760)
+        gm_role = ctx.guild.get_role(977038517710495760)
         if gm_role not in ctx.author.roles:
             return await ctx.send("This command is for game masters.")
         info = self.bot.values_ships.get(ship_name.lower().strip(), [])
