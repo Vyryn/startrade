@@ -1,8 +1,8 @@
-import pickle
+import json
 import os.path
+import os
 from googleapiclient.discovery import build  # pylint: disable=import-error
-from google_auth_oauthlib.flow import InstalledAppFlow  # pylint: disable=import-error
-from google.auth.transport.requests import Request  # pylint: disable=import-error
+from google.oauth2 import service_account
 from discord.ext import commands  # pylint: disable=import-error
 from bot import log, logready
 from functions import auth
@@ -104,21 +104,9 @@ class GoogleAPI(commands.Cog):
         credentials = None
         log(f"Loading data from spreadsheet...")
         # Find the authorizations file
-        if os.path.exists("token.json"):
-            with open("token.json", "rb") as token:
-                credentials = json.load(token)
-        # If there are no (valid) credentials available, update credentials with login
-        if not credentials or not credentials.valid:
-            if credentials and credentials.expired and credentials.refresh_token:
-                credentials.refresh(Request())
-            else:
-                flow = InstalledAppFlow.from_client_secrets_file(
-                    "credentials.json", bot.SCOPES
-                )
-                credentials = flow.run_local_server(port=0)
-            # Save the credentials for the next run
-            with open("token.json", "wb") as token:
-                json.dump(credentials, token)
+        if os.path.exists("service.json"):
+            secret_file = os.path.join(os.getcwd(), "service.json")
+            credentials = service_account.Credentials.from_service_account_file(secret_file, scopes=bot.SCOPES)
         bot.api_service = build("sheets", "v4", credentials=credentials)
         load_from_sheet(self.bot)
         # print("OVER HERE!!!! exiting api init")
