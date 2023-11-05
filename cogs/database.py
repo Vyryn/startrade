@@ -350,12 +350,11 @@ async def distribute_payouts(bot=None):
             disp_networth = calc_disp_delta(networth)
             disp_bonus = calc_disp_delta(bonus_payout)
             to_send = (
-                f"{user[1]}: +{disp_delta} credits for activity in the past hour.\n"
+                f"{user[1]}: **+{disp_delta}** credits for activity in the past hour."
             )
-            to_send += f"*(x{act_mult} due to their net worth of {disp_networth})*"
+            to_send += f"\n\t*(x{act_mult} due to their net worth of {disp_networth})*"
             if bonus_payout > 0:
-                to_send += f"""
-                *(Bonus payout of {disp_bonus} also earned)*"""
+                to_send += f"""\n\t*(Bonus payout of {disp_bonus} is part of this)*"""
             await channel.send(to_send)
 
         await db.execute(
