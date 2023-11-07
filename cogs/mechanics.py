@@ -211,9 +211,9 @@ class Mechanics(commands.Cog):
         -e (Evading): Used when the target is not firing weapons, is a relatively small or agile ship, and can plausibly evade.
             Applies a hit chance reduction that depends on the speed of the target ship.
         """
-        if not hull:
+        if hull is None:
             hull = 100
-        if not shields:
+        if shields is None:
             shields = 100
         params += " "
         name = name.lower()
