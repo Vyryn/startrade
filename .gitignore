@@ -130,6 +130,7 @@ dmypy.json
 /credentials.json
 /privatevars.py
 /quickstart.py
-/token.pickle
+/token.json
+/service.json
 *.sql
 *.pgpass

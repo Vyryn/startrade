@@ -137,6 +137,9 @@ class Mechanics(commands.Cog):
     async def statline(self, ctx, *, ship_name: str):
         """Displays the stats for a specified ship. Name must be exact.
         Do not include quotation marks unless they are part of the ship name."""
+        gm_role = ctx.guild.get_role(977038517710495760)
+        if gm_role not in ctx.author.roles:
+            return await ctx.send("This command is for game masters.")
         info = self.bot.values_ships.get(ship_name.lower().strip(), [])
         if not info:
             return await ctx.send("I didn't find that ship. Spelling must be exact.")
@@ -208,9 +211,9 @@ class Mechanics(commands.Cog):
         -e (Evading): Used when the target is not firing weapons, is a relatively small or agile ship, and can plausibly evade.
             Applies a hit chance reduction that depends on the speed of the target ship.
         """
-        if not hull:
+        if hull is None:
             hull = 100
-        if not shields:
+        if shields is None:
             shields = 100
         params += " "
         name = name.lower()

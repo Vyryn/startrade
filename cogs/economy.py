@@ -24,6 +24,10 @@ from cogs.database import (
     view_items,
     sell_possession,
     items_per_top_page,
+    activity_multiplier_for_user,
+    reset_bonus_for_all_users,
+    set_passive_income,
+    get_passive_and_bonus_for_user,
 )
 from functions import auth
 
@@ -150,14 +154,25 @@ class Economy(commands.Cog):
                 user = ctx.author
             if isinstance(user, discord.Member):
                 balance, invested, networth = await check_bal(user)
+                passive, bonus = await get_passive_and_bonus_for_user(user)
             else:
-                balance, invested, networth, user = await check_bal_str(user)
-            message = (
-                f"{user.name}'s balance is {int(balance)} {self.bot.credit_emoji}\n"
-            )
+                balance, invested, networth, passive, bonus, user = await check_bal_str(
+                    user
+                )
+            message = f"{user.name}'s balance is {int(balance)} {self.bot.credit_emoji}"
             message += (
-                f"{user.name}'s networth is {int(networth)} {self.bot.credit_emoji}"
+                f"\n{user.name}'s networth is {int(networth)} {self.bot.credit_emoji}"
             )
+            if passive > 0:
+                message += (
+                    f"\n{user.name}'s weekly passive income is {int(passive)} "
+                    f"{self.bot.credit_emoji}"
+                )
+            if bonus > 0:
+                message += (
+                    f"\n{user.name}'s remaining bonus from weekly passive income"
+                    f" is {int(bonus)} {self.bot.credit_emoji}"
+                )
             embed = discord.Embed(
                 title="Balance", description=message, timestamp=datetime.now()
             )
@@ -204,7 +219,7 @@ class Economy(commands.Cog):
         if hasattr(ctx.author, "roles") and check_role in ctx.author.roles:
             return
         if 21_999_990 <= amount:
-            ch = self.bot.server.get_channel(1055577521795641398)
+            ch = self.bot.server.get_channel(977038528842186786)
             role = self.bot.server.get_role(977038517756641331)
             await ch.send(
                 f"**Alert** {role.mention}, {ctx.author.mention} ({ctx.author.id}) "
@@ -377,6 +392,42 @@ class Economy(commands.Cog):
         )
         embed = discord.Embed(
             title="Money", description=message, timestamp=datetime.now()
+        )
+        await ctx.send(embed=embed)
+
+    @commands.command(description="Set someone's passive income. Staff only.")
+    async def income(self, ctx, member: discord.Member, amount: int):
+        """
+        Staff override to set someone's passive income amount.
+        Requires Commander role
+        """
+        assert amount >= 0
+        commander = ctx.guild.get_role(977038517710495761)
+        if commander not in ctx.author.roles:
+            return await ctx.send("You are not authorized to use this command.")
+        await set_passive_income(member, amount)
+        message = (
+            f"Set {member.name}'s passive income per cycle to {int(amount)} "
+            f"{self.bot.credit_emoji} by request of {ctx.author.name}."
+        )
+        embed = discord.Embed(
+            title="Passive Income", description=message, timestamp=datetime.now()
+        )
+        await ctx.send(embed=embed)
+
+    @commands.command(description="Manually update the payout cycle. Staff only.")
+    async def new_cycle(self, ctx):
+        """
+        Staff override to reset the current income cycle.
+        Requires Commander role
+        """
+        commander = ctx.guild.get_role(977038517710495761)
+        if commander not in ctx.author.roles:
+            return await ctx.send("You are not authorized to use this command.")
+        await reset_bonus_for_all_users()
+        message = f"Updated the payout cycle by request of {ctx.author.name}."
+        embed = discord.Embed(
+            title="Payout Cycle", description=message, timestamp=datetime.now()
         )
         await ctx.send(embed=embed)
 

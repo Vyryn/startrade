@@ -59,7 +59,7 @@ Please note, this bot was created for Startrade specific use without broader dep
 - Install postgresql. Create a db user with read/write access for the bot to use
 - Clone repo, obviously
 - install requirements.txt
-- Authorize google sheets api on your account and create a token.pickle file in your repo
+- Authorize google sheets api on your account and create a token.json file in your repo
 - Create a file called 'privatevars.py' in the base directory and populate it with:
 TOKEN = 'your token from dev portal'
 DBUSER = 
