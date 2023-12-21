@@ -279,7 +279,7 @@ class Basics(commands.Cog):
                     delete_after=self.deltime,
                 )
         except IndexError:
-            return await ctx.send('Incorrect usage. Try "remind do xyz 1h"')
+            return await ctx.send('Incorrect usage. Try "remind do xyz in 1h"')
         await ctx.message.delete(delay=self.deltime)  # delete the command
         log(
             f"Remind command used by {ctx.author} with reminder {reminder} to user {user} for "
