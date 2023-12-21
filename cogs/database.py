@@ -35,6 +35,7 @@ COMMODITIES = {}
 
 # Handle database connection pool with dependency injection====
 global pool
+pool = None
 
 async def create_db_pool():
     global pool
@@ -54,12 +55,10 @@ def with_db(func):
             await transaction.start()
             try:
                 result = await func(db, *args, **kwargs)
-                if transaction.is_active():
-                    await transaction.commit()
+                await transaction.commit()
                 return result
             except:
-                if transaction.is_active():
-                    await transaction.rollback()
+                await transaction.rollback()
                 raise
     return wrapper
 
