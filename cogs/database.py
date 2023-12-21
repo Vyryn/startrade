@@ -50,7 +50,7 @@ def with_db(func):
     async def wrapper(*args, **kwargs):
         global pool
         if not pool:
-            pool = create_db_pool()
+            pool = await create_db_pool()
         async with pool.acquire() as db:
             transaction = db.transaction()
             await transaction.start()
