@@ -2,6 +2,7 @@ import asyncio
 import random
 import time
 from typing import Optional
+from functools import wraps
 
 import aiohttp  # pylint: disable=import-error
 from io import BytesIO
@@ -19,10 +20,9 @@ from asyncpg.exceptions import (  # pylint: disable=import-error
 from functions import auth, now, level
 from privatevars import DBUSER, DBPASS  # pylint: disable=import-error
 
-global db
-# These parameters need to be in this scope due to constraints of the library.
-# I set them based on the bot attributes of the same names in init and on_ready.
-# These are just "default default values" so to speak, and are never actually used.
+# Lazily scoped
+# These globals are based on the bot attributes of the same names in init and on_ready.
+# These are just "default default values", and normally aren't used.
 starting_balance = 50000000
 wealth_factor = 0
 items_per_top_page = 10
@@ -33,27 +33,37 @@ AUTH_LOCKDOWN = 1
 COMMODITIES = {}
 
 
-async def connect():
-    global db
-    try:
-        if not db.is_closed():  # pylint: disable=used-before-assignment
-            return
-    except (NameError, AttributeError):
-        log("Creating DB Object.", "DBUG")
-    db = await conn.connect(
-        host="localhost", user=DBUSER, password=DBPASS, database="gfw"
-    )
+# Handle database connection pool with dependency injection====
+global pool
+
+async def create_db_pool():
+    global pool
+    await conn.connect()
+    pool = await conn.create_pool(host="localhost", user=DBUSER, password=DBPASS, database="gfw")
 
 
-async def disconnect():
-    try:
-        await db.commit()
-    except AttributeError:
-        pass  # There was no need to commit
-    # await db.close()
+def with_db(func):
+    """Decorator for database functions that injects a pool connection object and automatically commits if the function didn't, or rolls back if the function raises an exception.
+    """
+    @wraps(func)
+    async def wrapper(*args, **kwargs):
+        global pool
+        async with pool.acquire() as db:
+            transaction = db.transaction()
+            await transaction.start()
+            try:
+                result = await func(db, *args, **kwargs)
+                if transaction.is_active():
+                    await transaction.commit()
+                return result
+            except:
+                if transaction.is_active():
+                    await transaction.rollback()
+                raise
+    return wrapper
 
-
-async def new_user(user: discord.User):
+@with_db
+async def new_user(db, user: discord.User):
     uid = user.id
     name = user.name
     activity = 0
@@ -63,11 +73,9 @@ async def new_user(user: discord.User):
     )  # Set last payout time to a year ago to allow immediate paycheck
     invested = 0
     networth = balance
-    await connect()
     check = await db.fetchrow("SELECT * FROM users WHERE id = $1", uid)
     print(f"Moving on: {check}")
     if check is not None:
-        await disconnect()
         return f"User {name} Already Exists in database."
     try:
         await db.execute(
@@ -88,13 +96,11 @@ async def new_user(user: discord.User):
     except conn.UniqueViolationError:
         await db.execute("UPDATE users SET name = $1 WHERE id = $2", name, uid)
         result = f"User {name} name updated in database at {now()}."
-    await disconnect()
     return result
 
-
-async def add_invest(user: discord.User, amount: float):
+@with_db
+async def add_invest(db, user: discord.User, amount: float):
     uid = user.id
-    await connect()
     check = await db.fetchrow("SELECT * FROM users WHERE id = $1", uid)
     try:
         invested = check[5]
@@ -112,14 +118,12 @@ async def add_invest(user: discord.User, amount: float):
         float(balance) - float(amount),
         uid,
     )
-    await disconnect()
     return amount, float(invested) + float(amount), float(balance) - float(amount)
 
-
-async def transfer_funds(from_user: discord.User, to_user: discord.User, amount: float):
+@with_db
+async def transfer_funds(db, from_user: discord.User, to_user: discord.User, amount: float):
     uid_from = from_user.id
     uid_to = to_user.id
-    await connect()
     tr = db.transaction()
     await tr.start()
     try:
@@ -150,14 +154,11 @@ async def transfer_funds(from_user: discord.User, to_user: discord.User, amount:
     except (PostgresError, InterfaceError):
         await tr.rollback()
         raise
-    finally:
-        await disconnect()
     return from_balance, to_balance
 
-
-async def update_activity(user: discord.User, amount: int):
+@with_db
+async def update_activity(db, user: discord.User, amount: int):
     uid = user.id
-    await connect()
     activity = None
     try:
         activity = await db.fetchval("SELECT activity FROM users WHERE id = $1", uid)
@@ -193,12 +194,10 @@ async def update_activity(user: discord.User, amount: int):
     await db.execute(
         "UPDATE users SET recent_activity = $1 where id = $2", recent_activity, uid
     )
-    await disconnect()
 
-
-async def add_funds(user: discord.User, amount: int, reduce_networth: bool = True):
+@with_db
+async def add_funds(db, user: discord.User, amount: int, reduce_networth: bool = True):
     uid = user.id
-    await connect()
     log(f"Adding {amount} credits to {user}.")
     if reduce_networth:
         await db.execute(
@@ -211,13 +210,11 @@ async def add_funds(user: discord.User, amount: int, reduce_networth: bool = Tru
             "UPDATE users set balance = balance + $1 where id = $2", amount, uid
         )
     balance = await db.fetchval("SELECT balance FROM users WHERE id = $1", uid)
-    await disconnect()
     return balance
 
-
-async def add_networth(user: discord.User, amount: int):
+@with_db
+async def add_networth(db, user: discord.User, amount: int):
     uid = user.id
-    await connect()
     log(f"Adding {amount} networth to {user}.")
     await db.execute(
         "UPDATE users SET networth = networth + $1 where id = $2",
@@ -225,13 +222,11 @@ async def add_networth(user: discord.User, amount: int):
         uid,
     )
     networth = await db.fetchval("SELECT networth FROM users WHERE id = $1", uid)
-    await disconnect()
     return networth
 
-
-async def check_bal(user: discord.User):
+@with_db
+async def check_bal(db, user: discord.User):
     uid = user.id
-    await connect()
     check = await db.fetchrow("SELECT * FROM users WHERE id = $1", uid)
     log(type(check), "DBUG")
     balance = check[3]
@@ -239,10 +234,9 @@ async def check_bal(user: discord.User):
     networth = check[8] or balance
     return balance, invested, networth
 
-
-async def check_bal_str(username: str):
+@with_db
+async def check_bal_str(db, username: str):
     fuzzy_username = f"%{username}%"
-    await connect()
     check = await db.fetchrow("SELECT * FROM users WHERE name LIKE $1", fuzzy_username)
     log(check, "DBUG")
     balance = check[3]
@@ -279,8 +273,8 @@ def activity_multiplier(networth: float):
         return 1.1
     return 1
 
-
-async def activity_multiplier_for_user(user_id: int) -> float:
+@with_db
+async def activity_multiplier_for_user(db, user_id: int) -> float:
     networth = await db.fetchval("SELECT networth FROM users where id = $1", user_id)
     return activity_multiplier(networth)
 
@@ -294,9 +288,8 @@ def calc_disp_delta(amount: float) -> str:
         disp_delta = f"{disp_delta[:-3]}.{disp_delta[-3:-1]}k"
     return disp_delta
 
-
-async def distribute_payouts(bot=None):
-    await connect()
+@with_db
+async def distribute_payouts(db, bot=None):
     channel = None
     if bot is not None:
         channel = bot.get_channel(1055577521795641398)
@@ -365,12 +358,10 @@ async def distribute_payouts(bot=None):
             remaining_bonus - bonus_payout,
             user[0],
         )
-    await disconnect()
 
-
-async def check_last_paycheck(user: discord.User, do_not_reinvoke: bool = False):
+@with_db
+async def check_last_paycheck(db, user: discord.User, do_not_reinvoke: bool = False):
     uid = user.id
-    await connect()
     check = await db.fetchrow("SELECT * FROM users WHERE id = $1", uid)
     try:
         last_paycheck = check[4]
@@ -384,39 +375,30 @@ async def check_last_paycheck(user: discord.User, do_not_reinvoke: bool = False)
         return await check_last_paycheck(user, do_not_reinvoke=True)
     return last_paycheck
 
-
-async def set_last_paycheck_now(user: discord.User):
+@with_db
+async def set_last_paycheck_now(db, user: discord.User):
     uid = user.id
-    await connect()
     time_now = time.time()
     await db.execute("UPDATE users SET last_pay = $1 WHERE id = $2", time_now, uid)
-    await disconnect()
     return time_now
 
-
-async def set_passive_income(user: discord.User, amount: int):
+@with_db
+async def set_passive_income(db, user: discord.User, amount: int):
     uid = user.id
-    await connect()
     await db.execute("UPDATE users SET passive_income = $1 WHERE id = $2", amount, uid)
-    await disconnect()
 
-
-async def get_passive_and_bonus_for_user(user: discord.User) -> (int, int):
+@with_db
+async def get_passive_and_bonus_for_user(db, user: discord.User) -> (int, int):
     uid = user.id
-    await connect()
     result = await db.fetchrow("SELECT * from users where id = $1", uid)
-    await disconnect()
     return result[9] or 0, result[10] or 0
 
-
-async def reset_bonus_for_all_users():
-    await connect()
+@with_db
+async def reset_bonus_for_all_users(db):
     await db.execute("UPDATE users SET bonus = passive_income")
-    await disconnect()
 
-
-async def get_top(cat: str, page: int, user: discord.User):
-    await connect()
+@with_db
+async def get_top(db, cat: str, page: int, user: discord.User):
     offset = items_per_top_page * (1 - page)
     offset *= -1
     ind = 3
@@ -470,11 +452,11 @@ async def get_top(cat: str, page: int, user: discord.User):
         )
         + 1
     )
-    await disconnect()
     return tops, num_pages, rank
 
-
+@with_db
 async def add_item(
+    db,
     name: str,
     category: str,
     picture: str,
@@ -483,7 +465,6 @@ async def add_item(
     description: str,
     faction: str,
 ):
-    await connect()
     await db.execute(
         "INSERT INTO items VALUES ($1, $2, $3, $4, $5, $6, $7)",
         name,
@@ -494,10 +475,10 @@ async def add_item(
         description,
         faction,
     )
-    await disconnect()
 
-
+@with_db
 async def add_custom_item(
+    db,
     name: str,
     user: discord.User,
     amount: int = 1,
@@ -505,7 +486,6 @@ async def add_custom_item(
     picture: str = "",
 ):
     uid = user.id
-    await connect()
     try:
         unique_key = await db.fetchval("SELECT MAX(id) from custom_items") + 1
     except TypeError:
@@ -533,22 +513,18 @@ async def add_custom_item(
             uid,
             name,
         )
-    # log(f'{user} now has {amount + has_amount}x {item}.', "DBUG"")
-    await disconnect()
 
-
-async def get_custom_items(user: discord.User) -> [(str, str)]:
+@with_db
+async def get_custom_items(db, user: discord.User) -> [(str, str)]:
     """
     Returns a list of name, desc tuples for each custom item owned by the specified user
     """
     uid = user.id
-    await connect()
     results = await db.fetch("SELECT * FROM custom_items WHERE owner = $1", uid)
     return [(result["name"], result["amount"]) for result in results]
 
-
-async def add_commodity_location(name: str, channel_id: int, is_buy: bool, **kwargs):
-    await connect()
+@with_db
+async def add_commodity_location(db, name: str, channel_id: int, is_buy: bool, **kwargs):
     query = "INSERT INTO commodities_locations VALUES ($1, $2, $3)"
     counter = 3
     for _ in kwargs:
@@ -561,10 +537,9 @@ async def add_commodity_location(name: str, channel_id: int, is_buy: bool, **kwa
         parameters.append(value)
     log(parameters, "DBUG")
     await db.execute(query, *parameters)
-    await disconnect()
 
-
-async def edit_item(item: str, category: str, new_value: str):
+@with_db
+async def edit_item(db, item: str, category: str, new_value: str):
     categories = [
         "name",
         "category",
@@ -576,7 +551,6 @@ async def edit_item(item: str, category: str, new_value: str):
     ]
     if category not in categories:
         raise NameError(f"Category {category} not found.")
-    await connect()
     if category in ["min_cost", "max_cost"]:
         new_value = float(new_value)
     result = await db.fetchrow("SELECT * FROM items WHERE name = $1", item)
@@ -585,35 +559,28 @@ async def edit_item(item: str, category: str, new_value: str):
     await db.execute(
         f"UPDATE items SET {category} = $1 WHERE name = $2", new_value, item
     )
-    await disconnect()
 
-
-async def find_item(item: str):
-    await connect()
+@with_db
+async def find_item(db, item: str):
     result = await db.fetchrow("SELECT * FROM items WHERE name = $1", item)
     query = f"%{item}%"
     log(f"Exact :{result}", "DBUG")
     if result is None:
         result = await db.fetchrow("SELECT * FROM items WHERE name LIKE $1", query)
         log(f"Fuzzy: {result}", "DBUG")
-    await disconnect()
     return result
 
-
-async def find_items_in_cat(item: str):
-    await connect()
+@with_db
+async def find_items_in_cat(db, item: str):
     query = f"%{item}%"
     result = await db.fetch("SELECT * FROM items WHERE category LIKE $1", query)
-    await disconnect()
     return result
 
-
-async def remove_item(item: str):
-    await connect()
+@with_db
+async def remove_item(db, item: str):
     result = await db.fetch("SELECT * FROM items WHERE name LIKE $1", item)
     print(result)
     if len(result) > 2:
-        await disconnect()
         return "Too many matching items found."
     matching_possessions = await db.fetch(
         "SELECT * FROM possessions WHERE name like $1", item
@@ -637,7 +604,6 @@ async def remove_item(item: str):
         )
     await db.execute("DELETE FROM possessions WHERE name LIKE $1", item)
     await db.execute("DELETE FROM items WHERE name LIKE $1", item)
-    await disconnect()
 
 
 def flatten(flatten_list):  # Just a one layer flatten
@@ -647,8 +613,9 @@ def flatten(flatten_list):  # Just a one layer flatten
             new_list.append(entry)
     return new_list
 
-
+@with_db
 async def add_possession(
+    db,
     user: discord.User,
     item: str,
     cost: Optional[float] = 0,
@@ -659,7 +626,6 @@ async def add_possession(
     if not amount:
         amount = 1
     uid = user.id
-    await connect()
     try:
         unique_key = await db.fetchval("SELECT MAX(id) from possessions") + 1
     except TypeError:
@@ -698,14 +664,11 @@ async def add_possession(
             uid,
             i_name,
         )
-    # log(f'{user} now has {amount + has_amount}x {item}.', "DBUG")
-    await disconnect()
 
-
-async def add_ships_commodities(user: discord.User, commodity: str, amount: float = 1):
+@with_db
+async def add_ships_commodities(db, user: discord.User, commodity: str, amount: float = 1):
     # TODO: NOT IMPLEMENTED YET, MAY NOT WORK AS EXPECTED
     uid = user.id
-    await connect()
     # unique_key = await db.fetchval(f"SELECT MAX(id) FROM ships_commodities") + 1
     capacity = await db.fetchval(
         "SELECT capacity FROM ships_commodities WHERE owner = $1", uid
@@ -716,7 +679,6 @@ async def add_ships_commodities(user: discord.User, commodity: str, amount: floa
     if amount < 1:
         amount = 0
     if amount > capacity:
-        await disconnect()
         raise ValueError
     await db.execute(
         "UPDATE ships_commodities SET capacity = $1 WHERE owner = $2",
@@ -729,12 +691,10 @@ async def add_ships_commodities(user: discord.User, commodity: str, amount: floa
         has_amount + amount,
         uid,
     )
-    await disconnect()
 
-
-async def sell_possession(ctx, user: discord.User, item: str, amount: int = 1):
+@with_db
+async def sell_possession(db, ctx, user: discord.User, item: str, amount: int = 1):
     uid = user.id
-    await connect()
     full_item = await db.fetchrow("SELECT * FROM items WHERE name = $1", item)
     # Check if player already owns some of that item
     (
@@ -753,12 +713,10 @@ async def sell_possession(ctx, user: discord.User, item: str, amount: int = 1):
         "SELECT cost FROM possessions WHERE owner = $1 AND name = $2", uid, item
     )
     if has_amount is None:
-        await disconnect()
         return await ctx.send(
             f"You can not sell {item} because you do not have any of them."
         )
     elif has_amount < amount:
-        await disconnect()
         return await ctx.send(
             f"You do not have enough {item}. You are trying to sell {amount}"
             f" but only have {has_amount}."
@@ -786,13 +744,13 @@ async def sell_possession(ctx, user: discord.User, item: str, amount: int = 1):
             uid,
             i_name,
         )
-    await disconnect()
     await ctx.send(
         f"{ctx.author} has successfully sold {amount}x {item}, their balance is now {new_balance} credits."
     )
 
-
+@with_db
 async def transact_possession(
+    db,
     ctx,
     user: discord.User,
     item: str,
@@ -803,12 +761,10 @@ async def transact_possession(
     uid = user.id
     if cost < 0:
         raise ValueError("Cost can't be negative.")
-    await connect()
     balance = await db.fetchval("SELECT balance FROM users WHERE id = $1", uid)
     max_cost = await db.fetchval("SELECT max_cost FROM items WHERE name = $1", item)
     min_cost = await db.fetchval("SELECT min_cost FROM items WHERE name = $1", item)
     if max_cost is None:
-        await disconnect()
         raise ValueError(
             "Item not found. Remember, you must use the full item name and if you buy more than one "
             "the amount goes before the item name."
@@ -820,7 +776,6 @@ async def transact_possession(
         log("Cost not in valid range. Using max_cost instead.", "DBUG")
     new_balance = balance - (cost * amount)
     if new_balance < 0:
-        await disconnect()
         return await ctx.send(
             f"Transaction aborted. You do not have sufficient funds. {amount}x {item} costs"
             f" {cost * amount} but you only have {balance}. You can use the paycheck command to "
@@ -831,25 +786,20 @@ async def transact_possession(
         f" {balance} and will be {new_balance} after."
     )
     await add_possession(user, item, cost, amount)
-    await connect()  # Because add_possession automatically disconnects
     await db.execute("UPDATE users SET balance = $1 where id = $2", new_balance, uid)
-    await disconnect()
     plural = "s" if amount != 1 else ""
     return f"{user} has successfully purchased {amount} {item}{plural} for {cost * amount} {credit}."
 
-
-async def view_items(user: discord.User):
-    await connect()
+@with_db
+async def view_items(db, user: discord.User):
     items = await db.fetch(
         "SELECT amount, name FROM possessions WHERE owner = $1", user.id
     )
-    await disconnect()
     log(items, "DBUG")
     return set(items)
 
-
-async def update_location(user: discord.User, channel: discord.TextChannel):
-    await connect()
+@with_db
+async def update_location(db, user: discord.User, channel: discord.TextChannel):
     # old_location = await db.fetchval(f"SELECT location FROM users WHERE id = $1", user.id)
     new_location = channel.id
     recent_activity = await db.fetchval(
@@ -912,6 +862,124 @@ def copy_bot_vars_to_local(bot):
     AUTH_LOCKDOWN = bot.AUTH_LOCKDOWN
     actweight = bot.ACTIVITY_WEIGHT
 
+@with_db
+async def ensure_tables_are_configured(db, bot):
+    # cursor.execute("SHOW DATABASES")
+    # databases = cursor.fetchall()
+    # log(f"Databases: {databases}", self.bot.debug)
+    # cursor.execute("DROP TABLE users")
+    tables = str(
+        await db.fetch(
+            """SELECT * FROM pg_catalog.pg_tables 
+            WHERE schemaname != 'pg_catalog' 
+            AND schemaname !='information_schema'"""
+        )
+    )
+    log(f"I have the following tables:\n{tables}", bot.debug)
+    if "settings" not in tables:
+        log("Settings table not found. Creating a new one...")
+        await db.execute(
+            "CREATE TABLE settings( "
+            "id BIGINT NOT NULL PRIMARY KEY, "
+            "cooldown INT,"
+            "amount DOUBLE PRECISION,"
+            "starting DOUBLE PRECISION,"
+            "actweight DOUBLE PRECISION)"
+        )
+        await db.execute(
+            "INSERT INTO settings VALUES($1, $2, $3, $4, $5)",
+            1,
+            bot.PAYCHECK_INTERVAL,
+            bot.PAYCHECK_AMOUNT_MAX,
+            bot.STARTING_BALANCE,
+            bot.ACTIVITY_WEIGHT,
+        )
+        log("Saved default settings to database.")
+    else:
+        settings = await db.fetchrow("SELECT * FROM settings WHERE id = 1")
+        log(settings, bot.debug)
+        bot.PAYCHECK_INTERVAL = settings[1]
+        bot.PAYCHECK_AMOUNT_MAX = settings[2]
+        bot.PAYCHECK_AMOUNT_MIN = settings[2]
+        bot.STARTING_BALANCE = settings[3]
+        bot.ACTIVITY_WEIGHT = settings[4]
+        copy_bot_vars_to_local(bot)
+        log(f"Loaded settings from database: {settings}", bot.debug)
+    if "users" not in tables:
+        log("Users table not found. Creating a new one...")
+        await db.execute(
+            "CREATE TABLE users( "
+            "id BIGINT NOT NULL PRIMARY KEY, "
+            "name VARCHAR (255), "
+            "activity BIGINT, "
+            "balance DOUBLE PRECISION, "
+            "last_pay BIGINT,"
+            "invested DOUBLE PRECISION,"
+            "recent_activity BIGINT,"
+            "location BIGINT,"
+            "networth DOUBLE PRECISION,"
+            "passive_income DOUBLE PRECISION,"
+            "bonus DOUBLE PRECISION)"
+        )
+    if "items" not in tables:
+        log("Items table not found. Creating a new one...")
+        await db.execute(
+            "CREATE TABLE items( "
+            "name VARCHAR (127) NOT NULL PRIMARY KEY, "
+            "category VARCHAR (127), "
+            "picture VARCHAR (255), "
+            "min_cost DOUBLE PRECISION, "
+            "max_cost DOUBLE PRECISION, "
+            "description VARCHAR (2048), "
+            "faction VARCHAR (127))"
+        )
+    if "possessions" not in tables:
+        log("Possessions table not found. Creating a new one...")
+        await db.execute(
+            "CREATE TABLE possessions("
+            "id INT NOT NULL PRIMARY KEY, "
+            "name VARCHAR (127) REFERENCES items(name), "
+            "owner BIGINT REFERENCES users(id), "
+            "amount INT, "
+            "category VARCHAR (127), "
+            "picture VARCHAR (127), "
+            "cost DOUBLE PRECISION, "
+            "faction VARCHAR (127))"
+        )
+    users_config = await db.fetch(
+        "SELECT COLUMN_NAME from information_schema.COLUMNS WHERE TABLE_NAME = 'users' "
+    )
+    log(f"My Users table is configured thusly: {users_config}", bot.debug)
+    users = await db.fetch("SELECT * FROM users")
+    log(f"Users: {users}", bot.debug)
+    bot.list_of_users = [user["id"] for user in users]
+    log(repr(bot.list_of_users), bot.debug)
+
+@with_db
+async def get_users(db):
+    return await db.fetch("SELECT * FROM users")
+
+
+@with_db
+async def execute_arbitrary_query(db, query):
+    if query.strip().lower().startswith("select"):
+        result = await db.fetch(query)
+    else:
+        result = await db.execute(query)
+    return result
+
+@with_db
+async def set_setting_value(db, setting, value):
+    return await db.execute(f"UPDATE settings SET {setting} = $1 WHERE id = 1", value)
+
+@with_db
+async def wipe_the_whole_economy(db, starting_balance):
+    await db.execute(
+        "UPDATE users SET balance = $1, activity = 0, last_pay = 0, invested = 0,"
+        " recent_activity= 0",
+        starting_balance,
+    )
+
 
 class Database(commands.Cog):
     def __init__(self, bot):
@@ -919,117 +987,29 @@ class Database(commands.Cog):
         self.session = None
         copy_bot_vars_to_local(bot)
 
+
     # Events
     @commands.Cog.listener()
     async def on_ready(self):
         log(f"Loading {self.qualified_name}...", self.bot.debug)
         self.session = aiohttp.ClientSession(loop=self.bot.loop)
-        await connect()
-        # cursor.execute("SHOW DATABASES")
-        # databases = cursor.fetchall()
-        # log(f"Databases: {databases}", self.bot.debug)
-        # cursor.execute("DROP TABLE users")
-        tables = str(
-            await db.fetch(
-                """SELECT * FROM pg_catalog.pg_tables 
-                WHERE schemaname != 'pg_catalog' 
-                AND schemaname !='information_schema'"""
-            )
-        )
-        log(f"I have the following tables:\n{tables}", self.bot.debug)
-        if "settings" not in tables:
-            log("Settings table not found. Creating a new one...")
-            await db.execute(
-                "CREATE TABLE settings( "
-                "id BIGINT NOT NULL PRIMARY KEY, "
-                "cooldown INT,"
-                "amount DOUBLE PRECISION,"
-                "starting DOUBLE PRECISION,"
-                "actweight DOUBLE PRECISION)"
-            )
-            await db.execute(
-                "INSERT INTO settings VALUES($1, $2, $3, $4, $5)",
-                1,
-                self.bot.PAYCHECK_INTERVAL,
-                self.bot.PAYCHECK_AMOUNT_MAX,
-                self.bot.STARTING_BALANCE,
-                self.bot.ACTIVITY_WEIGHT,
-            )
-            log("Saved default settings to database.")
-            await disconnect()
-            await connect()
-        else:
-            settings = await db.fetchrow("SELECT * FROM settings WHERE id = 1")
-            log(settings, self.bot.debug)
-            self.bot.PAYCHECK_INTERVAL = settings[1]
-            self.bot.PAYCHECK_AMOUNT_MAX = settings[2]
-            self.bot.PAYCHECK_AMOUNT_MIN = settings[2]
-            self.bot.STARTING_BALANCE = settings[3]
-            self.bot.ACTIVITY_WEIGHT = settings[4]
-            copy_bot_vars_to_local(self.bot)
-            log(f"Loaded settings from database: {settings}", self.bot.debug)
-        if "users" not in tables:
-            log("Users table not found. Creating a new one...")
-            await db.execute(
-                "CREATE TABLE users( "
-                "id BIGINT NOT NULL PRIMARY KEY, "
-                "name VARCHAR (255), "
-                "activity BIGINT, "
-                "balance DOUBLE PRECISION, "
-                "last_pay BIGINT,"
-                "invested DOUBLE PRECISION,"
-                "recent_activity BIGINT,"
-                "location BIGINT,"
-                "networth DOUBLE PRECISION,"
-                "passive_income DOUBLE PRECISION,"
-                "bonus DOUBLE PRECISION)"
-            )
-            # await disconnect()
-            # await connect()
-        if "items" not in tables:
-            log("Items table not found. Creating a new one...")
-            await db.execute(
-                "CREATE TABLE items( "
-                "name VARCHAR (127) NOT NULL PRIMARY KEY, "
-                "category VARCHAR (127), "
-                "picture VARCHAR (255), "
-                "min_cost DOUBLE PRECISION, "
-                "max_cost DOUBLE PRECISION, "
-                "description VARCHAR (2048), "
-                "faction VARCHAR (127))"
-            )
-            # await disconnect()
-            # await connect()
-        if "possessions" not in tables:
-            log("Possessions table not found. Creating a new one...")
-            await db.execute(
-                "CREATE TABLE possessions("
-                "id INT NOT NULL PRIMARY KEY, "
-                "name VARCHAR (127) REFERENCES items(name), "
-                "owner BIGINT REFERENCES users(id), "
-                "amount INT, "
-                "category VARCHAR (127), "
-                "picture VARCHAR (127), "
-                "cost DOUBLE PRECISION, "
-                "faction VARCHAR (127))"
-            )
-        # await disconnect()
-        # await connect()
-        users_config = await db.fetch(
-            "SELECT COLUMN_NAME from information_schema.COLUMNS WHERE TABLE_NAME = 'users' "
-        )
-        log(f"My Users table is configured thusly: {users_config}", self.bot.debug)
-        users = await db.fetch("SELECT * FROM users")
-        log(f"Users: {users}", self.bot.debug)
-        self.bot.list_of_users = [user["id"] for user in users]
-        log(repr(self.bot.list_of_users), self.bot.debug)
-        await disconnect()
+        await create_db_pool()
+        await ensure_tables_are_configured(self.bot)
         logready(self)
 
     def cog_unload(self):
+        global pool
         log(f"Closing {self.qualified_name} cog.", self.bot.prio)
         try:
-            db.terminate()
+            flag = False
+            loop = asyncio.get_event_loop()
+            if loop.is_closed():
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                flag = True
+            loop.run_until_complete(pool.close())
+            if flag:
+                loop.close()
         except NameError:
             pass
         try:
@@ -1043,9 +1023,7 @@ class Database(commands.Cog):
     @commands.command(description="Prints the list of users to the console.")
     @commands.check(auth(max(4, AUTH_LOCKDOWN)))
     async def listusers(self, ctx):
-        await connect()
-        users = await db.fetch("SELECT * FROM users")
-        await disconnect()
+        users = await get_users()
         log(
             f"The list of users was requested by a command. Here it is: {users}",
             self.bot.prio,
@@ -1064,14 +1042,9 @@ class Database(commands.Cog):
         """
         Does a direct database query. Not quite as dangerous as eval, but still restricted to Auth 8.
         """
-        await connect()
         add_text = ""
         try:
-            if query.strip().lower().startswith("select"):
-                result = await db.fetch(query)
-            else:
-                result = await db.execute(query)
-            await disconnect()
+            result = await execute_arbitrary_query(query)
             await ctx.send(result)
             add_text = f"Result was:\n{result}"
         except conn.InterfaceError:
@@ -1206,7 +1179,6 @@ class Database(commands.Cog):
     @commands.check(auth(max(4, AUTH_LOCKDOWN)))
     async def edititem(self, ctx, item: str, field: str, value: str):
         """Edit a value of an item in the database."""
-        await connect()
         try:
             await edit_item(item, field, value)
             await ctx.send(f"Updated {item}.")
@@ -1251,9 +1223,7 @@ class Database(commands.Cog):
         elif setting == "actweight":
             value = round(float(value), 2)
             self.bot.ACTIVITY_WEIGHT = value
-        await connect()
-        await db.execute(f"UPDATE settings SET {setting} = $1 WHERE id = 1", value)
-        await disconnect()
+        await set_setting_value(setting, value)
         await ctx.send(f"Okay, {setting} set to {value}.")
         log(f"Updated {setting} to {value} for {ctx.author}.", self.bot.cmd)
 
@@ -1281,13 +1251,7 @@ class Database(commands.Cog):
             return await ctx.send(
                 "Cancelled operation: Phrase did not match `{confirmation_phrase}`."
             )
-        await connect()
-        await db.execute(
-            "UPDATE users SET balance = $1, activity = 0, last_pay = 0, invested = 0,"
-            " recent_activity= 0",
-            self.bot.STARTING_BALANCE,
-        )
-        await disconnect()
+        await wipe_the_whole_economy(self.bot.STARTING_BALANCE)
         await ctx.send(
             f"Successfully reset everyone's balance to {self.bot.STARTING_BALANCE}"
         )
@@ -1300,60 +1264,61 @@ class Database(commands.Cog):
             self.bot.prio,
         )
 
-    @commands.command(description="browse the shop")
-    @commands.check(auth(AUTH_LOCKDOWN))
-    async def browse(self, ctx, *, item: str = None):
-        """
-        Browse the items available for sale.
-        You can also specify a category to list the items of that type, or a specific item to see more details
-         on that item, including a picture.
-        """
-        log(f"{ctx.author} used the browse command for {item}.")
-        await connect()
-        if item is None:
-            result = await db.fetch("SELECT DISTINCT category from items")
-            categories = sorted(
-                list(set(flatten([item[0].split(", ") for item in result])))
-            )
-            log(repr(categories), self.bot.debug)
-            send = (
-                "Here are the categories of items available. You can browse each category (case sensitive) to "
-                "list the items in it, or you can browse all to see every item in the shop.\n "
-            )
-            send += "=" * 20 + "\n"
-            for category in categories:
-                send += f"{category}\n"
-            await ctx.send(send)
-            log(repr(categories), self.bot.debug)
-            return
-            pass
-        elif item == "all":
-            result = await db.fetch("SELECT * FROM items")
-            await send_formatted_browse(ctx, result, "all")
-            await disconnect()
-            return
-        item = item.title()
-        # See if the keyword is a category
-        results_in_category = await find_items_in_cat(item)
-        if len(results_in_category) > 0:  # If it is a category, display category
-            await disconnect()
-            return await send_formatted_browse(ctx, results_in_category, item)
-        # No we know its a specific item, find it
-        result = await find_item(item)
-        if result is None:
-            return await ctx.send("Item not found.")
-        log(result, self.bot.debug)
-        av_cost = int((float(result[3]) + float(result[4])) / 2 * 100) / 100
-        async with aiohttp.ClientSession() as session:  # Load image from link. TODO: Download and save image instead
-            async with session.get(result[2]) as resp:
-                buffer = BytesIO(await resp.read())
-            await session.close()
-        await ctx.send(
-            f"__**{result[0]}**__ ({result[1]})"
-            f"\n**Cost:** {av_cost} credits:"
-            f"\n> {result[5]}",
-            file=discord.File(fp=buffer, filename="file.jpg"),
-        )
+    # @commands.command(description="browse the shop")
+    # @commands.check(auth(AUTH_LOCKDOWN))
+    # async def browse(self, ctx, *, item: str = None):
+    #     """
+    #     Browse the items available for sale.
+    #     You can also specify a category to list the items of that type, or a specific item to see more details
+    #      on that item, including a picture.
+    #     """
+    #     log(f"{ctx.author} used the browse command for {item}.")
+    #     await connect()
+    #     if item is None:
+    #         result = await db.fetch("SELECT DISTINCT category from items")
+    #         categories = sorted(
+    #             list(set(flatten([item[0].split(", ") for item in result])))
+    #         )
+    #         log(repr(categories), self.bot.debug)
+    #         send = (
+    #             "Here are the categories of items available. You can browse each category (case sensitive) to "
+    #             "list the items in it, or you can browse all to see every item in the shop.\n "
+    #         )
+    #         send += "=" * 20 + "\n"
+    #         for category in categories:
+    #             send += f"{category}\n"
+    #         await ctx.send(send)
+    #         log(repr(categories), self.bot.debug)
+    #         return
+    #         pass
+    #     elif item == "all":
+    #         result = await db.fetch("SELECT * FROM items")
+    #         await send_formatted_browse(ctx, result, "all")
+    #         await disconnect()
+    #         return
+    #     item = item.title()
+    #     # See if the keyword is a category
+    #     results_in_category = await find_items_in_cat(item)
+    #     if len(results_in_category) > 0:  # If it is a category, display category
+    #         await disconnect()
+    #         return await send_formatted_browse(ctx, results_in_category, item)
+    #     # No we know its a specific item, find it
+    #     result = await find_item(item)
+    #     if result is None:
+    #         return await ctx.send("Item not found.")
+    #     log(result, self.bot.debug)
+    #     av_cost = int((float(result[3]) + float(result[4])) / 2 * 100) / 100
+    #     async with aiohttp.ClientSession() as session:  # Load image from link. TODO: Download and save image instead
+    #         async with session.get(result[2]) as resp:
+    #             buffer = BytesIO(await resp.read())
+    #         await session.close()
+    #     await ctx.send(
+    #         f"__**{result[0]}**__ ({result[1]})"
+    #         f"\n**Cost:** {av_cost} credits:"
+    #         f"\n> {result[5]}",
+    #         file=discord.File(fp=buffer, filename="file.jpg"),
+    #     )
+    #     await disconnect()
 
 
 async def setup(bot_o):
