@@ -38,7 +38,6 @@ global pool
 
 async def create_db_pool():
     global pool
-    await conn.connect()
     pool = await conn.create_pool(host="localhost", user=DBUSER, password=DBPASS, database="gfw")
 
 
@@ -48,6 +47,8 @@ def with_db(func):
     @wraps(func)
     async def wrapper(*args, **kwargs):
         global pool
+        if not pool:
+            create_db_pool()
         async with pool.acquire() as db:
             transaction = db.transaction()
             await transaction.start()
