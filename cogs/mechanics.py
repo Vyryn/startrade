@@ -185,7 +185,7 @@ class Mechanics(commands.Cog):
             Applies a hit chance reduction that depends on the speed of the target ship.
         """
         gm_role = ctx.guild.get_role(1191905084909568125)
-        if gm_role not in ctx.atuhor.roles:
+        if gm_role not in ctx.author.roles:
             return await ctx.send("This command is for Watchers.")
         if hull is None:
             hull = 100
