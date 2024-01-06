@@ -184,6 +184,9 @@ class Mechanics(commands.Cog):
         -e (Evading): Used when the target is not firing weapons, is a relatively small or agile ship, and can plausibly evade.
             Applies a hit chance reduction that depends on the speed of the target ship.
         """
+        gm_role = ctx.guild.get_role(1191905084909568125)
+        if gm_role not in ctx.atuhor.roles:
+            return await ctx.send("This command is for Watchers.")
         if hull is None:
             hull = 100
         if shields is None:
