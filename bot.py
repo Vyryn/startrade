@@ -60,7 +60,7 @@ bot = Bot()
 # Default number of seconds to wait before deleting many bot responses and player commands
 deltime = 10
 # The id of the primary guild the bot is operating in
-bot.serverid = 977038517588885545  # 718893913976340561 for startrade
+bot.serverid = 1193304380028493834  # 718893913976340561 for startrade
 bot.BUMP_PAYMENT = 0  # Payment for disboard bumps
 bot.PAYCHECK_AMOUNT_MIN = 4_000_000  # Minimum paycheck payout
 bot.PAYCHECK_AMOUNT_MAX = 4_000_000  # Maximum paycheck payout
