@@ -37,15 +37,18 @@ COMMODITIES = {}
 global pool
 pool = None
 
+
 async def create_db_pool():
     global pool
-    pool = await conn.create_pool(host="localhost", user=DBUSER, password=DBPASS, database="gfw")
+    pool = await conn.create_pool(
+        host="localhost", user=DBUSER, password=DBPASS, database="gnk"
+    )
     return pool
 
 
 def with_db(func):
-    """Decorator for database functions that injects a pool connection object and automatically commits if the function didn't, or rolls back if the function raises an exception.
-    """
+    """Decorator for database functions that injects a pool connection object and automatically commits if the function didn't, or rolls back if the function raises an exception."""
+
     @wraps(func)
     async def wrapper(*args, **kwargs):
         global pool
@@ -61,7 +64,9 @@ def with_db(func):
             except:
                 await transaction.rollback()
                 raise
+
     return wrapper
+
 
 @with_db
 async def new_user(db, user: discord.User):
@@ -99,6 +104,7 @@ async def new_user(db, user: discord.User):
         result = f"User {name} name updated in database at {now()}."
     return result
 
+
 @with_db
 async def add_invest(db, user: discord.User, amount: float):
     uid = user.id
@@ -121,8 +127,11 @@ async def add_invest(db, user: discord.User, amount: float):
     )
     return amount, float(invested) + float(amount), float(balance) - float(amount)
 
+
 @with_db
-async def transfer_funds(db, from_user: discord.User, to_user: discord.User, amount: float):
+async def transfer_funds(
+    db, from_user: discord.User, to_user: discord.User, amount: float
+):
     uid_from = from_user.id
     uid_to = to_user.id
     tr = db.transaction()
@@ -156,6 +165,7 @@ async def transfer_funds(db, from_user: discord.User, to_user: discord.User, amo
         await tr.rollback()
         raise
     return from_balance, to_balance
+
 
 @with_db
 async def update_activity(db, user: discord.User, amount: int):
@@ -196,6 +206,7 @@ async def update_activity(db, user: discord.User, amount: int):
         "UPDATE users SET recent_activity = $1 where id = $2", recent_activity, uid
     )
 
+
 @with_db
 async def add_funds(db, user: discord.User, amount: int, reduce_networth: bool = True):
     uid = user.id
@@ -213,6 +224,7 @@ async def add_funds(db, user: discord.User, amount: int, reduce_networth: bool =
     balance = await db.fetchval("SELECT balance FROM users WHERE id = $1", uid)
     return balance
 
+
 @with_db
 async def add_networth(db, user: discord.User, amount: int):
     uid = user.id
@@ -225,6 +237,7 @@ async def add_networth(db, user: discord.User, amount: int):
     networth = await db.fetchval("SELECT networth FROM users WHERE id = $1", uid)
     return networth
 
+
 @with_db
 async def check_bal(db, user: discord.User):
     uid = user.id
@@ -234,6 +247,7 @@ async def check_bal(db, user: discord.User):
     invested = check[5]
     networth = check[8] or balance
     return balance, invested, networth
+
 
 @with_db
 async def check_bal_str(db, username: str):
@@ -274,6 +288,7 @@ def activity_multiplier(networth: float):
         return 1.1
     return 1
 
+
 @with_db
 async def activity_multiplier_for_user(db, user_id: int) -> float:
     networth = await db.fetchval("SELECT networth FROM users where id = $1", user_id)
@@ -288,6 +303,7 @@ def calc_disp_delta(amount: float) -> str:
     elif digits > 3:
         disp_delta = f"{disp_delta[:-3]}.{disp_delta[-3:-1]}k"
     return disp_delta
+
 
 @with_db
 async def distribute_payouts(db, bot=None):
@@ -360,6 +376,7 @@ async def distribute_payouts(db, bot=None):
             user[0],
         )
 
+
 @with_db
 async def check_last_paycheck(db, user: discord.User, do_not_reinvoke: bool = False):
     uid = user.id
@@ -376,6 +393,7 @@ async def check_last_paycheck(db, user: discord.User, do_not_reinvoke: bool = Fa
         return await check_last_paycheck(user, do_not_reinvoke=True)
     return last_paycheck
 
+
 @with_db
 async def set_last_paycheck_now(db, user: discord.User):
     uid = user.id
@@ -383,10 +401,12 @@ async def set_last_paycheck_now(db, user: discord.User):
     await db.execute("UPDATE users SET last_pay = $1 WHERE id = $2", time_now, uid)
     return time_now
 
+
 @with_db
 async def set_passive_income(db, user: discord.User, amount: int):
     uid = user.id
     await db.execute("UPDATE users SET passive_income = $1 WHERE id = $2", amount, uid)
+
 
 @with_db
 async def get_passive_and_bonus_for_user(db, user: discord.User) -> (int, int):
@@ -394,9 +414,11 @@ async def get_passive_and_bonus_for_user(db, user: discord.User) -> (int, int):
     result = await db.fetchrow("SELECT * from users where id = $1", uid)
     return result[9] or 0, result[10] or 0
 
+
 @with_db
 async def reset_bonus_for_all_users(db):
     await db.execute("UPDATE users SET bonus = passive_income")
+
 
 @with_db
 async def get_top(db, cat: str, page: int, user: discord.User):
@@ -455,6 +477,7 @@ async def get_top(db, cat: str, page: int, user: discord.User):
     )
     return tops, num_pages, rank
 
+
 @with_db
 async def add_item(
     db,
@@ -476,6 +499,7 @@ async def add_item(
         description,
         faction,
     )
+
 
 @with_db
 async def add_custom_item(
@@ -515,6 +539,7 @@ async def add_custom_item(
             name,
         )
 
+
 @with_db
 async def get_custom_items(db, user: discord.User) -> [(str, str)]:
     """
@@ -524,8 +549,11 @@ async def get_custom_items(db, user: discord.User) -> [(str, str)]:
     results = await db.fetch("SELECT * FROM custom_items WHERE owner = $1", uid)
     return [(result["name"], result["amount"]) for result in results]
 
+
 @with_db
-async def add_commodity_location(db, name: str, channel_id: int, is_buy: bool, **kwargs):
+async def add_commodity_location(
+    db, name: str, channel_id: int, is_buy: bool, **kwargs
+):
     query = "INSERT INTO commodities_locations VALUES ($1, $2, $3)"
     counter = 3
     for _ in kwargs:
@@ -538,6 +566,7 @@ async def add_commodity_location(db, name: str, channel_id: int, is_buy: bool, *
         parameters.append(value)
     log(parameters, "DBUG")
     await db.execute(query, *parameters)
+
 
 @with_db
 async def edit_item(db, item: str, category: str, new_value: str):
@@ -561,6 +590,7 @@ async def edit_item(db, item: str, category: str, new_value: str):
         f"UPDATE items SET {category} = $1 WHERE name = $2", new_value, item
     )
 
+
 @with_db
 async def find_item(db, item: str):
     result = await db.fetchrow("SELECT * FROM items WHERE name = $1", item)
@@ -571,11 +601,13 @@ async def find_item(db, item: str):
         log(f"Fuzzy: {result}", "DBUG")
     return result
 
+
 @with_db
 async def find_items_in_cat(db, item: str):
     query = f"%{item}%"
     result = await db.fetch("SELECT * FROM items WHERE category LIKE $1", query)
     return result
+
 
 @with_db
 async def remove_item(db, item: str):
@@ -613,6 +645,7 @@ def flatten(flatten_list):  # Just a one layer flatten
         for entry in item:
             new_list.append(entry)
     return new_list
+
 
 @with_db
 async def add_possession(
@@ -666,8 +699,11 @@ async def add_possession(
             i_name,
         )
 
+
 @with_db
-async def add_ships_commodities(db, user: discord.User, commodity: str, amount: float = 1):
+async def add_ships_commodities(
+    db, user: discord.User, commodity: str, amount: float = 1
+):
     # TODO: NOT IMPLEMENTED YET, MAY NOT WORK AS EXPECTED
     uid = user.id
     # unique_key = await db.fetchval(f"SELECT MAX(id) FROM ships_commodities") + 1
@@ -692,6 +728,7 @@ async def add_ships_commodities(db, user: discord.User, commodity: str, amount: 
         has_amount + amount,
         uid,
     )
+
 
 @with_db
 async def sell_possession(db, ctx, user: discord.User, item: str, amount: int = 1):
@@ -749,6 +786,7 @@ async def sell_possession(db, ctx, user: discord.User, item: str, amount: int = 
         f"{ctx.author} has successfully sold {amount}x {item}, their balance is now {new_balance} credits."
     )
 
+
 @with_db
 async def transact_possession(
     db,
@@ -791,6 +829,7 @@ async def transact_possession(
     plural = "s" if amount != 1 else ""
     return f"{user} has successfully purchased {amount} {item}{plural} for {cost * amount} {credit}."
 
+
 @with_db
 async def view_items(db, user: discord.User):
     items = await db.fetch(
@@ -798,6 +837,7 @@ async def view_items(db, user: discord.User):
     )
     log(items, "DBUG")
     return set(items)
+
 
 @with_db
 async def update_location(db, user: discord.User, channel: discord.TextChannel):
@@ -862,6 +902,7 @@ def copy_bot_vars_to_local(bot):
     move_activity_threshold = bot.MOVE_ACTIVITY_THRESHOLD
     AUTH_LOCKDOWN = bot.AUTH_LOCKDOWN
     actweight = bot.ACTIVITY_WEIGHT
+
 
 @with_db
 async def ensure_tables_are_configured(db, bot):
@@ -956,6 +997,7 @@ async def ensure_tables_are_configured(db, bot):
     bot.list_of_users = [user["id"] for user in users]
     log(repr(bot.list_of_users), bot.debug)
 
+
 @with_db
 async def get_users(db):
     return await db.fetch("SELECT * FROM users")
@@ -969,9 +1011,11 @@ async def execute_arbitrary_query(db, query):
         result = await db.execute(query)
     return result
 
+
 @with_db
 async def set_setting_value(db, setting, value):
     return await db.execute(f"UPDATE settings SET {setting} = $1 WHERE id = 1", value)
+
 
 @with_db
 async def wipe_the_whole_economy(db, starting_balance):
@@ -987,7 +1031,6 @@ class Database(commands.Cog):
         self.bot = bot
         self.session = None
         copy_bot_vars_to_local(bot)
-
 
     # Events
     @commands.Cog.listener()

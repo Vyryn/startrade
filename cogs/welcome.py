@@ -17,6 +17,7 @@ class Welcome(commands.Cog):
     # Welcome
     @commands.Cog.listener()
     async def on_member_join(self, member):
+        return
         embed = discord.Embed(
             title=f"{member.name}, welcome to {self.bot.server}",
             description=welcome_msg,
