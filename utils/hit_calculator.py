@@ -141,6 +141,11 @@ def damage_determine(
     if do_attenuation:
         weap_damage_hull = attenuate(weap_damage_hull, attenuation, dist)
         weap_damage_shields = attenuate(weap_damage_shields, attenuation, dist)
+    # Halve weapon damage for torlords
+    weap_damage_hull, weap_damage_shields = (
+        weap_damage_hull / 2,
+        weap_damage_shields / 2,
+    )
     potential_shield_dmg = weap_damage_shields * (1 - pierce)
     if shields >= potential_shield_dmg:
         new_shields = shields - potential_shield_dmg
