@@ -8,7 +8,6 @@ import copy
 import discord  # pylint: disable=import-error
 from discord.ext import commands  # pylint: disable=import-error
 
-from cogs.database import update_location
 from functions import auth, utcnow
 from bot import log, logready, quiet_fail
 from utils.hit_calculator import hit_chance, hit_determine, calc_dmg, calc_dmg_multi
@@ -18,14 +17,6 @@ def not_in_invalid_channels():
     async def inner(ctx, *args):
         if ctx.author.id == 125449182663278592:
             return True
-        if ctx.channel.id not in [
-            977038528364027986,
-            977038528842186782,
-            977038528364027985,
-            977038529068683265,
-            977038528842186791,
-        ]:
-            return False
         return True
 
     return inner
@@ -119,27 +110,9 @@ class Mechanics(commands.Cog):
         await ctx.send(result)
 
     @commands.command()
-    @commands.check(auth(1))
-    async def travel(self, ctx, channel: discord.TextChannel):
-        log(f"{ctx.author} attempted to travel to {channel}.")
-        try:
-            await update_location(ctx.author, channel)
-            await ctx.send(f"*{ctx.author} traveled to {channel.mention}.*")
-            # TODO: Send in a dedicated travel channel instead
-        except ValueError:
-            await ctx.send(
-                f"{ctx.author}, you haven't done enough at your current location to be "
-                f"able to move to travel to a new location yet. Try RPing a bit first.",
-                delete_after=30,
-            )
-
-    @commands.command()
     async def statline(self, ctx, *, ship_name: str):
         """Displays the stats for a specified ship. Name must be exact.
         Do not include quotation marks unless they are part of the ship name."""
-        gm_role = ctx.guild.get_role(977038517710495760)
-        if gm_role not in ctx.author.roles:
-            return await ctx.send("This command is for game masters.")
         info = self.bot.values_ships.get(ship_name.lower().strip(), [])
         if not info:
             return await ctx.send("I didn't find that ship. Spelling must be exact.")

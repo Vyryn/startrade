@@ -43,16 +43,10 @@ class Bot(commands.Bot):
         self.appinfo = await self.application_info()
         # self.owner_id = self.appinfo.owner.id
         self.owner_id = 125449182663278592
-        await self.load_extension("cogs.logging")
         await self.load_extension("cogs.dev")
         await self.load_extension("cogs.management")
-        await self.load_extension("cogs.welcome")
-        await self.load_extension("cogs.database")
         await self.load_extension("cogs.googleapi")
-        await self.load_extension("cogs.basics")
-        await self.load_extension("cogs.moderation")
         await self.load_extension("cogs.mechanics")
-        await self.load_extension("cogs.economy")
 
 
 bot = Bot()
@@ -451,8 +445,10 @@ async def on_ready():
         status=discord.Status.online, activity=discord.Game(random.choice(statuses))
     )
     await asyncio.sleep(2)
-
-    log(f"{bot.server.name} bot is fully ready.", bot.prio)
+    if hasattr(bot, "server") and hasattr(bot.server, "name"):
+        log(f"{bot.server.name} bot is fully ready.", bot.prio)
+    else:
+        log("Bot is fully ready.", bot.prio)
 
 
 # ================================= Error Handler =================================
