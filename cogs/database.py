@@ -307,7 +307,7 @@ def calc_disp_delta(amount: float) -> str:
 
 @with_db
 async def distribute_payouts(db, bot=None):
-    await ensure_tables_are_configured(db, bot)
+    await ensure_tables_are_configured(bot)
     channel = None
     if bot is not None:
         channel = bot.get_channel(1055577521795641398)
