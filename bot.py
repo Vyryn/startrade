@@ -72,7 +72,7 @@ bot.PAYOUT_FREQUENCY = 60 * 60  # How frequently to send out investments, in sec
 bot.ACTIVITY_WEIGHT = 10000  # How many credits to award per activity point
 bot.GRANT_AMOUNT = 1000  # Certified Literate payout amount
 bot.log_channel_id = (
-    977038528842186783  # The channel set up for logging message edits and the like.
+    1193323183420473414  # The channel set up for logging message edits and the like.
 )
 # bot.verified_role_id = 718949160170291203  # The verification role id
 # bot.literate_role_id = 728796399692677160  # The certified literate role id

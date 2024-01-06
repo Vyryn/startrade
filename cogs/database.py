@@ -1027,6 +1027,52 @@ async def wipe_the_whole_economy(db, starting_balance):
     )
 
 
+@with_db
+async def do_browse(db, bot, ctx, item):
+    if item is None:
+        result = await db.fetch("SELECT DISTINCT category from items")
+        categories = sorted(
+            list(set(flatten([item[0].split(", ") for item in result])))
+        )
+        log(repr(categories), bot.debug)
+        send = (
+            "Here are the categories of items available. You can browse each category (case sensitive) to "
+            "list the items in it, or you can browse all to see every item in the shop.\n "
+        )
+        send += "=" * 20 + "\n"
+        for category in categories:
+            send += f"{category}\n"
+        await ctx.send(send)
+        log(repr(categories), bot.debug)
+        return
+        pass
+    elif item == "all":
+        result = await db.fetch("SELECT * FROM items")
+        await send_formatted_browse(ctx, result, "all")
+        return
+    item = item.title()
+    # See if the keyword is a category
+    results_in_category = await find_items_in_cat(item)
+    if len(results_in_category) > 0:  # If it is a category, display category
+        return await send_formatted_browse(ctx, results_in_category, item)
+    # No we know its a specific item, find it
+    result = await find_item(item)
+    if result is None:
+        return await ctx.send("Item not found.")
+    log(result, bot.debug)
+    av_cost = int((float(result[3]) + float(result[4])) / 2 * 100) / 100
+    async with aiohttp.ClientSession() as session:  # Load image from link. TODO: Download and save image instead
+        async with session.get(result[2]) as resp:
+            buffer = BytesIO(await resp.read())
+        await session.close()
+    await ctx.send(
+        f"__**{result[0]}**__ ({result[1]})"
+        f"\n**Cost:** {av_cost} credits:"
+        f"\n> {result[5]}",
+        file=discord.File(fp=buffer, filename="file.jpg"),
+    )
+
+
 class Database(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -1309,61 +1355,16 @@ class Database(commands.Cog):
             self.bot.prio,
         )
 
-    # @commands.command(description="browse the shop")
-    # @commands.check(auth(AUTH_LOCKDOWN))
-    # async def browse(self, ctx, *, item: str = None):
-    #     """
-    #     Browse the items available for sale.
-    #     You can also specify a category to list the items of that type, or a specific item to see more details
-    #      on that item, including a picture.
-    #     """
-    #     log(f"{ctx.author} used the browse command for {item}.")
-    #     await connect()
-    #     if item is None:
-    #         result = await db.fetch("SELECT DISTINCT category from items")
-    #         categories = sorted(
-    #             list(set(flatten([item[0].split(", ") for item in result])))
-    #         )
-    #         log(repr(categories), self.bot.debug)
-    #         send = (
-    #             "Here are the categories of items available. You can browse each category (case sensitive) to "
-    #             "list the items in it, or you can browse all to see every item in the shop.\n "
-    #         )
-    #         send += "=" * 20 + "\n"
-    #         for category in categories:
-    #             send += f"{category}\n"
-    #         await ctx.send(send)
-    #         log(repr(categories), self.bot.debug)
-    #         return
-    #         pass
-    #     elif item == "all":
-    #         result = await db.fetch("SELECT * FROM items")
-    #         await send_formatted_browse(ctx, result, "all")
-    #         await disconnect()
-    #         return
-    #     item = item.title()
-    #     # See if the keyword is a category
-    #     results_in_category = await find_items_in_cat(item)
-    #     if len(results_in_category) > 0:  # If it is a category, display category
-    #         await disconnect()
-    #         return await send_formatted_browse(ctx, results_in_category, item)
-    #     # No we know its a specific item, find it
-    #     result = await find_item(item)
-    #     if result is None:
-    #         return await ctx.send("Item not found.")
-    #     log(result, self.bot.debug)
-    #     av_cost = int((float(result[3]) + float(result[4])) / 2 * 100) / 100
-    #     async with aiohttp.ClientSession() as session:  # Load image from link. TODO: Download and save image instead
-    #         async with session.get(result[2]) as resp:
-    #             buffer = BytesIO(await resp.read())
-    #         await session.close()
-    #     await ctx.send(
-    #         f"__**{result[0]}**__ ({result[1]})"
-    #         f"\n**Cost:** {av_cost} credits:"
-    #         f"\n> {result[5]}",
-    #         file=discord.File(fp=buffer, filename="file.jpg"),
-    #     )
-    #     await disconnect()
+    @commands.command(description="browse the shop")
+    @commands.check(auth(AUTH_LOCKDOWN))
+    async def browse(self, ctx, *, item: str = None):
+        """
+        Browse the items available for sale.
+        You can also specify a category to list the items of that type, or a specific item to see more details
+         on that item, including a picture.
+        """
+        log(f"{ctx.author} used the browse command for {item}.")
+        await do_browse(self.bot, ctx, item)
 
 
 async def setup(bot_o):
