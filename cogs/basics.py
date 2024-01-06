@@ -107,11 +107,13 @@ class Basics(commands.Cog):
     # Deleted message handler
     @commands.Cog.listener()
     async def on_message_delete(self, message):
-        if message.guild.id == self.bot.server.id:
-            if len(message.content) > self.bot.content_max + 3:
-                content = message.content[: self.bot.content_max] + "..."
-            else:
-                content = message.content
+        content = ""
+        if not message.guild.id == self.bot.server.id:
+            return
+        if len(message.content) > self.bot.content_max + 3:
+            content = message.content[: self.bot.content_max] + "..."
+        else:
+            content = message.content
         embed = discord.Embed(
             title="",
             description=f"**Message by {message.author.mention} deleted in "
