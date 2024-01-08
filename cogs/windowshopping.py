@@ -75,7 +75,7 @@ weapon_shop: dict[str, int] = {
 def prep_windowshop_update(items: dict[str, int], n: int = 5) -> dict[str, float]:
     """Prepares a list of n items to be presented as available shop stock."""
     assert n > 0, "N must be greater than 0"
-    if n <= len(items):
+    if n > len(items):
         n = len(items)
     selected: list[tuple[str, int]] = random.sample(list(items.items()), n)
     results: dict[str, float] = {}
