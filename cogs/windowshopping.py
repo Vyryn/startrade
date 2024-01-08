@@ -74,13 +74,13 @@ weapon_shop: dict[str, int] = {
 
 def prep_windowshop_update(items: dict[str, int], n: int = 5) -> dict[str, float]:
     """Prepares a list of n items to be presented as available shop stock."""
-    assert n > 0, "N must be greater than 0"
-    selected: list[tuple[str, int]] = [
-        random.choice(list(items.items())) for _ in range(n)
-    ]
+    assert n > 0 and n <= len(
+        items
+    ), "N must be greater than 0 and less than or equal to the number of items"
+    selected: list[tuple[str, int]] = random.sample(list(items.items()), n)
     results: dict[str, float] = {}
     for key, value in selected:
-        new_value = value / 2 + value * (0.1 + (random.random()))
+        new_value = value / 2 + value * (0.1 + random.random())
         results[key] = new_value
     return results
 
@@ -108,7 +108,7 @@ async def windowshop_update(bot) -> None:
         )
         for item, price in shop.items():
             embed.add_field(
-                name=item, value=f"{bot.credit_emoji}{price:,.2f}", inline=False
+                name=item, value=f"{bot.credit_emoji}{price:,.0f}", inline=False
             )
         # Update message
         async for message in channel.history(limit=100):
