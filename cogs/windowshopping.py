@@ -98,7 +98,7 @@ async def windowshop_update(bot) -> None:
             continue
         # Prepare shop
         embed = discord.Embed(
-            title="Welcome to the Adventure Shop!",
+            title=f"Welcome to the {channel.name.title()} Shop!",
             description="Here are the items I have in stock today:",
             color=discord.Color.blue(),
         )
