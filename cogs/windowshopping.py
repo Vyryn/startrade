@@ -72,7 +72,7 @@ weapon_shop: dict[str, int] = {
 }
 
 
-def prep_windowshop_update(bot, items: dict[str, int], n: int = 5) -> dict[str, float]:
+def prep_windowshop_update(items: dict[str, int], n: int = 5) -> dict[str, float]:
     """Prepares a list of n items to be presented as available shop stock."""
     assert n > 0, "N must be greater than 0"
     selected: list[tuple[str, int]] = [
@@ -90,7 +90,8 @@ async def windowshop_update(bot) -> None:
     shops: dict[int, dict[str, int]] = {
         1193320352512753684: weapon_shop,
     }
-    for ch, shop in shops.items():
+    for ch, _shop in shops.items():
+        shop = prep_windowshop_update(_shop)
         channel = await bot.fetch_channel(ch)
         if channel is None:
             log(f"Unable to find channel {ch}")
@@ -106,9 +107,7 @@ async def windowshop_update(bot) -> None:
             "Automated transactions are not currently supported."
         )
         for item, price in shop.items():
-            embed.add_field(
-                name=item[:25], value=f"{bot.credit_emoji}{price}", inline=False
-            )
+            embed.add_field(name=item, value=f"{bot.credit_emoji}{price}", inline=False)
         # Update message
         async for message in channel.history(limit=100):
             if message.author == bot.user:
