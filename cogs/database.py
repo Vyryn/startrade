@@ -1,7 +1,7 @@
 import asyncio
 import random
 import time
-from typing import Optional, Callable, ParamSpec, TypeVar, Concatenate, Any, Awaitable
+from typing import Optional
 from functools import wraps
 
 import aiohttp  # pylint: disable=import-error
@@ -11,7 +11,6 @@ import discord  # pylint: disable=import-error
 from discord.ext import commands  # pylint: disable=import-error
 from bot import log, logready
 import asyncpg as conn  # pylint: disable=import-error
-from asyncpg.pool import PoolConnectionProxy, Pool
 from asyncpg.exceptions import (  # pylint: disable=import-error
     InternalClientError,
     InterfaceError,
@@ -21,8 +20,6 @@ from asyncpg.exceptions import (  # pylint: disable=import-error
 from functions import auth, now, level
 from privatevars import DBUSER, DBPASS  # pylint: disable=import-error
 
-P = ParamSpec("P")
-R = TypeVar("R")
 # Lazily scoped
 # These globals are based on the bot attributes of the same names in init and on_ready.
 # These are just "default default values", and normally aren't used.
@@ -33,7 +30,7 @@ refund_portion = 0.9
 move_activity_threshold = 100
 actweight = 10000
 AUTH_LOCKDOWN = 1
-COMMODITIES: dict[Any, Any] = {}
+COMMODITIES = {}
 
 
 # Handle database connection pool with dependency injection====
@@ -41,7 +38,7 @@ global pool
 pool = None
 
 
-async def create_db_pool() -> Pool | None:
+async def create_db_pool():
     global pool
     pool = await conn.create_pool(
         host="localhost", user=DBUSER, password=DBPASS, database="gnk"
@@ -49,20 +46,14 @@ async def create_db_pool() -> Pool | None:
     return pool
 
 
-def with_db(
-    func: Callable[Concatenate[PoolConnectionProxy, P], Awaitable[R]],
-) -> Callable[Concatenate[PoolConnectionProxy, P], Awaitable[R]]:
-    """Decorator for database functions that injects a pool connection object and
-    automatically commits if the function didn't, or rolls back if the function
-    raises an exception."""
+def with_db(func):
+    """Decorator for database functions that injects a pool connection object and automatically commits if the function didn't, or rolls back if the function raises an exception."""
 
     @wraps(func)
-    async def wrapper(db: PoolConnectionProxy, *args: P.args, **kwargs: P.kwargs) -> R:
+    async def wrapper(*args, **kwargs):
         global pool
         if not pool:
             pool = await create_db_pool()
-        if pool is None:
-            raise ValueError("No pool connection")
         async with pool.acquire() as db:
             transaction = db.transaction()
             await transaction.start()
@@ -70,7 +61,7 @@ def with_db(
                 result = await func(db, *args, **kwargs)
                 await transaction.commit()
                 return result
-            except (InternalClientError, InterfaceError):
+            except:
                 await transaction.rollback()
                 raise
 
@@ -78,7 +69,7 @@ def with_db(
 
 
 @with_db
-async def new_user(db, user: discord.User) -> str:
+async def new_user(db, user: discord.User):
     uid = user.id
     name = user.name
     activity = 0
@@ -251,7 +242,7 @@ async def add_networth(db, user: discord.User, amount: int):
 async def check_bal(db, user: discord.User):
     uid = user.id
     check = await db.fetchrow("SELECT * FROM users WHERE id = $1", uid)
-    log(str(type(check)), "DBUG")
+    log(type(check), "DBUG")
     balance = check[3]
     invested = check[5]
     networth = check[8] or balance
@@ -551,7 +542,7 @@ async def add_custom_item(
 
 
 @with_db
-async def get_custom_items(db, user: discord.User) -> list[tuple[str, str]]:
+async def get_custom_items(db, user: discord.User) -> [(str, str)]:
     """
     Returns a list of name, desc tuples for each custom item owned by the specified user
     """
@@ -574,7 +565,7 @@ async def add_commodity_location(
     parameters = [name, channel_id, is_buy]
     for value in kwargs.values():
         parameters.append(value)
-    log(str(parameters), "DBUG")
+    log(parameters, "DBUG")
     await db.execute(query, *parameters)
 
 
