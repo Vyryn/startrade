@@ -106,7 +106,9 @@ async def windowshop_update(bot) -> None:
             "Automated transactions are not currently supported."
         )
         for item, price in shop.items():
-            embed.add_field(name=item, value=f"{bot.credit_emoji}{price}", inline=False)
+            embed.add_field(
+                name=item[:25], value=f"{bot.credit_emoji}{price}", inline=False
+            )
         # Update message
         async for message in channel.history(limit=100):
             if message.author == bot.user:
