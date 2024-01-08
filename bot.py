@@ -81,7 +81,7 @@ bot.log_channel_id = (
 bot.DISBOARD = 302050872383242240  # Disboard uid
 bot.credit_emoji = "<:Credits:1194051594568871936>"
 # Constants to do with the goolge sheet pulls the bot makes.
-bot.SCOPES = ["https://www.googleapis.com/auth /spreadsheets.readonly"]
+bot.SCOPES = ["https://www.googleapis.com/auth/spreadsheets.readonly"]
 bot.SHEET_ID = "1ZU6pTfdIGkQ9zzOH6lW0zkEQuF7-xFsyxgwSgGz4WcM"
 bot.RANGE_SHIPS = "AllShips!A1:T1750"
 bot.RANGE_WEAPONS = "Weapons!A1:L250"
