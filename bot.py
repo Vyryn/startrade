@@ -53,6 +53,7 @@ class Bot(commands.Bot):
         await self.load_extension("cogs.moderation")
         await self.load_extension("cogs.mechanics")
         await self.load_extension("cogs.economy")
+        await self.load_extension("cogs.windowshopping")
 
 
 bot = Bot()
