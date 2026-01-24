@@ -3,7 +3,7 @@ import typing
 
 import discord
 from discord.ext import commands
-from functions import auth, now
+from functions import auth
 from bot import log, logready
 
 

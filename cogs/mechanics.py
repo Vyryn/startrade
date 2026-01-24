@@ -11,7 +11,7 @@ from discord.ext import commands  # pylint: disable=import-error
 from cogs.database import update_location
 from functions import auth, utcnow
 from bot import log, logready, quiet_fail
-from utils.hit_calculator import hit_chance, hit_determine, calc_dmg, calc_dmg_multi
+from utils.hit_calculator import hit_chance, calc_dmg, calc_dmg_multi
 
 
 def not_in_invalid_channels():

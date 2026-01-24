@@ -24,7 +24,6 @@ from cogs.database import (
     view_items,
     sell_possession,
     items_per_top_page,
-    activity_multiplier_for_user,
     reset_bonus_for_all_users,
     set_passive_income,
     get_passive_and_bonus_for_user,
