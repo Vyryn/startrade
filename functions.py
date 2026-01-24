@@ -3,7 +3,6 @@ from datetime import datetime, timezone, date
 from typing import List
 
 import aiohttp  # pylint: disable=import-error
-import discord  # pylint: disable=import-error
 from discord.ext import commands  # pylint: disable=import-error
 from attr import dataclass  # pylint: disable=import-error
 
@@ -150,18 +149,18 @@ def get_prefix(bot, message):
 def now():
     try:
         return datetime.now().strftime("%m/%d/%y %H:%M:%S")
-    except commands.CommandInvokeError as e:
-        return f"(Could not get timestamp)"
+    except commands.CommandInvokeError:
+        return "(Could not get timestamp)"
     except aiohttp.ClientOSError:
-        return f"(Could not get timestamp #2)"
+        return "(Could not get timestamp #2)"
 
 
 # Returns current datestamp as YYYY-MM-DD
 def today():
     try:
         return date.today().strftime("%Y-%m-%d")
-    except commands.CommandInvokeError as e:
-        return f"(Could not get date)"
+    except commands.CommandInvokeError:
+        return "(Could not get date)"
 
 
 # Log a message.
@@ -197,8 +196,8 @@ def log(message, mm):
                     f.write(
                         f"WRN@{now()}: A UnicodeEncodeError occurred trying to write a message log.\n"
                     )
-        except:
-            print("Something went very wrong trying to log a message.")
+        except Exception as e:
+            print(f"Something went very wrong trying to log a message. {e}")
     return
 
 

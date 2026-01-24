@@ -2,13 +2,13 @@ import json
 import traceback
 from json import JSONDecodeError
 from typing import Dict
-
-import discord  # pylint: disable=import-error
+import time
+import discord
 import os
 import random
 import sys
 import asyncio
-from discord.ext import commands  # pylint: disable=import-error
+from discord.ext import commands
 from functions import (
     get_prefix,
     global_prefix,
@@ -17,7 +17,7 @@ from functions import (
     auth,
     now,
 )
-from privatevars import TOKEN  # pylint: disable=import-error
+from privatevars import TOKEN
 
 intents = discord.Intents.all()
 intents.typing = False
@@ -513,14 +513,14 @@ async def on_command_error(ctx, error) -> None:
     elif isinstance(error, discord.ext.commands.errors.CommandOnCooldown):
         return await quiet_fail(
             ctx,
-            f"you are on cooldown for that command. Try again in a little" f" while.",
+            "you are on cooldown for that command. Try again in a little" " while.",
         )
     elif isinstance(error, commands.MaxConcurrencyReached):
         return await quiet_fail(
-            ctx, f"too many instances of this command are being run at the moment."
+            ctx, "too many instances of this command are being run at the moment."
         )
     elif isinstance(error, commands.CheckFailure):
-        return await quiet_fail(ctx, f"you are not authorized to perform this command.")
+        return await quiet_fail(ctx, "you are not authorized to perform this command.")
     # User misformulated command errors
     elif isinstance(error, commands.BadBoolArgument):
         return await quiet_fail(
@@ -552,14 +552,14 @@ async def on_command_error(ctx, error) -> None:
         return await quiet_fail(ctx, "I didn't find that message.")
     elif isinstance(error, commands.MissingRequiredArgument):
         await ctx.send_help(ctx.command)
-        return await quiet_fail(ctx, f"incomplete command.")
+        return await quiet_fail(ctx, "incomplete command.")
     elif isinstance(error, commands.TooManyArguments):
         await ctx.send_help(ctx.command)
-        return await quiet_fail(ctx, f"too many values passed to this command.")
+        return await quiet_fail(ctx, "too many values passed to this command.")
     elif isinstance(error, bad_quotes):  # User messed up quotes
         return await quiet_fail(
             ctx,
-            f"quotation marks do not balance. Make sure you close every quote you open.",
+            "quotation marks do not balance. Make sure you close every quote you open.",
         )
     elif isinstance(error, commands.ConversionError):
         return await quiet_fail(
@@ -579,24 +579,24 @@ async def on_command_error(ctx, error) -> None:
         )
     # Extension and command registration errors
     elif isinstance(error, commands.ExtensionAlreadyLoaded):
-        return await quiet_fail(ctx, f"that extension is already loaded.")
+        return await quiet_fail(ctx, "that extension is already loaded.")
     elif isinstance(error, commands.ExtensionNotLoaded):
-        return await quiet_fail(ctx, f"that extension is not loaded.")
+        return await quiet_fail(ctx, "that extension is not loaded.")
     elif isinstance(error, commands.NoEntryPointError):
-        return await quiet_fail(ctx, f"that extension does not have a setup function.")
+        return await quiet_fail(ctx, "that extension does not have a setup function.")
     elif isinstance(error, commands.ExtensionNotFound):
-        return await quiet_fail(ctx, f"I see no such extension.")
+        return await quiet_fail(ctx, "I see no such extension.")
     elif isinstance(error, commands.ExtensionFailed):
-        return await quiet_fail(ctx, f"that exception refused to load.")
+        return await quiet_fail(ctx, "that exception refused to load.")
     elif isinstance(error, commands.ExtensionError):
-        return await quiet_fail(ctx, f"uncaught ExtensionError.")
+        return await quiet_fail(ctx, "uncaught ExtensionError.")
     elif isinstance(error, commands.CommandRegistrationError):
         return await quiet_fail(
             ctx, f"failed to register a duplicate command name: {error}"
         )
     elif isinstance(error, discord.ClientException):
         return await quiet_fail(
-            ctx, f"hmm, something went wrong. Try that command again."
+            ctx, "hmm, something went wrong. Try that command again."
         )
     # Other
     elif isinstance(error, discord.HTTPException):
