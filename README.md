@@ -58,10 +58,15 @@ Please note, this bot was created for Startrade specific use without broader dep
 - Create a bot in the discord dev portal
 - Install postgresql. Create a db user with read/write access for the bot to use
 - Clone repo, obviously
-- install requirements.txt
+- Install the locked runtime dependencies with `uv sync --locked --no-dev`.
 - Authorize google sheets api on your account and create a token.json file in your repo
 - Create a file called 'privatevars.py' in the base directory and populate it with:
 TOKEN = 'your token from dev portal'
 DBUSER = 
 DBPASS = 'your username and password from postgre
-- Create a database named 'startrade' in postgresql. Its hardcoded to use this name but you can change it in database.py or refactor the name out if you like
+- Create a database named 'gfw' in postgresql. Its hardcoded to use this name but you can change it in database.py or refactor the name out if you like
+
+## Running the tests
+
+Run `uv sync --locked`, then `uv run --locked python -m unittest discover -s tests -v`.
+The tests use temporary configuration files and dummy credentials. Discord and Google Sheets calls stay offline.

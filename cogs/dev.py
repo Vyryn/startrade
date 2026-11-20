@@ -147,12 +147,12 @@ class Dev(commands.Cog):
             )
         elif commanders[str(ctx.author.id)] <= level:
             await ctx.send(
-                f"I'm sorry, but you can't set someone's auth level higher than your own."
+                "I'm sorry, but you can't set someone's auth level higher than your own."
             )
         else:
             await ctx.send(
-                f"I'm sorry, but you can't change the auth level of someone with an auth level equal to or "
-                f"higher than you."
+                "I'm sorry, but you can't change the auth level of someone with an auth level equal to or "
+                "higher than you."
             )
         log(
             f"Authset command used by {ctx.author} to set {user}'s auth level to {level}.",
@@ -346,9 +346,9 @@ class Dev(commands.Cog):
         )
         for i in range(3):
             await asyncio.sleep(2)
-            await user.send(f"Vyryn told you to leave him alone.")
+            await user.send("Vyryn told you to leave him alone.")
             await asyncio.sleep(4)
-            await user.send(f"It is a very good idea for you to do so.")
+            await user.send("It is a very good idea for you to do so.")
             await asyncio.sleep(10)
             await user.send("Seriously.")
             await asyncio.sleep(20)

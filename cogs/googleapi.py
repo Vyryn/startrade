@@ -1,4 +1,3 @@
-import json
 import os.path
 import os
 from googleapiclient.discovery import build  # pylint: disable=import-error
@@ -12,12 +11,12 @@ def clean(s: str) -> float:
     """Cleans a google cell containing a float into a float"""
     try:
         return float(s.replace(",", "").replace("$", ""))
-    except ValueError as e:
+    except ValueError:
         return 0
 
 
 def load_from_sheet(bot) -> None:
-    log(f"Loading data from spreadsheet...")
+    log("Loading data from spreadsheet...")
     # Load in buy and sell prices from google sheets using sheets api
     sheet = bot.api_service.spreadsheets()
     result_ships = (
@@ -102,7 +101,7 @@ class GoogleAPI(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         credentials = None
-        log(f"Loading data from spreadsheet...")
+        log("Loading data from spreadsheet...")
         # Find the authorizations file
         if os.path.exists("service.json"):
             secret_file = os.path.join(os.getcwd(), "service.json")
