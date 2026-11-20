@@ -1,4 +1,3 @@
-import datetime
 import os
 from discord.ext import commands
 from bot import log, logready
@@ -19,7 +18,7 @@ def do_log_msg(message):
     # Build a log of this message
     log_msg = f"{message.author}"
     if message.author.bot:
-        log_msg += f" [B]"
+        log_msg += " [B]"
     log_content = message.system_content.replace("\n", "\\n")
     log_msg += f" >  {log_content}  |  {now()}"
     if len(message.embeds) > 0:
@@ -47,7 +46,7 @@ def send_log(message: str, guild: str, channel: str):
             log(f"Created a new guild log folder for {guild}.")
             writeline(f"./logs/{guild}/{today()}_log.log", message)
         except OSError:
-            os.makedirs(f"./logs")
+            os.makedirs("./logs")
             os.makedirs(f"./logs/{guild}")
             log(f"Created a new guild log folder for {guild}.")
             writeline(f"./logs/{guild}/{today()}_log.log", message)
